@@ -1,0 +1,74 @@
+{% extends 'main/base.html' %}
+{% load params %}
+
+{% block content %}
+  <div class="container">
+
+    {% include 'main/navbar.html' with nav='games' %}
+
+    <div class="row">
+      <div class="col-6">
+        {% if prev %}
+          <p><a href="{% url 'game_detail' prev.pk %}">
+            <i class="bi bi-chevron-double-left"></i> #{{ prev.rank }} {{ prev.name }}
+          </a></p>
+        {% endif %}
+      </div>
+      <div class="col-6 text-end">
+        {% if next %}
+          <p><a href="{% url 'game_detail' next.pk %}">
+            #{{ next.rank }} {{ next.name }} <i class="bi bi-chevron-double-right"></i>
+          </a></p>
+        {% endif %}
+      </div>
+    </div>
+
+    <br/>
+    <div class="row">
+
+      <div class="col-8">
+
+        <div class="row">
+          <div class="col-4">
+            <p>
+              <img class="img-fluid" src="{{ game.img }}" alt="{{ game.name }} poster"/>
+            </p>
+          </div>
+          <div class="col-8">
+            <h2>{{ game.name }}</h2>
+            <h6>
+              Year: {{ game.year }}
+              <br/>Players: {{ game.min_players }}
+              {% if game.min_players < game.max_players %}&mdash;
+                {{ game.max_players }}{% endif %}
+              <br/>Play time: {{ game.min_play_time }}
+              {% if game.min_play_time < game.max_play_time %}&mdash;
+                {{ game.max_play_time }}{% endif %}
+              <br/><a href="{{ game.bgg_link }}" target="_blank">GBB link</a>
+            </h6>
+          </div>
+        </div>
+
+        <br/>
+        <div class="row">
+          <div class="col">
+            <p>{{ game.description }}</p>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="col-4 text-center">
+        <h2>#{{ game.rank }}</h2>
+        <br/>
+        <h3>{{ game.rating }}</h3>
+        <p>{{ game.reviews.count }} reviews</p>
+        {% if rating_graph %}
+          <p>{{ rating_graph|safe }}</p>
+        {% endif %}
+      </div>
+
+    </div>
+
+  </div>
+{% endblock %}

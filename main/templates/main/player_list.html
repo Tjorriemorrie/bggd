@@ -1,0 +1,86 @@
+{% extends 'main/base.html' %}
+{% load params %}
+
+{% block content %}
+  <div class="container">
+
+    {% include 'main/navbar.html' with nav='players' %}
+
+    <br/>
+    <div class="row">
+      <form>
+        <div class="col-8">
+          <input type="text" name="s" class="form-control" placeholder="Search for game by name..." {% if s %}value="{{ s }}"{% endif %}>
+          <input type="hidden" name="o" value="{{ ordering }}">
+        </div>
+      </form>
+    </div>
+
+    <br/>
+    {% if s %}
+      <div class="row">
+        <div class="col">
+          <p>
+            {{ paginator.count }} results
+            <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
+          </p>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if page_obj %}
+      <table class="table">
+        <thead>
+        <tr>
+          <th>
+            {% if ordering == 'reviews_scr' %}
+              <a href="?{% add_param 'o' '-reviews_scr' %}">Score</a>
+            {% else %}
+              <a href="?{% add_param 'o' 'reviews_scr' %}">Score</a>
+            {% endif %}
+            {% if 'reviews_scr' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>
+            {% if ordering == 'nick' %}
+              <a href="?{% add_param 'o' '-nick' %}">Nick</a>
+            {% else %}
+              <a href="?{% add_param 'o' 'nick' %}">Nick</a>
+            {% endif %}
+            {% if 'nick' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>Name</th>
+          <th>
+            {% if ordering == 'reviews_cnt' %}
+              <a href="?{% add_param 'o' '-reviews_cnt' %}"># ratings</a>
+            {% else %}
+              <a href="?{% add_param 'o' 'reviews_cnt' %}"># ratings</a>
+            {% endif %}
+            {% if 'reviews_cnt' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>Geo</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for player in page_obj %}
+          <tr>
+            <td>{{ player.reviews_scr|floatformat:1 }}</td>
+            <td><a href="{% url 'player_detail' player.pk %}">{{ player.nick }}</a></td>
+            <td>{% if player.name %}{{ player.name }}{% endif %}</td>
+            <td>{{ player.reviews_cnt }}</td>
+            <td>{{ player.geo }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
+
+  </div>
+{% endblock %}

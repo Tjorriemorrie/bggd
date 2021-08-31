@@ -1,0 +1,265 @@
+import logging
+import re
+from datetime import datetime
+from ssl import SSLEOFError
+from time import sleep
+from typing import List, Tuple
+
+import requests
+from bs4 import BeautifulSoup
+from django.db import IntegrityError, OperationalError
+from django.db.models import Avg
+from django.utils.timezone import now, make_aware
+from retry import retry
+
+from main.errors import PlayerScrapeError
+from main.models import Game, Label, \
+    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
+
+logger = logging.getLogger(__name__)
+
+URL_RANKINGS = r'https://www.boardgamegeek.com/browse/boardgame/page/'
+URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'
+URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'
+
+
+class TooManyRequestsError(Exception):
+    """Too many http requests."""
+
+
+class RequestsError(Exception):
+    """SSL error from BGG."""
+
+
+sleep_time = 0
+last_url = None
+
+
+@retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60)
+def get(url: str) -> requests.Response:
+    global sleep_time
+    global last_url
+    if last_url == url:
+        sleep_time = round(sleep_time + 0.1, 3)
+        logger.info(f'Increased sleep time to {sleep_time}')
+    elif sleep_time:
+        sleep_time = round(sleep_time - 0.005, 3)
+    last_url = url
+    sleep(sleep_time)
+
+    try:
+        res = requests.get(url)
+    except Exception as exc:
+        logger.warning(f'Connection error! {exc}')
+        raise RequestsError() from exc
+    if res.status_code == 429:
+        logger.warning(f'Too many requests! {url}')
+        raise TooManyRequestsError()
+    elif res.status_code >= 500:
+        logger.warning(f'Server error! {url}')
+        raise TooManyRequestsError()
+    res.raise_for_status()
+    return res
+
+
+def scrape_rankings() -> List[Game]:
+    logger.info('Scraping rankings...')
+    games = []
+    name_pattern = re.compile(r'(.*)\s\((\d{4})\)')
+    id_pattern = re.compile(r'/boardgame/(\d+)/')
+    created = False
+    page = 0
+    while not created:
+        page += 1
+        res = get(f'{URL_RANKINGS}{page}')
+        html = BeautifulSoup(res.text, 'html.parser')
+        rows = html.find_all('tr', id='row_')
+        logger.info(f'Found {len(rows)} rows for page {page}...')
+
+        for row in rows:
+            tds = row.find_all('td')
+            rank = tds[0].text.strip()
+            url = tds[1].find('a')['href']
+            id_matches = id_pattern.search(url)
+            name_year = tds[2].find_all('div')[1].text.strip()
+            name_matches = name_pattern.search(name_year)
+            game, created = Game.objects.update_or_create(
+                bgg_id=id_matches.group(1),
+                defaults={
+                    'rank': int(rank),
+                    'url': url,
+                    'name': name_matches.group(1),
+                    'year': int(name_matches.group(2)),
+                })
+            logger.info(f'{created and "Created" or "Updated"} {game}')
+            games.append(game)
+            if created:
+                logger.info(f'New game! Stopping with {game}')
+                break
+    logger.info('Finished scraping rankings')
+    return games
+
+
+@retry(OperationalError, delay=3, jitter=3, max_delay=30)
+def scrape_game_details(game: Game) -> Game:
+    logger.info(f'Scraping details of {game}')
+    res = requests.get(URL_GAME_DETAILS.format(bgg_id=game.bgg_id))
+    res.raise_for_status()
+    item = res.json()['item']
+
+    # basic details
+    game.min_players = item['minplayers']
+    game.max_players = item['maxplayers']
+    game.min_play_time = item['minplaytime']
+    game.max_play_time = item['maxplaytime']
+    game.min_age = item['minage']
+    game.pitch = item['short_description']
+    description_html = item['description'].replace('\\', '').replace('\n', ' ')
+    description = BeautifulSoup(description_html, 'html.parser').text
+    game.description = description.replace('  ', ' ').strip()
+    game.img = item['imageurl'].replace('\\', '')
+
+    GAME_LINKS_LABELS = {
+        'boardgamecategory': ('categories', LABEL_CATEGORY),
+        'boardgamemechanic': ('mechanics', LABEL_MECHANIC),
+        'boardgamefamily': ('families', LABEL_FAMILY),
+        'boardgamesubdomain': ('subdomains', LABEL_SUBDOMAIN),
+    }
+
+    for key, val in GAME_LINKS_LABELS.items():
+        data = []
+        for link_item in item['links'][key]:
+            label, _ = Label.objects.get_or_create(
+                bgg_id=link_item['objectid'],
+                defaults={
+                    'type': val[1],
+                    'name': link_item['name']})
+            data.append(label)
+        logger.info(f'Set {len(data)} {val[1]}')
+        getattr(game, val[0]).set(data)
+
+    game.save()
+
+    scrape_game_reviews(game)
+
+    game.scraped_at = now()
+    game.save()
+
+    logger.info(f'Saved game details {game}')
+    return game
+
+
+def scrape_game_reviews(game: Game):
+    logger.info(f'Scraping reviews of {game}')
+    num_items = 0
+
+    # first run from the front
+    p = 0
+    existing = 0
+    while existing < 100:
+        p += 1
+        logger.info(f'Scraping page {p}/{num_items // 50 + 1} for reviews...')
+        res = get(URL_GAME_RATINGS.format(bgg_id=game.bgg_id, p=p)).json()
+
+        if not res['items']:
+            logger.warning(f'No more items found from page {p}!')
+            break
+
+        for item in res['items']:
+            review, created = parse_game_review(game, item)
+            existing += not bool(created)
+            # logger.info(f'{created and "Created" or "Updated"} {review}')
+
+        if not num_items:
+            num_items = res['config']['numitems']
+
+    # then continue at the back
+    reviews_cnt = game.reviews.count()
+    if reviews_cnt < num_items * 0.999:
+        p = reviews_cnt // 50
+        while True:
+            p += 1
+            logger.info(f'Scraping page {p}/{num_items // 50 + 1} for reviews...')
+            res = get(URL_GAME_RATINGS.format(bgg_id=game.bgg_id, p=p)).json()
+
+            if not res['items']:
+                logger.warning(f'No more items found from page {p}!')
+                break
+
+            for item in res['items']:
+                review, created = parse_game_review(game, item)
+                reviews_cnt += bool(created)
+                # logger.info(f'{created and "Created" or "Updated"} {review}')
+
+    # update rating
+    avg_rating = game.reviews.all().aggregate(Avg('rating'))
+    game.rating = round(avg_rating['rating__avg'], 1)
+    game.save()
+
+    logger.info(f'Finished scraping reviews for {game}!')
+
+
+def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
+    item['rating'] = round(item['rating'], 1)
+    item['rating'] = max([1, item['rating']])
+    item['rating'] = min([10, item['rating']])
+    player, _ = Player.objects.get_or_create(
+        nick=item['user']['username'],
+        defaults={
+            'country': item['user']['country'],
+            'avatar': item['user'].get('avatarurl_md')})
+    tstamp = item['review_tstamp'] or item['tstamp']
+    reviewed_at = make_aware(
+        datetime.strptime(tstamp, '%Y-%m-%d %H:%M:%S'))
+    try:
+        review, created = Review.objects.get_or_create(
+            bgg_id=item['collid'],
+            defaults={
+                'game': game,
+                'player': player,
+                'rating': item['rating'],
+                'reviewed_at': reviewed_at})
+    except IntegrityError:
+        logger.warning(f'Integrity error on review item {item}!')
+        review, created = Review.objects.update_or_create(
+            game=game,
+            player=player,
+            defaults={
+                'bgg_id': item['collid'],
+                'rating': item['rating'],
+                'reviewed_at': reviewed_at})
+        logger.warning(f'{created and "Created" or "Updated"} review')
+
+    # update existing review if different review tstamp or rating
+    if review.reviewed_at != reviewed_at or review.rating != item['rating']:
+        logger.info(f'{review} rating changed from {review.rating} to {item["rating"]}')
+        review.reviewed_at = reviewed_at
+        review.rating = item['rating']
+        created = True
+        review.save()
+
+    return review, created
+
+
+@retry(OperationalError, delay=3, jitter=3, max_delay=30)
+def scrape_player(player: Player):
+    res = get(player.bgg_link)
+    html = BeautifulSoup(res.text, 'html.parser')
+    avatar_block = html.find('div', class_='avatarblock')
+    if not avatar_block:
+        raise PlayerScrapeError('user does not exist')
+    player.bgg_id = avatar_block['data-userid']
+    avatar_divs = avatar_block.find_all('div')
+    player.name = avatar_divs[0].text.strip() or None
+    try:
+        player.avatar = avatar_block.find('img', alt='Avatar')['src']
+    except TypeError:
+        pass
+    try:
+        country, *areas = avatar_divs[2].stripped_strings
+        player.country = country
+        player.area = ', '.join(areas)
+    except ValueError:
+        pass
+    player.scraped_at = now()
+    player.save()

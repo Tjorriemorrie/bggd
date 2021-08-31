@@ -1,0 +1,93 @@
+{% extends 'main/base.html' %}
+{% load params %}
+
+{% block content %}
+  <div class="container">
+
+    {% include 'main/navbar.html' with nav='players' %}
+
+    <br/>
+    <div class="row">
+      <div class="col-4">
+
+        <h2>
+          {% if player.avatar %}
+            <img class="img-fluid" src="{{ player.avatar }}" alt=""/>
+          {% endif %}
+          {{ player.nick }}
+        </h2>
+        {% if player.name %}
+          <h6>Name: {{ player.name }}</h6>
+        {% endif %}
+        {% if player.geo %}
+          <h6>Geo: {{ player.geo }}</h6>
+        {% endif %}
+        <h6>
+          <a href="https://www.boardgamegeek.com/user/{{ player.nick }}" target="_blank">
+            BGG link
+          </a>
+        </h6>
+
+        <br/><br/>
+        <h4>Recommended games</h4>
+        {% if player.game_recs.count %}
+          <br/>
+          {% for game in player.game_recs.all %}
+            <p>
+              <figure class="figure">
+                <a href="{% url 'game_detail' game.pk %}">
+                  <img src="{{ game.img }}" class="figure-img img-fluid rounded" alt="{{ game.name }} cover">
+                </a>
+                <figcaption class="figure-caption">{{ game.name }}</figcaption>
+              </figure>
+            </p>
+          {% endfor %}
+        {% else %}
+          <p>None available.</p>
+        {% endif %}
+      </div>
+
+      <div class="col-8">
+
+        {% if graph %}
+          {{ graph|safe }}
+        {% endif %}
+
+        <h4>{{ reviews|length }} boardgames rated</h4>
+        <br/>
+        {% if not reviews|length %}
+          <p>No reviews to show</p>
+        {% else %}
+          <table class="table">
+            <thead>
+            <tr>
+              <th>Rating</th>
+              <th>Game</th>
+              <th>Expected</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for review in reviews %}
+              <tr>
+                <td>{{ review.rating|floatformat:1 }}</td>
+                <td>
+                  <a href="{% url 'game_detail' review.game.pk %}">
+                    {{ review.game.name }}
+                  </a>
+                </td>
+                <td>
+                  {% if review.predicted and review.diff %}
+                    {{ review.predicted|floatformat:1 }}
+                    <small>({{ review.diff|floatformat:1 }})</small>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+
+      </div>
+    </div>
+  </div>
+{% endblock %}

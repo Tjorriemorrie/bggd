@@ -1,0 +1,84 @@
+{% extends 'main/base.html' %}
+{% load params %}
+
+{% block content %}
+  <div class="container">
+    {% include 'main/navbar.html' with nav='games' %}
+
+    <br/>
+    <div class="row">
+      <form>
+        <div class="col-8">
+          <input type="text" name="s" class="form-control" placeholder="Search for game by name..." {% if s %}value="{{ s }}"{% endif %}>
+          <input type="hidden" name="o" value="{{ ordering }}">
+        </div>
+      </form>
+    </div>
+
+    <br/>
+    {% if s %}
+      <div class="row">
+        <div class="col">
+          <p>
+            {{ paginator.count }} results
+            <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
+          </p>
+        </div>
+      </div>
+    {% endif %}
+
+    {% if page_obj %}
+      <br/>
+      <table class="table">
+        <thead>
+        <tr>
+          <th>
+            {% if ordering == 'rank' %}
+              <a href="?{% add_param 'o' '-rank' %}">Rank</a>
+            {% else %}
+              <a href="?{% add_param 'o' 'rank' %}">Rank</a>
+            {% endif %}
+            {% if 'rank' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>
+            {% if ordering == 'rating' %}
+              <a href="?{% add_param 'o' '-rating' %}">Rating</a>
+            {% else %}
+              <a href="?{% add_param 'o' 'rating' %}">Rating</a>
+            {% endif %}
+            {% if 'rating' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>
+            {% if ordering == 'name' %}
+              <a href="?{% add_param 'o' '-name' %}">Name</a>
+            {% else %}
+              <a href="?{% add_param 'o' 'name' %}">Name</a>
+            {% endif %}
+            {% if 'name' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for game in page_obj %}
+          <tr>
+            <td>{{ game.rank }}</td>
+            <td>{{ game.rating }}</td>
+            <td>
+              <a href="{% url 'game_detail' game.pk %}">{{ game.name }}</a>
+            </td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    {% endif %}
+
+    {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
+
+  </div>
+{% endblock %}

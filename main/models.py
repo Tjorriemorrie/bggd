@@ -1,0 +1,134 @@
+from typing import Optional
+
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.db import models
+from django.utils.timezone import now
+
+
+LABEL_CATEGORY = 'category'
+LABEL_MECHANIC = 'mechanic'
+LABEL_FAMILY = 'family'
+LABEL_SUBDOMAIN = 'subdomain'
+
+
+class Label(models.Model):
+    CHOICES_LABELS = (
+        (LABEL_CATEGORY, LABEL_CATEGORY),
+        (LABEL_MECHANIC, LABEL_MECHANIC),
+        (LABEL_FAMILY, LABEL_FAMILY),
+        (LABEL_SUBDOMAIN, LABEL_SUBDOMAIN),
+    )
+    bgg_id = models.PositiveIntegerField()
+    name = models.CharField(max_length=256)
+    type = models.CharField(max_length=256, choices=CHOICES_LABELS)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f'<Label-{self.bgg_id} {self.type} {self.name}>'
+
+
+class Game(models.Model):
+    categories = models.ManyToManyField(Label, related_name='cat_games')
+    mechanics = models.ManyToManyField(Label, related_name='mec_games')
+    families = models.ManyToManyField(Label, related_name='fam_games')
+    subdomains = models.ManyToManyField(Label, related_name='dom_games')
+
+    bgg_id = models.PositiveIntegerField()
+    name = models.CharField(max_length=250)
+    year = models.PositiveIntegerField(
+        validators=[MinValueValidator(1900), MaxValueValidator(now().year)])
+    url = models.CharField(max_length=250)
+    rank = models.PositiveIntegerField()
+
+    # details
+    scraped_at = models.DateTimeField(null=True)
+    img = models.CharField(max_length=250, null=True)
+    pitch = models.CharField(max_length=256, null=True)
+    description = models.TextField(null=True)
+    min_players = models.PositiveSmallIntegerField(null=True)
+    max_players = models.PositiveSmallIntegerField(null=True)
+    min_play_time = models.PositiveSmallIntegerField(null=True)
+    max_play_time = models.PositiveSmallIntegerField(null=True)
+    min_age = models.PositiveSmallIntegerField(null=True)
+
+    # from reviews
+    rating = models.FloatField(null=True)  # scrape cron update
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ('rank',)
+
+    def __str__(self) -> str:
+        return f'<Game-{self.bgg_id} {self.name} ({self.year})>'
+
+    @property
+    def bgg_link(self):
+        return f'https://www.boardgamegeek.com/boardgame/{self.bgg_id}'
+
+
+class Player(models.Model):
+    bgg_id = models.PositiveIntegerField(null=True)
+    nick = models.CharField(max_length=256, db_index=True)
+
+    # updated in scrape
+    name = models.CharField(max_length=256, null=True)
+    country = models.CharField(max_length=150, null=True)
+    area = models.CharField(max_length=150, null=True)
+    avatar = models.CharField(max_length=256, null=True)
+    scraped_at = models.DateTimeField(db_index=True, null=True)
+
+    # updated in predict (joined with scrape)
+    reviews_cnt = models.IntegerField(null=True)
+    reviews_scr = models.FloatField(null=True)
+    game_recs = models.ManyToManyField(Game, related_name='player_recs')
+    rec_at = models.DateTimeField(db_index=True, null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        name = f' ({self.name})' if self.name else ''
+        return f'Player {self.nick}{name}'
+
+    @property
+    def bgg_link(self):
+        return f'https://www.boardgamegeek.com/user/{self.nick}'
+
+    def geo(self):
+        geo = ''
+        if self.country:
+            geo = self.country
+        if self.area:
+            geo += f' {self.area}'
+        return geo or ''
+
+
+class Review(models.Model):
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name='reviews')
+    game = models.ForeignKey(
+        Game, on_delete=models.CASCADE, related_name='reviews')
+
+    bgg_id = models.PositiveIntegerField(db_index=True)
+    rating = models.FloatField()
+    reviewed_at = models.DateTimeField(db_index=True)
+
+    predicted = models.FloatField(null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('player', 'game')
+
+    def __str__(self) -> str:
+        return f'<Review-{self.bgg_id} {self.rating} {self.game.name} by {self.player.nick}>'
+
+    @property
+    def diff(self) -> float:
+        if not self.predicted:
+            return 0
+        return self.rating - self.predicted
