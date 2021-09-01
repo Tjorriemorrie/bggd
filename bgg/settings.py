@@ -171,6 +171,15 @@ LOGGING = {
             'delay': True,
             'formatter': 'standard',
         },
+        'cmds': {
+            'level': 'DEBUG',
+            'class': 'logging.handlers.TimedRotatingFileHandler',
+            'filename': BASE_DIR / 'logs' / 'cmds.log',
+            'when': 'midnight',
+            'backupCount': 30,
+            'delay': True,
+            'formatter': 'standard',
+        },
         'console': {
             'level': 'INFO',
             'class': 'logging.StreamHandler',
