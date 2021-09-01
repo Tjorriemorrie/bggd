@@ -122,33 +122,11 @@ def restart_server(ctx):
 
 
 @task
-def run_scrape_players(ctx):
+def run_command(ctx, cmd):
     conn = get_conn()
     cmds = [
         f'cd {dir}',
         'source env/bin/activate',
-        './manage.py scrape_players',
-    ]
-    conn.run(' && '.join(cmds), echo=True)
-
-
-@task
-def run_scrape_games(ctx):
-    conn = get_conn()
-    cmds = [
-        f'cd {dir}',
-        'source env/bin/activate',
-        './manage.py scrape_games',
-    ]
-    conn.run(' && '.join(cmds), echo=True)
-
-
-@task
-def run_train_model(ctx):
-    conn = get_conn()
-    cmds = [
-        f'cd {dir}',
-        'source env/bin/activate',
-        './manage.py model_train',
+        f'./manage.py {cmd}',
     ]
     conn.run(' && '.join(cmds), echo=True)
