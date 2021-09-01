@@ -68,7 +68,7 @@
         {% for game in page_obj %}
           <tr>
             <td>{{ game.rank }}</td>
-            <td>{{ game.rating }}</td>
+            <td>{{ game.rating|floatformat }}</td>
             <td>
               <a href="{% url 'game_detail' game.pk %}">{{ game.name }}</a>
             </td>

@@ -1,13 +1,18 @@
 from datetime import datetime
 from os import getenv
+from typing import List, Tuple
 
 from fabric import Connection, Config
-from invoke import task, Context, env, run
+from invoke import task, Context, env, run, Responder
 
 host = '178.62.218.44'
 user = 'django'
-pwd = getenv('DO_PWD')
 dir = '/home/django/bggd'
+pwd = getenv('DO_PWD')
+_conn = None
+
+if not pwd:
+    raise ValueError('Missing DO_PWD')
 
 
 @task
@@ -17,41 +22,50 @@ def name(c):
 
 
 def get_conn() -> Connection:
-    conn = Connection(
-        host,
-        user=user,
-        connect_kwargs={'password': pwd, 'look_for_keys': False,  'allow_agent': False})
-    return conn
+    global _conn
+    if not _conn:
+        print('getting connection...')
+        _conn = Connection(
+            host, user=user,
+            connect_kwargs={
+                'password': pwd, 'look_for_keys': False,  'allow_agent': False})
+    return _conn
 
 
 @task
-def backup_data(ctx, conn=None):
+def backup_data(ctx):
     print('Backing up data...')
-    if not conn:
-        conn = get_conn()
-    today = datetime.utcnow().strftime('%y%m%d')
+    conn = get_conn()
     conn.run(f'mkdir -p {dir}/backups', echo=True)
-    conn.run(f'cp {dir}/db.sqlite3 {dir}/backups/db.sqlite3.{today}', echo=True)
-    conn.run(f'cp {dir}/model.pkl {dir}/backups/model.pkl.{today}', echo=True)
+    today = datetime.utcnow().strftime('%y%m%d')
+    db_file = f'db.sqlite3.{today}'
+    mdl_file = f'model.pkl.{today}'
+    conn.run(f'cp {dir}/db.sqlite3 {dir}/backups/{db_file}', echo=True)
+    conn.run(f'cp {dir}/model.pkl {dir}/backups/{mdl_file}', echo=True)
+    return db_file, mdl_file
 
 
 @task
-def retrieve_data(ctx, conn=None):
+def retrieve_data(ctx):
     print('Retrieving db and model')
     conn = get_conn()
-    backup_data(ctx, conn=conn)
-    today = datetime.utcnow().strftime('%y%m%d')
+    db_file, mdl_file = backup_data(ctx)
+
     print('zipping files...')
-    zip_file = f'{dir}/data.tar.gz'
-    db_file = f'db.sqlite3.{today}'
-    model_file = f'model.pkl.{today}'
-    conn.run(f'tar --xform s:^.*/:: -czvf {zip_file} {dir}/backups/{db_file} {dir}/backups/{model_file}', echo=True)
+    zip_file = 'data.tar.gz'
+    cmds = [
+        f'cd {dir}',
+        f'tar -czvf {zip_file} backups/{db_file} backups/{mdl_file}',  # --xform s:^.*/::
+    ]
+    conn.run(' && '.join(cmds), echo=True)
+
     print('downloading zip file...')
-    conn.get(zip_file, echo=True)
+    conn.get(zip_file)
+
     print('unpacking zip file locally...')
-    conn.local('tar -xvf ~/code/bggd/data.tar.gz', echo=True)
-    conn.local(f'cp ~/code/bggd/{db_file} db.sqlite3', echo=True)
-    conn.local(f'cp ~/code/bggd/{model_file} model.pkl', echo=True)
+    conn.local('tar -xvf data.tar.gz', echo=True)
+    conn.local(f'cp backups/{db_file} db.sqlite3', echo=True)
+    conn.local(f'cp backups/{mdl_file} model.pkl', echo=True)
 
 
 @task
@@ -65,15 +79,76 @@ def deploy(ctx):
         'manage.py',
     }
     # clean dir
-    conn.local('')
-    conn.local(f'tar -czvf deploy.tar.gz {" ".join(files)}')
+    conn.local('find . -iname ".ds_store" -delete', echo=True)
+    conn.local('find . -depth -name __pycache__ -type d -exec rm -r "{}" \;', echo=True)
+    conn.local(f'tar -czf deploy.tar.gz {" ".join(files)}', echo=True)
+
+    print('Copying to remote server...')
+    conn.put('deploy.tar.gz', f'{dir}/')
+
+    conn.run(f'tar -xf {dir}/deploy.tar.gz -C {dir}', echo=True)
     conn.run(f'mkdir -p {dir}/logs', echo=True)
     cmds = [
         f'cd {dir}',
         'source env/bin/activate',
-        'pip install -y -r requirements.txt',
+        'pip install -qr requirements.txt',
         f'./manage.py migrate --no-input',
+        f'./manage.py collectstatic --no-input',
     ]
     conn.run(' && '.join(cmds), echo=True)
     conn.run(f'sed -i "s/DEBUG = True/DEBUG = False/g" {dir}/bgg/settings.py', echo=True)
     conn.run(f'sed -i "s/# @method_decorator/@method_decorator/g" {dir}/main/views.py', echo=True)
+    conn.run(f'rm {dir}/deploy.tar.gz', echo=True)
+
+    restart_nginx(ctx)
+
+
+@task
+def restart_nginx(ctx):
+    conn = get_conn()
+    sudo_pwd = Responder(
+        pattern=r'password:',
+        response=f'{pwd}\n')
+    conn.sudo('systemctl restart nginx', echo=True, pty=True, watchers=[sudo_pwd])
+
+
+@task
+def restart_server(ctx):
+    conn = get_conn()
+    sudo_pwd = Responder(
+        pattern=r'password:',
+        response=f'{pwd}\n')
+    conn.sudo('reboot', echo=True, pty=True, watchers=[sudo_pwd])
+
+
+@task
+def run_scrape_players(ctx):
+    conn = get_conn()
+    cmds = [
+        f'cd {dir}',
+        'source env/bin/activate',
+        './manage.py scrape_players',
+    ]
+    conn.run(' && '.join(cmds), echo=True)
+
+
+@task
+def run_scrape_games(ctx):
+    conn = get_conn()
+    cmds = [
+        f'cd {dir}',
+        'source env/bin/activate',
+        './manage.py scrape_games',
+    ]
+    conn.run(' && '.join(cmds), echo=True)
+
+
+@task
+def run_train_model(ctx):
+    conn = get_conn()
+    cmds = [
+        f'cd {dir}',
+        'source env/bin/activate',
+        './manage.py model_train',
+    ]
+    conn.run(' && '.join(cmds), echo=True)

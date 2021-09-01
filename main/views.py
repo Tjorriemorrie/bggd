@@ -1,18 +1,17 @@
 import logging
-from operator import itemgetter, attrgetter
+from operator import attrgetter
 
+import pandas as pd
+import plotly.express as px
 from django.core.cache import cache
 from django.db.models import Q, Count
-from django.db.models.functions import TruncDay
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
-import plotly.express as px
+
 from main.models import Game, Player, Review
-import plotly.graph_objects as go
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +83,7 @@ class SearchListView(ListView):
 
 class GameListView(OrderingListView, SearchListView, CachedDispatch):
     model = Game
-    paginate_by = 25
+    paginate_by = 50
     ordering = '-rating'
     search_by = 'name'
     queryset = Game.objects.filter(rating__isnull=False)
@@ -109,7 +108,7 @@ class GameDetailView(DetailView):
 
 class PlayerListView(OrderingListView, SearchListView, CachedDispatch):
     model = Player
-    paginate_by = 25
+    paginate_by = 100
     ordering = '-reviews_scr'
     search_by = 'nick'
     queryset = Player.objects.filter(reviews_scr__isnull=False)

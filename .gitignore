@@ -143,4 +143,4 @@ logs/
 # zipped files
 *.tar.gz
 *.pkl
-
+fabfile.py

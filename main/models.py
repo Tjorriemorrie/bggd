@@ -54,6 +54,7 @@ class Game(models.Model):
 
     # from reviews
     rating = models.FloatField(null=True)  # scrape cron update
+    review_cnt = models.FloatField(null=True)  # scrape cron update
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

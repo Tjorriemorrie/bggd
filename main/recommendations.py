@@ -33,7 +33,7 @@ def train_model(skip_upkeep=False):
     logger.info('Training model...')
 
     logger.info('Loading data...')
-    values = Review.objects.values_list('player_id', 'game_id', 'rating')[::10]
+    values = Review.objects.values_list('player_id', 'game_id', 'rating')[::2]
     df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
 
     logger.info('Creating dataset...')
@@ -41,15 +41,15 @@ def train_model(skip_upkeep=False):
     dataset = Dataset.load_from_df(df, reader)
 
     logger.info('Building training sets...')
-    trainset = dataset.build_full_trainset()
+    train_set = dataset.build_full_trainset()
     algo = SVD()
 
     logger.info(f'Fitting dataset to {algo}')
-    algo.fit(trainset)
+    algo.fit(train_set)
 
     logger.info(f'Saving model to {FILE_MODEL}')
     with open(FILE_MODEL, 'w+b') as fp:
-        pickle.dump(algo, fp, protocol=0)
+        pickle.dump(algo, fp)
 
     logger.info(f'{algo} fitted!')
 

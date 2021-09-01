@@ -42,6 +42,7 @@ class Command(BaseCommand):
             Q(rec_at__isnull=False) &
             Q(last_review__gt=F('rec_at'))).order_by(
             'rec_at').all()[:daily_cut]
+        logger.info(f'Found {len(players)}')
         self._process(players, game_ids, 'updated', len(players), 0)
 
         logger.info(''.join(['='] * 99))
@@ -49,13 +50,22 @@ class Command(BaseCommand):
         total = Player.objects.filter(
             Q(scraped_at__isnull=True) |
             Q(rec_at__isnull=True)).count()
-        runn = 0
-        while True:
-            players = Player.objects.prefetch_related(
-                'reviews').filter(
-                Q(scraped_at__isnull=True) |
-                Q(rec_at__isnull=True)).order_by(
-                'created_at').all()[:1000]
-            self._process(players, game_ids, 'created', total, runn)
-            runn += 1000
+        logger.info(f'Found {total}')
+        if total:
+            runn = 0
+            batch_size = 1_000
+            while True:
+                logger.info(f'Batch {runn // batch_size}/{total // batch_size}')
+                players = Player.objects.prefetch_related(
+                    'reviews').filter(
+                    Q(scraped_at__isnull=True) |
+                    Q(rec_at__isnull=True)).order_by(
+                    'created_at').all()[:batch_size]
+                if not players:
+                    break
+                self._process(players, game_ids, 'created', total, runn)
+                runn += batch_size
+
+        logger.info(''.join(['='] * 99))
+        logger.info('Done')
 

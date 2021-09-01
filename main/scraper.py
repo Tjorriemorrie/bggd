@@ -138,8 +138,6 @@ def scrape_game_details(game: Game) -> Game:
         logger.info(f'Set {len(data)} {val[1]}')
         getattr(game, val[0]).set(data)
 
-    game.save()
-
     scrape_game_reviews(game)
 
     game.scraped_at = now()
@@ -156,7 +154,7 @@ def scrape_game_reviews(game: Game):
     # first run from the front
     p = 0
     existing = 0
-    while existing < 100:
+    while existing < 150:
         p += 1
         logger.info(f'Scraping page {p}/{num_items // 50 + 1} for reviews...')
         res = get(URL_GAME_RATINGS.format(bgg_id=game.bgg_id, p=p)).json()
@@ -193,7 +191,8 @@ def scrape_game_reviews(game: Game):
 
     # update rating
     avg_rating = game.reviews.all().aggregate(Avg('rating'))
-    game.rating = round(avg_rating['rating__avg'], 1)
+    game.rating = avg_rating['rating__avg']
+    game.review_cnt = game.reviews.count()
     game.save()
 
     logger.info(f'Finished scraping reviews for {game}!')
