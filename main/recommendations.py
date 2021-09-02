@@ -91,7 +91,7 @@ def predict_player(
         ratings = SortedList([r.rating for r in reviews])
         spaces = np.linspace(1, 10, num=len(ratings))
         diffs = [abs(r - s) for r, s in zip(ratings, spaces)]
-        player.reviews_scr = sum(diffs) / (len(ratings) * 9)
+        player.reviews_scr = sum(diffs) / (len(ratings) * 9) * 10
 
     player.save()
     return top_recs

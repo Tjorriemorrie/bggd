@@ -69,7 +69,17 @@ def retrieve_data(ctx):
 
 
 @task
+def commit(ctx):
+    print('committing changes')
+    msg = input('Commit message: ')
+    run('ga .', echo=True)
+    run(f'ga -c "{msg}', echo=True)
+    run(f'gu', echo=True)
+
+
+@task
 def deploy(ctx):
+    # commit(ctx)
     print('Deploying site...')
     conn = get_conn()
     files = {
@@ -87,6 +97,8 @@ def deploy(ctx):
     print('Copying to remote server...')
     conn.put('deploy.tar.gz', f'{dir}/')
 
+    backup_data(ctx)
+
     conn.run(f'tar -xf {dir}/deploy.tar.gz -C {dir}', echo=True)
     conn.run(f'mkdir -p {dir}/logs', echo=True)
     cmds = [
@@ -102,6 +114,7 @@ def deploy(ctx):
     conn.run(f'rm {dir}/deploy.tar.gz', echo=True)
 
     restart_nginx(ctx)
+    restart_gunicorn(ctx)
 
 
 @task
@@ -111,6 +124,15 @@ def restart_nginx(ctx):
         pattern=r'password:',
         response=f'{pwd}\n')
     conn.sudo('systemctl restart nginx', echo=True, pty=True, watchers=[sudo_pwd])
+
+
+@task
+def restart_gunicorn(ctx):
+    conn = get_conn()
+    sudo_pwd = Responder(
+        pattern=r'password:',
+        response=f'{pwd}\n')
+    conn.sudo('systemctl restart gunicorn', echo=True, pty=True, watchers=[sudo_pwd])
 
 
 @task
