@@ -1,7 +1,6 @@
 import logging
 import re
 from datetime import datetime
-from ssl import SSLEOFError
 from time import sleep
 from typing import List, Tuple
 
@@ -12,7 +11,7 @@ from django.db.models import Avg
 from django.utils.timezone import now, make_aware
 from retry import retry
 
-from main.errors import PlayerScrapeError
+from main.errors import PlayerScrapeError, PlayerRatingNewGameError
 from main.models import Game, Label, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
 
@@ -21,6 +20,7 @@ logger = logging.getLogger(__name__)
 URL_RANKINGS = r'https://www.boardgamegeek.com/browse/boardgame/page/'
 URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'
 URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'
+URL_PLAYER_RATINGS = r'https://www.boardgamegeek.com/geekcollection.php?ajax=1&action=collectionpage&username={nick}&gallery=&sort=rating&sortdir=desc&page=&pageID={page}&ff=1&hiddencolumns=&publisherid=&searchstr=&rankobjecttype=subtype&rankobjectid=1&columns[]=title&columns[]=rating&columns[]=bggrating&columns[]=comment&minrating=&rating=&minbggrating=&bggrating=&minplays=&maxplays=&searchfield=title&geekranks=Board%20Game%20Rank&subtype=boardgame&excludesubtype=boardgameexpansion&own=both&trade=both&want=both&wanttobuy=both&prevowned=both&comment=both&wishlist=both&rated=both&played=both&wanttoplay=both&preordered=both&hasparts=both&wantparts=both&wishlistpriority='
 
 
 class TooManyRequestsError(Exception):
@@ -262,3 +262,58 @@ def scrape_player(player: Player):
         pass
     player.scraped_at = now()
     player.save()
+
+
+def scrape_player_ratings(player: Player):
+    page = 0
+    while True:
+        page += 1
+        url = URL_PLAYER_RATINGS.format(nick=player.nick, page=page)
+        res = get(url)
+        html = BeautifulSoup(res.text, 'html.parser')
+        table = html.find('table', id='collectionitems')
+        rows = table.find_all('tr')
+        if len(rows) < 2:
+            break
+        for row in rows[1:]:
+            # bgg id
+            bgg_id = int(row['id'].split('_')[-1])
+            cells = row.find_all('td')
+            # get game
+            game_row = cells[0].find('a')['href']
+            matches = re.search(r'\/boardgame\/(\d+)\/', game_row)
+            game_bgg_id = int(matches.group(1))
+            try:
+                game = Game.objects.get(bgg_id=game_bgg_id)
+            except Game.DoesNotExist:
+                raise PlayerRatingNewGameError(f'Stopping at unknown game {cells[0].text}')
+            # get rating
+            rating_info = list(cells[1].stripped_strings)
+            if rating_info[0] == 'N/A':
+                continue
+            rating = round(float(rating_info[0]), 1)
+            rating = min(10, rating)
+            rating = max(1, rating)
+            rated_on = make_aware(datetime.strptime(rating_info[1].rstrip('*'), '%b %Y'))
+            # get comment
+            comment_and_date = list(cells[3].stripped_strings)
+            comment = comment_and_date[0] if comment_and_date else None
+            # update review
+            try:
+                review = Review.objects.get(game=game, player=player)
+            except Review.DoesNotExist:
+                review = Review.objects.create(
+                    player=player,
+                    game=game,
+                    bgg_id=bgg_id,
+                    rating=rating,
+                    comment=comment,
+                    reviewed_at=rated_on)
+                logger.info(f'Created missed {review} for existing {game}!')
+                continue
+            if review.rating != rating or review.comment != comment:
+                logger.info(f'Rating for {game} changed from {review.rating} to {rating}: {comment}')
+                review.rating = rating
+                review.comment = comment
+                review.save()
+

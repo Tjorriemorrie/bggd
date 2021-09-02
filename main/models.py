@@ -34,7 +34,7 @@ class Game(models.Model):
     families = models.ManyToManyField(Label, related_name='fam_games')
     subdomains = models.ManyToManyField(Label, related_name='dom_games')
 
-    bgg_id = models.PositiveIntegerField()
+    bgg_id = models.PositiveIntegerField(db_index=True)
     name = models.CharField(max_length=250)
     year = models.PositiveIntegerField(
         validators=[MinValueValidator(1900), MaxValueValidator(now().year)])
@@ -115,6 +115,7 @@ class Review(models.Model):
 
     bgg_id = models.PositiveIntegerField(db_index=True)
     rating = models.FloatField()
+    comment = models.CharField(max_length=256, null=True)
     reviewed_at = models.DateTimeField(db_index=True)
 
     predicted = models.FloatField(null=True)

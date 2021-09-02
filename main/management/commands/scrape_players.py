@@ -1,13 +1,15 @@
 import logging
+from datetime import timedelta
 from typing import List
 
 from django.core.management import BaseCommand
 from django.db.models import Q, F, Max
+from django.utils.timezone import now
 
-from main.errors import PlayerScrapeError
+from main.errors import PlayerScrapeError, PlayerRatingNewGameError
 from main.models import Player, Game
 from main.recommendations import predict_player
-from main.scraper import scrape_player
+from main.scraper import scrape_player, scrape_player_ratings
 
 logger = logging.getLogger(__name__)
 
@@ -25,6 +27,10 @@ class Command(BaseCommand):
                 player.delete()
                 logger.info(f'Deleted bad user {player}')
                 continue
+            try:
+                scrape_player_ratings(player)
+            except PlayerRatingNewGameError as exc:
+                logger.debug(f'{exc}')
             predict_player(player, game_ids, top_n=3)
             logger.info(f'{ix + start_at}/{total}: {keyword} {player}')
 
@@ -35,7 +41,7 @@ class Command(BaseCommand):
         daily_cut = total_player_cnt // limit
 
         logger.info(''.join(['='] * 99))
-        logger.info('Updating already scraped players...')
+        logger.info('Updating new data on scraped players...')
         players = Player.objects.prefetch_related(
             'reviews').annotate(
             last_review=Max('reviews__reviewed_at')).filter(
@@ -67,5 +73,16 @@ class Command(BaseCommand):
                 runn += batch_size
 
         logger.info(''.join(['='] * 99))
-        logger.info('Done')
+        logger.info('Upkeeping old players...')
+        upkeep_days = 13
+        upkeep_cut = total_player_cnt // upkeep_days
+        one_month = now() - timedelta(days=upkeep_days)
+        players = Player.objects.prefetch_related(
+            'reviews').filter(
+            scraped_at__lt=one_month).order_by(
+            'scraped_at').all()[:upkeep_cut]
+        logger.info(f'Found {len(players)}')
+        self._process(players, game_ids, 'upkeeped', len(players), 0)
 
+        logger.info(''.join(['='] * 99))
+        logger.info('Done')

@@ -4,3 +4,7 @@ class ScrapeError(Exception):
 
 class PlayerScrapeError(ScrapeError):
     """Player scrape error."""
+
+
+class PlayerRatingNewGameError(ScrapeError):
+    """New game found scraping player ratings."""
