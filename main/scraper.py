@@ -40,7 +40,7 @@ def get(url: str) -> requests.Response:
     global sleep_time
     global last_url
     if last_url == url:
-        sleep_time = round(sleep_time + 0.1, 3)
+        sleep_time = round(sleep_time + 0.5, 3)
         logger.info(f'Increased sleep time to {sleep_time}')
     elif sleep_time:
         sleep_time = round(sleep_time - 0.005, 3)

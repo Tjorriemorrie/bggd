@@ -29,7 +29,7 @@ def get_algo() -> AlgoBase:
     return _algo
 
 
-def train_model(skip_upkeep=False):
+def train_model():
     logger.info('Training model...')
 
     logger.info('Loading data...')
@@ -51,7 +51,7 @@ def train_model(skip_upkeep=False):
     with open(FILE_MODEL, 'w+b') as fp:
         pickle.dump(algo, fp)
 
-    logger.info(f'{algo} fitted!')
+    logger.info(f'algorithm fitted on {df.size}!')
 
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
