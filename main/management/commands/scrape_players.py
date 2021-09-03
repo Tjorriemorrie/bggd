@@ -30,8 +30,12 @@ class Command(BaseCommand):
             try:
                 scrape_player_ratings(player)
             except PlayerRatingNewGameError as exc:
-                logger.debug(f'{exc}')
-            predict_player(player, game_ids, top_n=3)
+                pass
+            if not player.reviews.count():
+                player.delete()
+                logger.info(f'Deleted player without ratings {player}')
+            else:
+                predict_player(player, game_ids, top_n=3)
             logger.info(f'{ix + start_at}/{total}: {keyword} {player}')
 
     def handle(self, *args, **options):

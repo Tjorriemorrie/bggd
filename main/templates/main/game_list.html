@@ -16,22 +16,23 @@
     </div>
 
     <br/>
-    {% if s %}
-      <div class="row">
-        <div class="col">
-          <p>
-            {{ paginator.count }} results
+    <div class="row">
+      <div class="col">
+        <p>
+          {{ paginator.count }} results
+          {% if s %}
             <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
-          </p>
-        </div>
+          {% endif %}
+        </p>
       </div>
-    {% endif %}
+    </div>
 
     {% if page_obj %}
-      <br/>
+      {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
       <table class="table">
         <thead>
         <tr>
+          <th class="text-muted">#</th>
           <th>
             {% if ordering == 'rank' %}
               <a href="?{% add_param 'o' '-rank' %}">Rank</a>
@@ -43,15 +44,16 @@
             {% endif %}
           </th>
           <th>
-            {% if ordering == 'rating' %}
-              <a href="?{% add_param 'o' '-rating' %}">Rating</a>
-            {% else %}
+            {% if ordering == '-rating' %}
               <a href="?{% add_param 'o' 'rating' %}">Rating</a>
+            {% else %}
+              <a href="?{% add_param 'o' '-rating' %}">Rating</a>
             {% endif %}
             {% if 'rating' in ordering %}
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
             {% endif %}
           </th>
+          <th>&nbsp;</th>
           <th>
             {% if ordering == 'name' %}
               <a href="?{% add_param 'o' '-name' %}">Name</a>
@@ -62,23 +64,58 @@
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
             {% endif %}
           </th>
+          <th>
+            {% if ordering == '-year' %}
+              <a href="?{% add_param 'o' 'year' %}">Year</a>
+            {% else %}
+              <a href="?{% add_param 'o' '-year' %}">Year</a>
+            {% endif %}
+            {% if 'year' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>
+            {% if ordering == '-review_cnt' %}
+              <a href="?{% add_param 'o' 'review_cnt' %}"># ratings</a>
+            {% else %}
+              <a href="?{% add_param 'o' '-review_cnt' %}"># ratings</a>
+            {% endif %}
+            {% if 'review_cnt' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
         </tr>
         </thead>
         <tbody>
         {% for game in page_obj %}
           <tr>
+            <td class="text-muted">{{ forloop.counter0|add:page_obj.start_index }}</td>
             <td>{{ game.rank }}</td>
             <td>{{ game.rating|floatformat }}</td>
-            <td>
-              <a href="{% url 'game_detail' game.pk %}">{{ game.name }}</a>
+            <td class="text-end"><img class="round" height="50px" src="{{ game.img }}"/>
             </td>
+            <td>
+              <a class="text-reset text-decoration-none" href="{% url 'game_detail' game.pk %}">
+                {{ game.name }}
+              </a>
+            </td>
+            <td>{{ game.year }}</td>
+            <td>{% if game.review_cnt %}{{ game.review_cnt }}{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>
       </table>
+      {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
     {% endif %}
 
-    {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
-
+    <br/>
+    <div class="row">
+      <div class="col">
+        <p>The rank is the official BGG rank.</p>
+        <p>The rating is the recalculated average of the ratings that is scraped
+          from the game. It appears different to BGG ranking outcomes, so BGG
+          probably omit/adjust certain ratings based on some criteria.</p>
+      </div>
+    </div>
   </div>
 {% endblock %}

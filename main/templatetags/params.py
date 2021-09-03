@@ -15,4 +15,6 @@ def drop_param_filter(context, param_key):
 def add_param_filter(context, param_key, param_value):
     req = context.request.GET.copy()
     req[param_key] = param_value
+    if param_key == 'o' and 'page' in req:
+        del req['page']
     return req.urlencode()

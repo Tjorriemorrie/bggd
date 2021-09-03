@@ -61,7 +61,7 @@
       <div class="col-4 text-center">
         <h2>#{{ game.rank }}</h2>
         <br/>
-        <h3>{{ game.rating }}</h3>
+        <h3>{{ game.rating|floatformat }}</h3>
         <p>{{ game.reviews.count }} reviews</p>
         {% if rating_graph %}
           <p>{{ rating_graph|safe }}</p>

@@ -10,28 +10,30 @@
     <div class="row">
       <form>
         <div class="col-8">
-          <input type="text" name="s" class="form-control" placeholder="Search for game by name..." {% if s %}value="{{ s }}"{% endif %}>
+          <input type="text" name="s" class="form-control" placeholder="Search for player by nickname..." {% if s %}value="{{ s }}"{% endif %}>
           <input type="hidden" name="o" value="{{ ordering }}">
         </div>
       </form>
     </div>
 
     <br/>
-    {% if s %}
-      <div class="row">
-        <div class="col">
-          <p>
-            {{ paginator.count }} results
+    <div class="row">
+      <div class="col">
+        <p>
+          {{ paginator.count }} results
+          {% if s %}
             <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
-          </p>
-        </div>
+          {% endif %}
+        </p>
       </div>
-    {% endif %}
+    </div>
 
     {% if page_obj %}
+      {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
       <table class="table">
         <thead>
         <tr>
+          <th class="text-muted">#</th>
           <th>
             {% if ordering == 'reviews_scr' %}
               <a href="?{% add_param 'o' '-reviews_scr' %}">Score</a>
@@ -69,7 +71,8 @@
         <tbody>
         {% for player in page_obj %}
           <tr>
-            <td>{{ player.reviews_scr|floatformat:1 }}</td>
+            <td class="text-muted">{{ forloop.counter0|add:page_obj.start_index }}</td>
+            <td>{{ player.reviews_scr|floatformat }}</td>
             <td><a href="{% url 'player_detail' player.pk %}">{{ player.nick }}</a></td>
             <td>{% if player.name %}{{ player.name }}{% endif %}</td>
             <td>{{ player.reviews_cnt }}</td>
@@ -78,9 +81,9 @@
         {% endfor %}
         </tbody>
       </table>
+      {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
     {% endif %}
 
-    {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
 
   </div>
 {% endblock %}
