@@ -16,6 +16,9 @@
           {% endif %}
           {{ player.nick }}
         </h2>
+        {% if player.reviews_scr %}
+          <h6>Score: {{ player.reviews_scr|floatformat }}</h6>
+        {% endif %}
         {% if player.name %}
           <h6>Name: {{ player.name }}</h6>
         {% endif %}
@@ -62,6 +65,7 @@
             <thead>
             <tr>
               <th>Rating</th>
+              <th>&nbsp;</th>
               <th>Game</th>
               <th>Expected</th>
             </tr>
@@ -70,13 +74,14 @@
             {% for review in reviews %}
               <tr>
                 <td>{{ review.rating|floatformat }}</td>
+                <td class="text-end"><img height="30px" src="{{ review.game.img }}"/></td>
                 <td>
-                  <a href="{% url 'game_detail' review.game.pk %}">
+                  <a class="text-reset text-decoration-none" href="{% url 'game_detail' review.game.pk %}">
                     {{ review.game.name }}
                   </a>
                 </td>
                 <td>
-                  {% if review.predicted and review.diff %}
+                  {% if review.predicted %}
                     {{ review.predicted|floatformat }}
                     <small>({{ review.diff|floatformat }})</small>
                   {% endif %}

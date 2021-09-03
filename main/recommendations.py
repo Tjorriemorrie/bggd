@@ -67,7 +67,7 @@ def predict_player(
     for review in reviews:
         existing_game_ids.add(review.game.id)
         prediction = algo.predict(player.id, review.game.id, r_ui=review.rating)
-        review.predicted = round(prediction.est, 1)
+        review.predicted = prediction.est
         review.save()
 
     # get top n recs
@@ -87,7 +87,7 @@ def predict_player(
 
     # score player
     player.reviews_scr = 0
-    if player.reviews_cnt:
+    if player.reviews_cnt >= 3:
         ratings = SortedList([r.rating for r in reviews])
         spaces = np.linspace(1, 10, num=len(ratings))
         diffs = [abs(r - s) for r, s in zip(ratings, spaces)]

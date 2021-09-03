@@ -10,14 +10,14 @@
       <div class="col-6">
         {% if prev %}
           <p><a href="{% url 'game_detail' prev.pk %}">
-            <i class="bi bi-chevron-double-left"></i> #{{ prev.rank }} {{ prev.name }}
+            <i class="bi bi-chevron-double-left"></i> {{ prev.rating|floatformat }} {{ prev.name }}
           </a></p>
         {% endif %}
       </div>
       <div class="col-6 text-end">
         {% if next %}
           <p><a href="{% url 'game_detail' next.pk %}">
-            #{{ next.rank }} {{ next.name }} <i class="bi bi-chevron-double-right"></i>
+            {{ next.rating|floatformat }} {{ next.name }} <i class="bi bi-chevron-double-right"></i>
           </a></p>
         {% endif %}
       </div>

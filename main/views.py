@@ -95,8 +95,10 @@ class GameDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
-        ctx['prev'] = Game.objects.filter(rank=self.object.rank - 1).first()
-        ctx['next'] = Game.objects.filter(rank=self.object.rank + 1).first()
+        ctx['prev'] = Game.objects.filter(
+            rating__gt=self.object.rating).order_by('rating', '-rank').first()
+        ctx['next'] = Game.objects.filter(
+            rating__lt=self.object.rating).order_by('-rating', 'rank').first()
         histogram = self.object.reviews.values('rating')
         df = pd.DataFrame(list(histogram))
         fig = px.box(df, y='rating')

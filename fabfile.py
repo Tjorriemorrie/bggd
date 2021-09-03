@@ -153,3 +153,9 @@ def run_command(ctx, cmd):
         f'./manage.py {cmd}',
     ]
     conn.run(' && '.join(cmds), echo=True)
+
+
+@task
+def tail_log(ctx):
+    conn = get_conn()
+    conn.run(f'tail -10f {dir}/logs/default.log')

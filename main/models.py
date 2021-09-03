@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from django.core.validators import MinValueValidator, MaxValueValidator
@@ -107,11 +108,42 @@ class Player(models.Model):
         return geo or ''
 
 
+class Day(models.Model):
+    day = models.DateField()
+
+    reviews_cnt = models.IntegerField()
+    reviews_avg = models.FloatField()
+    last_review_id = models.IntegerField()
+    last_review_update = models.DateTimeField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f'<Day {self.day:"%y-%m-%d} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
+
+
+class GameDay(models.Model):
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='gamedays')
+    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='gamedays')
+
+    reviews_cnt = models.IntegerField()
+    reviews_avg = models.FloatField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f'<GameDay game={self.game.name} {self.day.day:"%y-%m-%d"} cnt={self.reviews_cnt} avg={round(self.reviews_avg, 1)}>'
+
+
 class Review(models.Model):
     player = models.ForeignKey(
         Player, on_delete=models.CASCADE, related_name='reviews')
     game = models.ForeignKey(
         Game, on_delete=models.CASCADE, related_name='reviews')
+    gameday = models.ForeignKey(
+        GameDay, null=True, on_delete=models.SET_NULL, related_name='reviews')
 
     bgg_id = models.PositiveIntegerField(db_index=True)
     rating = models.FloatField()
@@ -121,7 +153,7 @@ class Review(models.Model):
     predicted = models.FloatField(null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    updated_at = models.DateTimeField(db_index=True, auto_now=True)
 
     class Meta:
         unique_together = ('player', 'game')
@@ -134,3 +166,7 @@ class Review(models.Model):
         if not self.predicted:
             return 0
         return self.rating - self.predicted
+
+    @property
+    def day(self) -> datetime:
+        return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)

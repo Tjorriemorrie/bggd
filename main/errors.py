@@ -8,3 +8,7 @@ class PlayerScrapeError(ScrapeError):
 
 class PlayerRatingNewGameError(ScrapeError):
     """New game found scraping player ratings."""
+
+
+class OutOfTimeError(Exception):
+    """Timeout during management commands."""

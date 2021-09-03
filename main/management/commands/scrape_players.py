@@ -43,50 +43,55 @@ class Command(BaseCommand):
         limit = 7
         total_player_cnt = Player.objects.count()
         daily_cut = total_player_cnt // limit
+        running = 0
+        total = 0
+        remainder = daily_cut - running
+
+        if remainder:
+            logger.info(''.join(['='] * 99))
+            logger.info('Scraping new players...')
+            logger.info(f'Running:{running} daily cut:{daily_cut} remainder:{remainder}')
+            players = Player.objects.filter(
+                Q(scraped_at__isnull=True) |
+                Q(rec_at__isnull=True)).order_by(
+                'created_at').all()[:remainder]
+            logger.info(f'Found {len(players)} players')
+            total += len(players)
+            self._process(players, game_ids, 'created', total, running)
+            running += len(players)
+            remainder = daily_cut - running
+
+        if remainder:
+            logger.info(''.join(['='] * 99))
+            logger.info('Updating new data on scraped players...')
+            logger.info(f'Running:{running} daily cut:{daily_cut} remainder:{remainder}')
+            players = Player.objects.annotate(
+                last_review=Max('reviews__reviewed_at')).filter(
+                Q(rec_at__isnull=False) &
+                Q(last_review__gt=F('rec_at'))).order_by(
+                'rec_at').all()[:remainder]
+            logger.info(f'Found {len(players)} players')
+            total += len(players)
+            self._process(players, game_ids, 'updated', total, running)
+            running += len(players)
+            remainder = daily_cut - running
+
+        if remainder:
+            logger.info(''.join(['='] * 99))
+            logger.info('Upkeeping old players...')
+            logger.info(f'Running:{running} daily cut:{daily_cut} remainder:{remainder}')
+            upkeep_days = 14
+            upkeep_delta = now() - timedelta(days=upkeep_days)
+            logger.info(f'Using {upkeep_days} days from {upkeep_delta}')
+            players = Player.objects.filter(
+                scraped_at__lt=upkeep_delta).order_by(
+                'scraped_at').all()[:remainder]
+            logger.info(f'Found {len(players)} players')
+            total += len(players)
+            self._process(players, game_ids, 'upkeeped', total, running)
+            running += len(players)
+            remainder = daily_cut - running
 
         logger.info(''.join(['='] * 99))
-        logger.info('Updating new data on scraped players...')
-        players = Player.objects.prefetch_related(
-            'reviews').annotate(
-            last_review=Max('reviews__reviewed_at')).filter(
-            Q(rec_at__isnull=False) &
-            Q(last_review__gt=F('rec_at'))).order_by(
-            'rec_at').all()[:daily_cut]
-        logger.info(f'Found {len(players)}')
-        self._process(players, game_ids, 'updated', len(players), 0)
-
-        logger.info(''.join(['='] * 99))
-        logger.info('Scraping new players...')
-        total = Player.objects.filter(
-            Q(scraped_at__isnull=True) |
-            Q(rec_at__isnull=True)).count()
-        logger.info(f'Found {total}')
-        if total:
-            runn = 0
-            batch_size = 1_000
-            while True:
-                logger.info(f'Batch {runn // batch_size}/{total // batch_size}')
-                players = Player.objects.prefetch_related(
-                    'reviews').filter(
-                    Q(scraped_at__isnull=True) |
-                    Q(rec_at__isnull=True)).order_by(
-                    'created_at').all()[:batch_size]
-                if not players:
-                    break
-                self._process(players, game_ids, 'created', total, runn)
-                runn += batch_size
-
-        logger.info(''.join(['='] * 99))
-        logger.info('Upkeeping old players...')
-        upkeep_days = 13
-        upkeep_cut = total_player_cnt // upkeep_days
-        one_month = now() - timedelta(days=upkeep_days)
-        players = Player.objects.prefetch_related(
-            'reviews').filter(
-            scraped_at__lt=one_month).order_by(
-            'scraped_at').all()[:upkeep_cut]
-        logger.info(f'Found {len(players)}')
-        self._process(players, game_ids, 'upkeeped', len(players), 0)
-
-        logger.info(''.join(['='] * 99))
+        logger.info(f'Running:{running} daily cut:{daily_cut} remainder:{remainder}')
         logger.info('Done')

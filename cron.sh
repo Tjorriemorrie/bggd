@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-duration=$((60*60*15))
+duration=$((60*60*9))
 
 function main() {
   end=$((SECONDS+duration))
@@ -11,7 +11,7 @@ function main() {
 
   while [ $SECONDS -lt $end ];
   do
-    for cmd in 'scrape_games' 'scrape_players'
+    for cmd in 'scrape_games' 'scrape_players' 'update_days'
     do
       ./manage.py $cmd
     done

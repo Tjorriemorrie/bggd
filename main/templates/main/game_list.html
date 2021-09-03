@@ -92,11 +92,13 @@
             <td class="text-muted">{{ forloop.counter0|add:page_obj.start_index }}</td>
             <td>{{ game.rank }}</td>
             <td>{{ game.rating|floatformat }}</td>
-            <td class="text-end"><img class="round" height="50px" src="{{ game.img }}"/>
+            <td class="text-end"><img class="round" height="60px" src="{{ game.img }}"/>
             </td>
             <td>
               <a class="text-reset text-decoration-none" href="{% url 'game_detail' game.pk %}">
                 {{ game.name }}
+                <br/>
+                <small class="text-muted">{{ game.pitch }}</small>
               </a>
             </td>
             <td>{{ game.year }}</td>
