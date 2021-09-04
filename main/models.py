@@ -109,7 +109,7 @@ class Player(models.Model):
 
 
 class Day(models.Model):
-    day = models.DateField()
+    day = models.DateField(db_index=True)
 
     reviews_cnt = models.IntegerField()
     reviews_avg = models.FloatField()
@@ -146,7 +146,7 @@ class Review(models.Model):
         GameDay, null=True, on_delete=models.SET_NULL, related_name='reviews')
 
     bgg_id = models.PositiveIntegerField(db_index=True)
-    rating = models.FloatField()
+    rating = models.FloatField(db_index=True)
     comment = models.CharField(max_length=256, null=True)
     reviewed_at = models.DateTimeField(db_index=True)
 

@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.humanize',
 
     'main.apps.MainConfig',
 ]
@@ -95,7 +96,7 @@ CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         # 'LOCATION': 'DataFlair',
-        'TIMEOUT': 60 * 60 * 24
+        'TIMEOUT': DEBUG and 1 or 60 * 60 * 24
     }
 }
 

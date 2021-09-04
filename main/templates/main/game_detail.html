@@ -1,4 +1,5 @@
 {% extends 'main/base.html' %}
+{% load humanize %}
 {% load params %}
 
 {% block content %}
@@ -17,7 +18,8 @@
       <div class="col-6 text-end">
         {% if next %}
           <p><a href="{% url 'game_detail' next.pk %}">
-            {{ next.rating|floatformat }} {{ next.name }} <i class="bi bi-chevron-double-right"></i>
+            {{ next.rating|floatformat }} {{ next.name }}
+            <i class="bi bi-chevron-double-right"></i>
           </a></p>
         {% endif %}
       </div>
@@ -56,13 +58,24 @@
           </div>
         </div>
 
+        <br/>
+        <div class="row">
+          {% if day_graph %}
+            <div class="col">
+              {{ day_graph|safe }}
+            </div>
+          {% endif %}
+        </div>
+
       </div>
 
       <div class="col-4 text-center">
         <h2>#{{ game.rank }}</h2>
         <br/>
         <h3>{{ game.rating|floatformat }}</h3>
-        <p>{{ game.reviews_cnt }} reviews</p>
+        {% if game.reviews_cnt %}
+          <p>{{ game.reviews_cnt|intcomma }} reviews</p>
+        {% endif %}
         {% if rating_graph %}
           <p>{{ rating_graph|safe }}</p>
         {% endif %}

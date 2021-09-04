@@ -1,4 +1,5 @@
 {% extends 'main/base.html' %}
+{% load humanize %}
 
 {% block content %}
   <div class="container">
@@ -9,16 +10,61 @@
     <div class="row">
       <div class="col text-center">
         <h3>Games</h3>
-        <h5>{{ game_cnt }}</h5>
+        <h5>{{ game_cnt|intcomma }}</h5>
       </div>
       <div class="col text-center">
         <h3>Players</h3>
-        <h5>{{ player_cnt }}</h5>
+        <h5>{{ player_cnt|intcomma }}</h5>
       </div>
       <div class="col text-center">
         <h3>Ratings</h3>
-        <h5>{{ review_cnt }}</h5>
+        <h5>{{ review_cnt|intcomma }}</h5>
       </div>
     </div>
+
+    <br/>
+    <div class="row">
+      <h4>What's hot!</h4>
+      <p class="text-muted"><small>Most rated games this past 30 days.</small></p>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card-group">
+          {% for hot in hotness|slice:':4' %}
+            <div class="card border-dark">
+              <a href="{% url 'game_detail' hot.1.id %}" class="text-reset text-decoration-none">
+                <img src="{{ hot.1.img }}" class="card-img-top card-img-top-4"/>
+                <div class="card-body">
+                  <h5 class="card-title">{{ hot.1.name }}</h5>
+                  <p class="card-text"><small class="text-muted">{{ hot.0|intcomma }}
+                    ratings</small></p>
+                </div>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card-group">
+          {% for hot in hotness|slice:'4:' %}
+            <div class="card border-dark">
+              <a href="{% url 'game_detail' hot.1.id %}" class="text-reset text-decoration-none">
+                <img src="{{ hot.1.img }}" class="card-img-top"/>
+                <div class="card-body">
+                  <h5 class="card-title">{{ hot.1.name }}</h5>
+                  <p class="card-text"><small class="text-muted">{{ hot.0|intcomma }}
+                    ratings</small></p>
+                </div>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
   </div>
 {% endblock %}

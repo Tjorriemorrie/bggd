@@ -1,9 +1,8 @@
 from datetime import datetime
 from os import getenv
-from typing import List, Tuple
 
-from fabric import Connection, Config
-from invoke import task, Context, env, run, Responder
+from fabric import Connection
+from invoke import task, run, Responder
 
 host = '178.62.218.44'
 user = 'django'
@@ -59,8 +58,9 @@ def retrieve_data(ctx):
     ]
     conn.run(' && '.join(cmds), echo=True)
 
+    conn.run(f'ls -la {dir}')
     print('downloading zip file...')
-    conn.get(zip_file)
+    conn.get(f'{dir}/{zip_file}')
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)

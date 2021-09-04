@@ -9,15 +9,19 @@
     <div class="row">
       <div class="col">
         <h2>Hello BoardGame Geeks.</h2>
-        <p>This is an analysis site of BGG.</p>
+        <p>I wanted to know what I should buy next... What would I like? So, this is
+          an analysis site of BGG to calculate recommendations of what to buy next.</p>
         <p>Games are scraped for their ratings. This takes long and only
           the top few games on the ranking is currently known.</p>
-        <p>The ratings were used to build a recommender system. Based of each
-          players' ratings recommendations are calculated.</p>
+        <p>The ratings were used to build a recommender system.
+          Recommendations are calculated based of each players' ratings .</p>
         <p>Look up your username and there should be recommendations
-          on the user's page. It is updated weekly and should change
-          if new ratings were made or changed to the list of games.</p>
-        <p>More games will be added but it takes a long time.</p>
+          on the user's page. It is updated <strong>about every {{ player_turnover }}
+            days</strong> and should change if new ratings were made or changed to the
+          list of games.</p>
+        <p>More games will be added but it takes a long time.
+          <strong>About {{ game_added|floatformat }}
+            games</strong> are added every day.</p>
       </div>
     </div>
   </div>

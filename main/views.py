@@ -1,17 +1,20 @@
 import logging
+from datetime import timedelta
 from operator import attrgetter
 
 import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
-from django.db.models import Q, Count
+from django.db.models import Q, Count, Sum
+from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
+from django.utils.timezone import now
 from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
 
-from main.models import Game, Player, Review
+from main.models import Game, Player, Review, Day, GameDay
 
 logger = logging.getLogger(__name__)
 
@@ -19,18 +22,39 @@ logger = logging.getLogger(__name__)
 def home_view(request):
     ctx = cache.get('home_view')
     if not ctx:
+        one_month = now() - timedelta(days=30)
+        gamedays = GameDay.objects.filter(
+            day__day__gte=one_month).values('game').annotate(
+            reviews_sum=Sum('reviews_cnt')).order_by('-reviews_sum')[:10]
+        hotness = [(gd['reviews_sum'], Game.objects.get(id=gd['game']))  for gd in gamedays]
         ctx = {
             'nav': 'home',
             'game_cnt': Game.objects.count(),
             'player_cnt': Player.objects.count(),
             'review_cnt': Review.objects.count(),
+            'hotness': hotness,
         }
         cache.set('home_view', ctx)
     return render(request, 'main/home.html', ctx)
 
 
 def about_view(request):
-    return render(request, 'main/about.html')
+    ctx = cache.get('about_view')
+    if not ctx:
+        # player updated
+        oldest_updated_review = Review.objects.order_by('updated_at').first()
+        player_turnover = (now() - oldest_updated_review.updated_at).days
+        # game added
+        first_game = Game.objects.order_by('created_at').first()
+        total_games = Game.objects.count()
+        game_days = (now() - first_game.created_at).days
+        game_added = total_games / game_days
+        ctx = {
+            'player_turnover': player_turnover,
+            'game_added': game_added,
+        }
+        cache.set('about_view', ctx)
+    return render(request, 'main/about.html', context=ctx)
 
 
 class ViewError(Exception):
@@ -95,16 +119,30 @@ class GameDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
+
+        # prev and next
         ctx['prev'] = Game.objects.filter(
             rating__gt=self.object.rating).order_by('rating', '-rank').first()
         ctx['next'] = Game.objects.filter(
             rating__lt=self.object.rating).order_by('-rating', 'rank').first()
+
+        # graph histogram
         histogram = self.object.reviews.values('rating')
         df = pd.DataFrame(list(histogram))
         fig = px.box(df, y='rating')
         fig.update_yaxes(tick0=1, dtick=1)
-        # fig = px.histogram(df, x='rating', range_x=(1, 10))
         ctx['rating_graph'] = fig.to_html(full_html=False)
+
+        # graph daily
+        day_data = self.object.gamedays.annotate(
+            month=TruncMonth('day__day')).values('month').annotate(
+            cnt=Count('id')).values('month', 'cnt')
+        day_df = pd.DataFrame([
+            {'Month': d['month'], 'Ratings': d['cnt']}
+            for d in day_data])
+        day_fig = px.bar(day_df, x='Month', y='Ratings', title='Ratings per month')
+        ctx['day_graph'] = day_fig.to_html(full_html=False)
+
         return ctx
 
 
@@ -159,20 +197,21 @@ class ReviewView(TemplateView, CachedDispatch):
             cnt=Count('rating'))
         df_rating = pd.DataFrame(list(histogram))
         fig_rating = px.histogram(
-            df_rating, x='rating', y='cnt', histfunc='sum', range_x=(0, 10))
+            df_rating, x='rating', y='cnt', histfunc='sum', range_x=(0, 10),
+            labels={'rating': 'Rating value', 'cnt': 'count'},
+            title='Histogram of ratings')
         fig_rating.update_traces(nbinsx=20, autobinx=False)
         data['graph_rating'] = fig_rating.to_html(full_html=False)
 
-        # ratings per day graph
-        # per_day = Review.objects \
-        #     .annotate(day=TruncDay('reviewed_at')).values('day') \
-        #     .annotate(cnt=Count('id')) \
-        #     .values('day', 'cnt')
-        # df_day = pd.DataFrame(list(per_day))
-        # df_day['day'] = pd.to_datetime(df_day['day'], infer_datetime_format=True)
-        # fig_day = px.histogram(
-        #     df_day, x='day', y='cnt', histfunc='sum')
-        # fig_day.update_traces(xbins_size="M1")
-        # data['graph_day'] = fig_day.to_html(full_html=False)
+        # graph of daily ratings
+        days = Day.objects.order_by('-day').all()[:30]
+        data_day = [
+            {'Date': d.day, 'Ratings': d.reviews_cnt}
+            for d in days]
+        df = pd.DataFrame(data_day)
+        fig_day = px.bar(
+            df, x="Date", y="Ratings", labels={'Ratings': '# of ratings'},
+            title='Ratings past ~month')
+        data['graph_day'] = fig_day.to_html(full_html=False)
 
         return data

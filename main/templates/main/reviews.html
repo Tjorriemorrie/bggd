@@ -6,11 +6,21 @@
     {% include 'main/navbar.html' with nav='reviews' %}
 
     {% if graph_rating %}
-      {{ graph_rating|safe }}
+      <div class="row">
+        <div class="col">
+          {{ graph_rating|safe }}
+        </div>
+      </div>
     {% endif %}
 
     {% if graph_day %}
       {{ graph_day|safe }}
     {% endif %}
+
+    <div class="row">
+      <div class="col">
+        <p>This page is boring. Still thinking of things to make it better :(</p>
+      </div>
+    </div>
   </div>
 {% endblock %}
