@@ -136,7 +136,7 @@ def restart_gunicorn(ctx):
 
 
 @task
-def restart_server(ctx):
+def reboot(ctx):
     conn = get_conn()
     sudo_pwd = Responder(
         pattern=r'password:',
@@ -158,4 +158,4 @@ def run_command(ctx, cmd):
 @task
 def tail_log(ctx):
     conn = get_conn()
-    conn.run(f'tail -10f {dir}/logs/default.log')
+    conn.run(f'tail -10000f {dir}/logs/default.log')
