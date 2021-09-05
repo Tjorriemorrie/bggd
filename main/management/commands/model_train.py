@@ -12,3 +12,5 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         train_model()
+        logger.info('Done')
+        logger.info(''.join(['='] * 99))

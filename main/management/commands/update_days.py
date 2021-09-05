@@ -86,3 +86,4 @@ class Command(BaseCommand):
             self._loader()
         except OutOfTimeError:
             logger.info('Out of time!')
+            logger.info(''.join(['='] * 99))

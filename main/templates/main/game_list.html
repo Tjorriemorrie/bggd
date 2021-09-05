@@ -76,12 +76,12 @@
             {% endif %}
           </th>
           <th>
-            {% if ordering == '-review_cnt' %}
-              <a href="?{% add_param 'o' 'review_cnt' %}"># ratings</a>
+            {% if ordering == '-reviews_cnt' %}
+              <a href="?{% add_param 'o' 'reviews_cnt' %}"># ratings</a>
             {% else %}
-              <a href="?{% add_param 'o' '-review_cnt' %}"># ratings</a>
+              <a href="?{% add_param 'o' '-reviews_cnt' %}"># ratings</a>
             {% endif %}
-            {% if 'review_cnt' in ordering %}
+            {% if 'reviews_cnt' in ordering %}
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
             {% endif %}
           </th>
@@ -103,7 +103,7 @@
               </a>
             </td>
             <td>{{ game.year }}</td>
-            <td>{% if game.review_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
+            <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>

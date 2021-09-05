@@ -39,5 +39,5 @@ class Command(BaseCommand):
         logger.info('No more new games, will scrape for next one...')
         scrape_rankings()
 
-        logger.info(''.join(['='] * 99))
         logger.info('Scraping done')
+        logger.info(''.join(['='] * 99))

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Scrape bgg player data'
-    timeout = 60 * 60 * 2
+    timeout = 60 * 60 * 1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -104,11 +104,12 @@ class Command(BaseCommand):
             players = Player.objects.order_by(
                 'scraped_at').all()[:1_000]
 
-        logger.info(''.join(['='] * 99))
         logger.info('Done')
+        logger.info(''.join(['='] * 99))
 
     def handle(self, *args, **options):
         try:
             self._loader()
         except OutOfTimeError:
             logger.info('Out of time!')
+            logger.info(''.join(['='] * 99))

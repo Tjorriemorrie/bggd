@@ -272,7 +272,11 @@ def scrape_player_ratings(player: Player):
         res = get(url)
         html = BeautifulSoup(res.text, 'html.parser')
         table = html.find('table', id='collectionitems')
-        rows = table.find_all('tr')
+        try:
+            rows = table.find_all('tr')
+        except Exception as exc:
+            logger.error(f'{player} {exc}')
+            raise PlayerRatingNewGameError()
         if len(rows) < 2:
             break
         for row in rows[1:]:
