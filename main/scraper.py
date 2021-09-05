@@ -140,6 +140,7 @@ def scrape_game_details(game: Game) -> Game:
 
     scrape_game_reviews(game)
 
+    game.recs_cnt = game.player_recs.count()
     game.scraped_at = now()
     game.save()
 

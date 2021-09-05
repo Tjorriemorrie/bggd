@@ -101,6 +101,9 @@ def deploy(ctx):
 
     conn.run(f'tar -xf {dir}/deploy.tar.gz -C {dir}', echo=True)
     conn.run(f'mkdir -p {dir}/logs', echo=True)
+
+    systemctl(ctx, 'nginx stop')
+    systemctl(ctx, 'gunicorn stop')
     cmds = [
         f'cd {dir}',
         'source env/bin/activate',
@@ -113,26 +116,17 @@ def deploy(ctx):
     conn.run(f'sed -i "s/# @method_decorator/@method_decorator/g" {dir}/main/views.py', echo=True)
     conn.run(f'rm {dir}/deploy.tar.gz', echo=True)
 
-    restart_nginx(ctx)
-    restart_gunicorn(ctx)
+    systemctl(ctx, 'nginx start')
+    systemctl(ctx, 'gunicorn start')
 
 
 @task
-def restart_nginx(ctx):
+def systemctl(ctx, cmd):
     conn = get_conn()
     sudo_pwd = Responder(
         pattern=r'password:',
         response=f'{pwd}\n')
-    conn.sudo('systemctl restart nginx', echo=True, pty=True, watchers=[sudo_pwd])
-
-
-@task
-def restart_gunicorn(ctx):
-    conn = get_conn()
-    sudo_pwd = Responder(
-        pattern=r'password:',
-        response=f'{pwd}\n')
-    conn.sudo('systemctl restart gunicorn', echo=True, pty=True, watchers=[sudo_pwd])
+    conn.sudo(f'systemctl {cmd} nginx', echo=True, pty=True, watchers=[sudo_pwd])
 
 
 @task

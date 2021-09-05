@@ -5,7 +5,7 @@ from operator import attrgetter
 import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
-from django.db.models import Q, Count, Sum
+from django.db.models import Q, Count, Sum, F
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -13,6 +13,7 @@ from django.utils.timezone import now
 from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
+from sortedcontainers import SortedDict
 
 from main.models import Game, Player, Review, Day, GameDay
 
@@ -23,16 +24,16 @@ def home_view(request):
     ctx = cache.get('home_view')
     if not ctx:
         one_month = now() - timedelta(days=30)
-        gamedays = GameDay.objects.filter(
+        gamedays_one_month = GameDay.objects.filter(
             day__day__gte=one_month).values('game').annotate(
-            reviews_sum=Sum('reviews_cnt')).order_by('-reviews_sum')[:10]
-        hotness = [(gd['reviews_sum'], Game.objects.get(id=gd['game']))  for gd in gamedays]
+            score=Sum(F('reviews_cnt') * F('reviews_avg'))).order_by('-score')
+        hotness = [(i['score'], Game.objects.get(id=i['game'])) for i in gamedays_one_month]
         ctx = {
             'nav': 'home',
             'game_cnt': Game.objects.count(),
             'player_cnt': Player.objects.count(),
             'review_cnt': Review.objects.count(),
-            'hotness': hotness,
+            'hotness': hotness[:10],
         }
         cache.set('home_view', ctx)
     return render(request, 'main/home.html', ctx)

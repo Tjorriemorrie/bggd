@@ -25,7 +25,7 @@
     <br/>
     <div class="row">
       <h4>What's hot!</h4>
-      <p class="text-muted"><small>Most rated games this past 30 days.</small></p>
+      <p class="text-muted"><small>Most rated games this past month.</small></p>
     </div>
 
     <div class="row">
@@ -37,8 +37,9 @@
                 <img src="{{ hot.1.img }}" class="card-img-top card-img-top-4"/>
                 <div class="card-body">
                   <h5 class="card-title">{{ hot.1.name }}</h5>
-                  <p class="card-text"><small class="text-muted">{{ hot.0|intcomma }}
-                    ratings</small></p>
+                  <p class="card-text">
+                    <small class="text-muted">Score: {{ hot.0|floatformat:0 }}</small>
+                  </p>
                 </div>
               </a>
             </div>
@@ -56,8 +57,9 @@
                 <img src="{{ hot.1.img }}" class="card-img-top"/>
                 <div class="card-body">
                   <h5 class="card-title">{{ hot.1.name }}</h5>
-                  <p class="card-text"><small class="text-muted">{{ hot.0|intcomma }}
-                    ratings</small></p>
+                  <p class="card-text">
+                    <small class="text-muted">Score: {{ hot.0|floatformat:0 }}</small>
+                  </p>
                 </div>
               </a>
             </div>
