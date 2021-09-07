@@ -102,8 +102,8 @@ def deploy(ctx):
     conn.run(f'tar -xf {dir}/deploy.tar.gz -C {dir}', echo=True)
     conn.run(f'mkdir -p {dir}/logs', echo=True)
 
-    systemctl(ctx, 'nginx stop')
-    systemctl(ctx, 'gunicorn stop')
+    systemctl(ctx, 'stop nginx')
+    systemctl(ctx, 'stop gunicorn')
     cmds = [
         f'cd {dir}',
         'source env/bin/activate',
@@ -116,8 +116,8 @@ def deploy(ctx):
     conn.run(f'sed -i "s/# @method_decorator/@method_decorator/g" {dir}/main/views.py', echo=True)
     conn.run(f'rm {dir}/deploy.tar.gz', echo=True)
 
-    systemctl(ctx, 'nginx start')
-    systemctl(ctx, 'gunicorn start')
+    systemctl(ctx, 'start nginx')
+    systemctl(ctx, 'start gunicorn')
 
 
 @task
@@ -126,7 +126,7 @@ def systemctl(ctx, cmd):
     sudo_pwd = Responder(
         pattern=r'password:',
         response=f'{pwd}\n')
-    conn.sudo(f'systemctl {cmd} nginx', echo=True, pty=True, watchers=[sudo_pwd])
+    conn.sudo(f'systemctl {cmd}', echo=True, pty=True, watchers=[sudo_pwd])
 
 
 @task

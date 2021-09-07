@@ -25,7 +25,7 @@ def home_view(request):
     if not ctx:
         one_month = now() - timedelta(days=30)
         gamedays_one_month = GameDay.objects.filter(
-            day__day__gte=one_month).values('game').annotate(
+            day__day__gte=one_month).order_by('game').values('game').annotate(
             score=Sum(F('reviews_cnt') * F('reviews_avg'))).order_by('-score')
         hotness = [(i['score'], Game.objects.get(id=i['game'])) for i in gamedays_one_month]
         ctx = {
@@ -135,14 +135,15 @@ class GameDetailView(DetailView):
         ctx['rating_graph'] = fig.to_html(full_html=False)
 
         # graph daily
-        day_data = self.object.gamedays.annotate(
-            month=TruncMonth('day__day')).values('month').annotate(
-            cnt=Count('id')).values('month', 'cnt')
-        day_df = pd.DataFrame([
-            {'Month': d['month'], 'Ratings': d['cnt']}
-            for d in day_data])
-        day_fig = px.bar(day_df, x='Month', y='Ratings', title='Ratings per month')
-        ctx['day_graph'] = day_fig.to_html(full_html=False)
+        day_data = self.object.reviews.annotate(
+            month=TruncMonth('reviewed_at')).order_by('month').values('month').annotate(
+            cnt=Count('month')).values('month', 'cnt')
+        if day_data:
+            day_df = pd.DataFrame([
+                {'Month': d['month'], 'Ratings': d['cnt']}
+                for d in day_data])
+            day_fig = px.bar(day_df, x='Month', y='Ratings', title='Ratings per month')
+            ctx['day_graph'] = day_fig.to_html(full_html=False)
 
         return ctx
 
