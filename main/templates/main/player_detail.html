@@ -33,6 +33,7 @@
 
         <br/><br/>
         <h4>Recommended games</h4>
+        <h6 class="text-muted">Last updated {{ player.rec_at }}</h6>
         {% if player.game_recs.count %}
           <br/>
           {% for game in player.game_recs.all %}

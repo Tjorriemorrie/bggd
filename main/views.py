@@ -43,8 +43,8 @@ def about_view(request):
     ctx = cache.get('about_view')
     if not ctx:
         # player updated
-        oldest_updated_review = Review.objects.order_by('updated_at').first()
-        player_turnover = (now() - oldest_updated_review.updated_at).days
+        oldest_updated_rec = Player.objects.order_by('rec_at').first()
+        player_turnover = (now() - oldest_updated_rec.updated_at).days
         # game added
         first_game = Game.objects.order_by('created_at').first()
         total_games = Game.objects.count()
