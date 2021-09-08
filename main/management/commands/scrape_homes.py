@@ -15,7 +15,7 @@ BEDROOMS = 0
 BATHROOMS = 0
 GARAGES = 0
 HOST = 'https://www.privateproperty.co.za'
-FILE_MODEL = BASE_DIR / 'data' / 'homes.csv'
+FILE_MODEL = BASE_DIR / 'homes.csv'
 
 
 class Command(BaseCommand):
@@ -54,7 +54,7 @@ def scrape_page(url: str, page: int) -> List[dict]:
     listings = html.find_all('a', class_='listingResult')
     for listing in listings:
         # url
-        href = listing.get('href')
+        href = HOST + listing.get('href')
 
         # add image
         # img_tag = listing.find_all('img')[0]

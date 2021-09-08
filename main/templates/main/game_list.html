@@ -85,6 +85,26 @@
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
             {% endif %}
           </th>
+          <th>
+            {% if ordering == '-recs_cnt' %}
+              <a href="?{% add_param 'o' 'recs_cnt' %}" title="Recommendations"># recs</a>
+            {% else %}
+              <a href="?{% add_param 'o' '-recs_cnt' %}" title="Recommendations"># recs</a>
+            {% endif %}
+            {% if 'recs_cnt' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>
+            {% if ordering == '-hotness' %}
+              <a href="?{% add_param 'o' 'hotness' %}">Hotness</a>
+            {% else %}
+              <a href="?{% add_param 'o' '-hotness' %}">Hotness</a>
+            {% endif %}
+            {% if 'hotness' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
         </tr>
         </thead>
         <tbody>
@@ -104,6 +124,8 @@
             </td>
             <td>{{ game.year }}</td>
             <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
+            <td>{% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
+            <td>{% if game.hotness %}{{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>

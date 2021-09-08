@@ -13,7 +13,6 @@ from django.utils.timezone import now
 from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
-from sortedcontainers import SortedDict
 
 from main.models import Game, Player, Review, Day, GameDay
 
@@ -23,17 +22,12 @@ logger = logging.getLogger(__name__)
 def home_view(request):
     ctx = cache.get('home_view')
     if not ctx:
-        one_month = now() - timedelta(days=30)
-        gamedays_one_month = GameDay.objects.filter(
-            day__day__gte=one_month).order_by('game').values('game').annotate(
-            score=Sum(F('reviews_cnt') * F('reviews_avg'))).order_by('-score')
-        hotness = [(i['score'], Game.objects.get(id=i['game'])) for i in gamedays_one_month]
         ctx = {
             'nav': 'home',
             'game_cnt': Game.objects.count(),
             'player_cnt': Player.objects.count(),
             'review_cnt': Review.objects.count(),
-            'hotness': hotness[:10],
+            'hotness': Game.objects.order_by('-hotness')[:10],
         }
         cache.set('home_view', ctx)
     return render(request, 'main/home.html', ctx)

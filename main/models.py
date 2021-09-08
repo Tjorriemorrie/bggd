@@ -58,6 +58,9 @@ class Game(models.Model):
     reviews_cnt = models.IntegerField(null=True)  # scrape cron update
     recs_cnt = models.IntegerField(null=True)  # scrape cron update
 
+    # hotness
+    hotness = models.FloatField(null=True)  # update hotness cron
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -17,6 +17,7 @@ function main() {
     done
   done
 
+  ./manage.py update_hotness
   ./manage.py model_train
 }
 
