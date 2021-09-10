@@ -172,9 +172,7 @@ class PlayerDetailView(DetailView):
         min_est = min([f['Expected'] for f in fig_data])
         max_est = max([f['Expected'] for f in fig_data])
         df = pd.DataFrame(fig_data)
-        fig = px.scatter(
-            df, x="Expected", y="Actual", hover_name='Name',
-            marginal_y="box")
+        fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name')
         fig.add_shape(type="line", x0=min_est, y0=min_est, x1=max_est, y1=max_est)
         fig.update_yaxes(dtick=1)
         fig.update_xaxes(dtick=1)
