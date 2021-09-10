@@ -16,7 +16,7 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
 
         counter = 0
-        limit = 7
+        limit = 3
         total_game_cnt = Game.objects.count()
         daily_cut = total_game_cnt // limit
 
@@ -39,5 +39,5 @@ class Command(BaseCommand):
         logger.info('No more new games, will scrape for next one...')
         scrape_rankings()
 
-        logger.info('Scraping done')
         logger.info(''.join(['='] * 99))
+        logger.info('Scraping done')

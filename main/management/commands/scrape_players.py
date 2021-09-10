@@ -33,6 +33,7 @@ class Command(BaseCommand):
         self.prefix = f'[{self.count}/{int(exp)}]'
 
     def _process(self, players: List[Player], game_ids: List[int], keyword: str):
+        top_n = len(game_ids) // 100
         for player in players:
             self._check_watch()
             # details
@@ -52,7 +53,7 @@ class Command(BaseCommand):
                 logger.info(f'Deleted player without ratings {player}')
             # recommendations
             else:
-                predict_player(player, game_ids, top_n=3)
+                predict_player(player, game_ids, top_n=top_n)
             logger.info(f'{self.prefix} {keyword} {player}')
 
     def _loader(self):
@@ -104,8 +105,8 @@ class Command(BaseCommand):
             players = Player.objects.order_by(
                 'scraped_at').all()[:1_000]
 
-        logger.info('Done')
         logger.info(''.join(['='] * 99))
+        logger.info('Done')
 
     def handle(self, *args, **options):
         try:

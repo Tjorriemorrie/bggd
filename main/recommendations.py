@@ -86,7 +86,7 @@ def predict_player(
     player.rec_at = now()
 
     # score player
-    player.reviews_scr = 0
+    player.reviews_scr = None  # filter used on listing
     if player.reviews_cnt >= 3:
         ratings = SortedList([r.rating for r in reviews])
         spaces = np.linspace(1, 10, num=len(ratings))

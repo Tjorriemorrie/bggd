@@ -74,6 +74,15 @@ class Game(models.Model):
     def bgg_link(self):
         return f'https://www.boardgamegeek.com/boardgame/{self.bgg_id}'
 
+    def mechanics_comma(self) -> str:
+        return ', '.join([m.name for m in self.mechanics.all()])
+
+    def families_comma(self) -> str:
+        return ', '.join([f.name for f in self.families.all()])
+
+    def categories_comma(self) -> str:
+        return ', '.join([c.name for c in self.categories.all()])
+
 
 class Player(models.Model):
     bgg_id = models.PositiveIntegerField(null=True)

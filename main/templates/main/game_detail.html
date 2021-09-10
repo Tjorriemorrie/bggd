@@ -54,6 +54,7 @@
         <br/>
         <div class="row">
           <div class="col">
+            <h6>{{ game.categories_comma }}</h6>
             <p>{{ game.description }}</p>
           </div>
         </div>
@@ -79,6 +80,12 @@
         {% if rating_graph %}
           <p>{{ rating_graph|safe }}</p>
         {% endif %}
+
+        <h4>Mechanics</h4>
+        <p>{{ game.mechanics_comma }}</p>
+
+        <h4>Families</h4>
+        <p>{{ game.families_comma }}</p>
       </div>
 
     </div>

@@ -22,12 +22,19 @@ logger = logging.getLogger(__name__)
 def home_view(request):
     ctx = cache.get('home_view')
     if not ctx:
+        underrated = Game.objects.filter(
+            Q(recs_cnt__isnull=False) &
+            Q(hotness__isnull=False) &
+            Q(hotness__gt=0)
+        ).annotate(underrated=F('recs_cnt') / F('hotness')).order_by(
+            '-underrated').all()[:5]
         ctx = {
             'nav': 'home',
             'game_cnt': Game.objects.count(),
             'player_cnt': Player.objects.count(),
             'review_cnt': Review.objects.count(),
             'hotness': Game.objects.order_by('-hotness')[:10],
+            'underrated': underrated,
         }
         cache.set('home_view', ctx)
     return render(request, 'main/home.html', ctx)
