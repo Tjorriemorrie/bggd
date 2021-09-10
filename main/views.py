@@ -22,19 +22,19 @@ logger = logging.getLogger(__name__)
 def home_view(request):
     ctx = cache.get('home_view')
     if not ctx:
-        underrated = Game.objects.filter(
+        upcoming = Game.objects.filter(
             Q(recs_cnt__isnull=False) &
             Q(hotness__isnull=False) &
             Q(hotness__gt=0)
-        ).annotate(underrated=F('recs_cnt') / F('reviews_cnt')).order_by(
-            '-underrated').all()[:5]
+        ).annotate(score=F('recs_cnt') / F('reviews_cnt')).order_by(
+            '-score').all()[:5]
         ctx = {
             'nav': 'home',
             'game_cnt': Game.objects.count(),
             'player_cnt': Player.objects.count(),
             'review_cnt': Review.objects.count(),
             'hotness': Game.objects.order_by('-hotness')[:10],
-            'underrated': underrated,
+            'upcoming': upcoming,
         }
         cache.set('home_view', ctx)
     return render(request, 'main/home.html', ctx)
@@ -47,10 +47,13 @@ def about_view(request):
         oldest_updated_rec = Player.objects.order_by('rec_at').first()
         player_turnover = (now() - oldest_updated_rec.updated_at).days
         # game added
-        first_game = Game.objects.order_by('created_at').first()
-        total_games = Game.objects.count()
+        one_month = now() - timedelta(days=30)
+        first_game = Game.objects.filter(
+            created_at__gte=one_month).order_by('created_at').first()
+        total_games = Game.objects.filter(
+            created_at__gte=one_month).count()
         game_days = (now() - first_game.created_at).days
-        game_added = total_games / game_days
+        game_added = total_games // game_days
         ctx = {
             'player_turnover': player_turnover,
             'game_added': game_added,

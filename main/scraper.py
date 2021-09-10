@@ -7,13 +7,14 @@ from typing import List, Tuple
 import requests
 from bs4 import BeautifulSoup
 from django.db import IntegrityError, OperationalError
-from django.db.models import Avg
+from django.db.models import Avg, F, Sum
 from django.utils.timezone import now, make_aware
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError
 from main.models import Game, Label, \
-    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
+    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player, \
+    GameDay, Day
 
 logger = logging.getLogger(__name__)
 
@@ -303,6 +304,7 @@ def scrape_player_ratings(player: Player):
             # get comment
             comment_and_date = list(cells[3].stripped_strings)
             comment = comment_and_date[0] if comment_and_date else None
+
             # update review
             try:
                 review = Review.objects.get(game=game, player=player)
@@ -321,4 +323,3 @@ def scrape_player_ratings(player: Player):
                 review.rating = rating
                 review.comment = comment
                 review.save()
-

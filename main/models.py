@@ -126,6 +126,7 @@ class Day(models.Model):
 
     reviews_cnt = models.IntegerField()
     reviews_avg = models.FloatField()
+    reviews_adj = models.FloatField()
     last_review_id = models.IntegerField()
     last_review_update = models.DateTimeField()
 
@@ -142,6 +143,7 @@ class GameDay(models.Model):
 
     reviews_cnt = models.IntegerField()
     reviews_avg = models.FloatField()
+    reviews_adj = models.FloatField()
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

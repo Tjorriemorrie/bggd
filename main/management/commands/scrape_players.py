@@ -3,12 +3,15 @@ from time import time
 from typing import List
 
 from django.core.management import BaseCommand
+from django.db import OperationalError
 from django.db.models import Q, F, Max
+from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError
 from main.models import Player, Game
 from main.recommendations import predict_player
 from main.scraper import scrape_player, scrape_player_ratings
+from main.stats import update_gamedays
 
 logger = logging.getLogger(__name__)
 
@@ -33,9 +36,9 @@ class Command(BaseCommand):
         self.prefix = f'[{self.count}/{int(exp)}]'
 
     def _process(self, players: List[Player], game_ids: List[int], keyword: str):
-        top_n = len(game_ids) // 100
         for player in players:
             self._check_watch()
+
             # details
             try:
                 scrape_player(player)
@@ -43,6 +46,7 @@ class Command(BaseCommand):
                 player.delete()
                 logger.info(f'Deleted bad user {player}')
                 continue
+
             # ratings
             try:
                 scrape_player_ratings(player)
@@ -51,9 +55,15 @@ class Command(BaseCommand):
             if not player.reviews.count():
                 player.delete()
                 logger.info(f'Deleted player without ratings {player}')
-            # recommendations
+
             else:
-                predict_player(player, game_ids, top_n=top_n)
+                # recommendations
+                predict_player(player, game_ids, top_n=3)
+
+                # once player score is updated...
+                # update gamedays for reviews
+                update_gamedays(player)
+
             logger.info(f'{self.prefix} {keyword} {player}')
 
     def _loader(self):
@@ -108,6 +118,7 @@ class Command(BaseCommand):
         logger.info(''.join(['='] * 99))
         logger.info('Done')
 
+    @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def handle(self, *args, **options):
         try:
             self._loader()

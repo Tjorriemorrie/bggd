@@ -46,7 +46,7 @@ class Command(BaseCommand):
         one_month = now() - timedelta(days=30)
         gamedays_one_month = GameDay.objects.filter(
             day__day__gte=one_month).order_by('game').values('game').annotate(
-            score=Sum(F('reviews_cnt') * F('reviews_avg')))
+            score=Sum(F('reviews_cnt') * F('reviews_adj')))
         self._process(gamedays_one_month)
 
     def handle(self, *args, **options):

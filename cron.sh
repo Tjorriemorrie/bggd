@@ -11,7 +11,7 @@ function main() {
 
   while [ $SECONDS -lt $end ];
   do
-    for cmd in 'scrape_games' 'scrape_players' 'update_days'
+    for cmd in 'scrape_games' 'scrape_players'
     do
       ./manage.py $cmd
     done

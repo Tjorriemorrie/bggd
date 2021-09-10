@@ -70,25 +70,25 @@
 
     <br/>
     <div class="row">
-      <h4>Under rated games!</h4>
-      <p class="text-muted"><small>These games are highly recommended and yet
-        to get their ratings!</small></p>
+      <h4>Watch out for these upcoming games!</h4>
+      <p class="text-muted"><small>These games are highly recommended in contrast
+      to the number of ratings received to date!</small></p>
     </div>
 
     <div class="row">
       <div class="col">
         <div class="card-group">
-          {% for ur in underrated %}
+          {% for up in upcoming %}
             <div class="card border-dark">
-              <a href="{% url 'game_detail' ur.id %}" class="text-reset text-decoration-none">
-                <img src="{{ ur.img }}" class="card-img-top"/>
+              <a href="{% url 'game_detail' up.id %}" class="text-reset text-decoration-none">
+                <img src="{{ up.img }}" class="card-img-top"/>
                 <div class="card-body">
-                  <h5 class="card-title">{{ ur.name }}</h5>
+                  <h5 class="card-title">{{ up.name }}</h5>
                   <p class="card-text">
                     <small class="text-muted">
-                      # recs: {{ ur.recs_cnt|intcomma }}
+                      # recs: {{ up.recs_cnt|intcomma }}
                       <br/>
-                      # ratings: {{ ur.reviews_cnt|intcomma }}
+                      # ratings: {{ up.reviews_cnt|intcomma }}
                     </small>
                   </p>
                 </div>
