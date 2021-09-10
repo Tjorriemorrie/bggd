@@ -71,7 +71,8 @@
     <br/>
     <div class="row">
       <h4>Under rated games!</h4>
-      <p class="text-muted"><small>These games are highly recommended but got no hotness!</small></p>
+      <p class="text-muted"><small>These games are highly recommended and yet
+        to get their ratings!</small></p>
     </div>
 
     <div class="row">
@@ -87,7 +88,7 @@
                     <small class="text-muted">
                       # recs: {{ ur.recs_cnt|intcomma }}
                       <br/>
-                      hotness: {{ ur.hotness|floatformat:0|intcomma }}
+                      # ratings: {{ ur.reviews_cnt|intcomma }}
                     </small>
                   </p>
                 </div>

@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Scrape bgg player data'
-    timeout = 60 * 60 * 1
+    timeout = 60 * 60 * 2
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

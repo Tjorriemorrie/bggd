@@ -26,7 +26,7 @@ def home_view(request):
             Q(recs_cnt__isnull=False) &
             Q(hotness__isnull=False) &
             Q(hotness__gt=0)
-        ).annotate(underrated=F('recs_cnt') / F('hotness')).order_by(
+        ).annotate(underrated=F('recs_cnt') / F('reviews_cnt')).order_by(
             '-underrated').all()[:5]
         ctx = {
             'nav': 'home',

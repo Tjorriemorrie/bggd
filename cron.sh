@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-duration=$((60*60*9))
+duration=$((60*60*8))
 
 function main() {
   end=$((SECONDS+duration))
