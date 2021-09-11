@@ -4,13 +4,13 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from main.models import Game, Review, Player
-from main.scraper import scrape_game_details
+from main.scraper import scrape_game
 
 
 @admin.action(description='Scrape games')
 def scrape_game_cmd(modeladmin, request, queryset):
     for obj in queryset:
-        scrape_game_details(obj)
+        scrape_game(obj)
 
 
 @admin.register(Game)

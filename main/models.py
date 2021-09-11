@@ -47,11 +47,20 @@ class Game(models.Model):
     img = models.CharField(max_length=250, null=True)
     pitch = models.CharField(max_length=256, null=True)
     description = models.TextField(null=True)
-    min_players = models.PositiveSmallIntegerField(null=True)
-    max_players = models.PositiveSmallIntegerField(null=True)
     min_play_time = models.PositiveSmallIntegerField(null=True)
     max_play_time = models.PositiveSmallIntegerField(null=True)
+    # age
     min_age = models.PositiveSmallIntegerField(null=True)
+    rec_min_age = models.PositiveSmallIntegerField(null=True)
+    # players
+    min_players = models.PositiveSmallIntegerField(null=True)
+    max_players = models.PositiveSmallIntegerField(null=True)
+    rec_min_players = models.PositiveSmallIntegerField(null=True)
+    rec_max_players = models.PositiveSmallIntegerField(null=True)
+    best_min_players = models.PositiveSmallIntegerField(null=True)
+    best_max_players = models.PositiveSmallIntegerField(null=True)
+    # weight
+    weight_avg = models.FloatField(null=True)
 
     # from reviews
     rating = models.FloatField(null=True)  # scrape cron update
@@ -82,6 +91,18 @@ class Game(models.Model):
 
     def categories_comma(self) -> str:
         return ', '.join([c.name for c in self.categories.all()])
+
+    def players_fmt(self) -> str:
+        try:
+            rec = f'{self.rec_min_players}'
+            if self.rec_max_players > self.rec_min_players:
+                rec += f' - {self.rec_max_players}'
+            best = f'{self.best_min_players}'
+            if self.best_max_players > self.best_min_players:
+                best += f' - {self.best_max_players}'
+            return f'{rec} (best {best})'
+        except TypeError:
+            return 'tbd'
 
 
 class Player(models.Model):

@@ -1,3 +1,4 @@
+import json
 import logging
 import re
 from datetime import datetime
@@ -19,8 +20,11 @@ from main.models import Game, Label, \
 logger = logging.getLogger(__name__)
 
 URL_RANKINGS = r'https://www.boardgamegeek.com/browse/boardgame/page/'
+URL_GAME = r'https://www.boardgamegeek.com/boardgame/{bgg_id}'
 URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'
 URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'
+URL_GAME_NUMPLAYERS = r'https://www.boardgamegeek.com/geekitempoll.php?action=view&itempolltype=numplayers&objectid={bgg_id}&objecttype=thing'
+URL_GAME_NUMPLAYERS_RESULTS = r'https://www.boardgamegeek.com/geekpoll.php?action=results&pollid={poll_id}'
 URL_PLAYER_RATINGS = r'https://www.boardgamegeek.com/geekcollection.php?ajax=1&action=collectionpage&username={nick}&gallery=&sort=rating&sortdir=desc&page=&pageID={page}&ff=1&hiddencolumns=&publisherid=&searchstr=&rankobjecttype=subtype&rankobjectid=1&columns[]=title&columns[]=rating&columns[]=bggrating&columns[]=comment&minrating=&rating=&minbggrating=&bggrating=&minplays=&maxplays=&searchfield=title&geekranks=Board%20Game%20Rank&subtype=boardgame&excludesubtype=boardgameexpansion&own=both&trade=both&want=both&wanttobuy=both&prevowned=both&comment=both&wishlist=both&rated=both&played=both&wanttoplay=both&preordered=both&hasparts=both&wantparts=both&wishlistpriority='
 
 
@@ -102,41 +106,53 @@ def scrape_rankings() -> List[Game]:
 
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
-def scrape_game_details(game: Game) -> Game:
-    logger.info(f'Scraping details of {game}')
-    res = requests.get(URL_GAME_DETAILS.format(bgg_id=game.bgg_id))
+def scrape_game(game: Game):
+    logger.info(f'Scraping {game}')
+    res = requests.get(URL_GAME.format(bgg_id=game.bgg_id))
     res.raise_for_status()
-    item = res.json()['item']
+    matches = re.search(
+        r'GEEK\.geekitemPreload\s=\s(.*)GEEK\.geekitemSettings', res.text, re.S)
+    json_match = matches.groups()[0]
+    preload = json.loads(json_match.strip().rstrip(';'))
 
     # basic details
-    game.min_players = item['minplayers']
-    game.max_players = item['maxplayers']
-    game.min_play_time = item['minplaytime']
-    game.max_play_time = item['maxplaytime']
-    game.min_age = item['minage']
-    game.pitch = item['short_description']
-    description_html = item['description'].replace('\\', '').replace('\n', ' ')
+    game.min_players = preload['item']['minplayers']
+    game.max_players = preload['item']['maxplayers']
+    game.min_play_time = preload['item']['minplaytime']
+    game.max_play_time = preload['item']['maxplaytime']
+    game.min_age = preload['item']['minage']
+    game.pitch = preload['item']['short_description']
+    description_html = preload['item']['description'].replace('\\', '').replace('\n', ' ')
     description = BeautifulSoup(description_html, 'html.parser').text
     game.description = description.replace('  ', ' ').strip()
-    game.img = item['imageurl'].replace('\\', '')
+    game.img = preload['item']['imageurl'].replace('\\', '')
 
+    # polls
+    polls = preload['item']['polls']
+    game.rec_min_players = polls['userplayers']['recommended'][0]['min']
+    game.rec_max_players = polls['userplayers']['recommended'][0]['max']
+    game.best_min_players = polls['userplayers']['best'][0]['min']
+    game.best_max_players = polls['userplayers']['best'][0]['max']
+    game.rec_min_age = polls['playerage'].rstrip('+')
+    game.weight_avg = polls['boardgameweight']['averageweight']
+
+    # labels
     GAME_LINKS_LABELS = {
         'boardgamecategory': ('categories', LABEL_CATEGORY),
         'boardgamemechanic': ('mechanics', LABEL_MECHANIC),
         'boardgamefamily': ('families', LABEL_FAMILY),
         'boardgamesubdomain': ('subdomains', LABEL_SUBDOMAIN),
     }
-
     for key, val in GAME_LINKS_LABELS.items():
         data = []
-        for link_item in item['links'][key]:
+        for link_item in preload['item']['links'][key]:
             label, _ = Label.objects.get_or_create(
                 bgg_id=link_item['objectid'],
                 defaults={
                     'type': val[1],
                     'name': link_item['name']})
             data.append(label)
-        logger.info(f'Set {len(data)} {val[1]}')
+        # logger.info(f'Set {len(data)} {val[1]}')
         getattr(game, val[0]).set(data)
 
     scrape_game_reviews(game)
@@ -145,8 +161,7 @@ def scrape_game_details(game: Game) -> Game:
     game.scraped_at = now()
     game.save()
 
-    logger.info(f'Saved game details {game}')
-    return game
+    logger.info(f'Saved game {game}')
 
 
 def scrape_game_reviews(game: Game):
@@ -156,7 +171,7 @@ def scrape_game_reviews(game: Game):
     # first run from the front
     p = 0
     existing = 0
-    while existing < 150:
+    while existing <= 100:
         p += 1
         logger.info(f'Scraping page {p}/{num_items // 50 + 1} for reviews...')
         res = get(URL_GAME_RATINGS.format(bgg_id=game.bgg_id, p=p)).json()
@@ -195,7 +210,6 @@ def scrape_game_reviews(game: Game):
     avg_rating = game.reviews.all().aggregate(Avg('rating'))
     game.rating = avg_rating['rating__avg']
     game.review_cnt = game.reviews.count()
-    game.save()
 
     logger.info(f'Finished scraping reviews for {game}!')
 

@@ -5,7 +5,7 @@ from django.core.management import BaseCommand
 from django.utils.timezone import now
 
 from main.models import Game
-from main.scraper import scrape_game_details, scrape_rankings
+from main.scraper import scrape_rankings, scrape_game
 
 logger = logging.getLogger(__name__)
 
@@ -27,17 +27,17 @@ class Command(BaseCommand):
         for game in games:
             counter += 1
             logger.info(f'Progress {counter}/{daily_cut}')
-            scrape_game_details(game)
+            scrape_game(game)
 
-        logger.info(''.join(['='] * 99))
-        logger.info('Scraping new games...')
-        games = Game.objects.filter(scraped_at__isnull=True).all()
-        for game in games:
-            scrape_game_details(game)
-
-        logger.info(''.join(['='] * 99))
-        logger.info('No more new games, will scrape for next one...')
-        scrape_rankings()
+        # logger.info(''.join(['='] * 99))
+        # logger.info('Scraping new games...')
+        # games = Game.objects.filter(scraped_at__isnull=True).all()
+        # for game in games:
+        #     scrape_game(game)
+        #
+        # logger.info(''.join(['='] * 99))
+        # logger.info('No more new games, will scrape for next one...')
+        # scrape_rankings()
 
         logger.info(''.join(['='] * 99))
         logger.info('Scraping done')

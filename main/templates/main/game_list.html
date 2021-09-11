@@ -76,6 +76,16 @@
             {% endif %}
           </th>
           <th>
+            {% if ordering == '-weight_avg' %}
+              <a href="?{% add_param 'o' 'weight_avg' %}">Weight</a>
+            {% else %}
+              <a href="?{% add_param 'o' '-weight_avg' %}">Weight</a>
+            {% endif %}
+            {% if 'weight_avg' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
+          <th>
             {% if ordering == '-reviews_cnt' %}
               <a href="?{% add_param 'o' 'reviews_cnt' %}"># ratings</a>
             {% else %}
@@ -123,6 +133,7 @@
               </a>
             </td>
             <td>{{ game.year }}</td>
+            <td>{{ game.weight_avg|floatformat:2 }}</td>
             <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.hotness %}{{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>
