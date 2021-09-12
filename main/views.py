@@ -44,8 +44,9 @@ def about_view(request):
     ctx = cache.get('about_view')
     if not ctx:
         # player updated
-        oldest_updated_rec = Player.objects.order_by('rec_at').first()
-        player_turnover = (now() - oldest_updated_rec.updated_at).days
+        oldest_updated_rec = Player.objects.filter(
+            rec_at__isnull=False).order_by('rec_at').first()
+        player_turnover = (now() - oldest_updated_rec.rec_at).days
         # game added
         one_month = now() - timedelta(days=30)
         first_game = Game.objects.filter(

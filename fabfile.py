@@ -152,4 +152,4 @@ def run_command(ctx, cmd):
 @task
 def tail_log(ctx):
     conn = get_conn()
-    conn.run(f'tail -10000f {dir}/logs/default.log')
+    conn.run(f'tail -1000f {dir}/logs/default.log')

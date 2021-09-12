@@ -43,9 +43,7 @@
             <h6>Play time: {{ game.min_play_time }}
               {% if game.min_play_time < game.max_play_time %}&mdash;
                 {{ game.max_play_time }}{% endif %}</h6>
-            {% if game.rec_min_age %}
-              <h6>Age: {{ game.rec_min_age }}&plus;</h6>
-            {% endif %}
+            <h6>Age: {{ game.age_fmt }}</h6>
             <h6><a href="{{ game.bgg_link }}" target="_blank">GBB link</a></h6>
           </div>
         </div>

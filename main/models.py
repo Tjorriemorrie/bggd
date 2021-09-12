@@ -93,16 +93,31 @@ class Game(models.Model):
         return ', '.join([c.name for c in self.categories.all()])
 
     def players_fmt(self) -> str:
-        try:
+        if self.rec_min_players:
             rec = f'{self.rec_min_players}'
             if self.rec_max_players > self.rec_min_players:
                 rec += f' - {self.rec_max_players}'
+        elif self.min_players:
+            rec = f'{self.min_players}'
+            if self.max_players > self.min_players:
+                rec += f' - {self.max_players}'
+        else:
+            rec = ''
+        if self.best_min_players:
             best = f'{self.best_min_players}'
             if self.best_max_players > self.best_min_players:
                 best += f' - {self.best_max_players}'
-            return f'{rec} (best {best})'
-        except TypeError:
-            return 'tbd'
+            best = f' (best {best})'
+        else:
+            best = ''
+        return rec + best
+
+    def age_fmt(self) -> str:
+        if self.rec_min_age:
+            return f'{self.rec_min_age}+'
+        elif self.min_age:
+            return f'{self.min_age}+'
+        return ''
 
 
 class Player(models.Model):
