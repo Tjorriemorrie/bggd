@@ -153,3 +153,16 @@ def run_command(ctx, cmd):
 def tail_log(ctx):
     conn = get_conn()
     conn.run(f'tail -1000f {dir}/logs/default.log')
+
+
+@task
+def run_cron(ctx):
+    conn = get_conn()
+    cmds = [
+        f'cd {dir}',
+        'source env/bin/activate',
+        f'./cron.sh',
+    ]
+    conn.run(' && '.join(cmds), echo=True)
+
+

@@ -115,13 +115,11 @@ class Command(BaseCommand):
             players = Player.objects.order_by(
                 'scraped_at').all()[:1_000]
 
-        logger.info(''.join(['='] * 99))
-        logger.info('Done')
+        logger.info(''.join(['='] * 50) + ' scraping done ' + ''.join(['='] * 50))
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def handle(self, *args, **options):
         try:
             self._loader()
         except OutOfTimeError:
-            logger.info('Out of time!')
-            logger.info(''.join(['='] * 99))
+            logger.info(''.join(['='] * 50) + ' outta time ' + ''.join(['='] * 50))

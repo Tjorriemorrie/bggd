@@ -15,7 +15,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        counter = 0
         limit = 3
         total_game_cnt = Game.objects.count()
         daily_cut = total_game_cnt // limit
@@ -24,20 +23,19 @@ class Command(BaseCommand):
         logger.info('Updating already scraped games...')
         time_ago = now() - timedelta(days=limit)
         games = Game.objects.filter(scraped_at__lt=time_ago).all()[:daily_cut]
-        for game in games:
-            counter += 1
-            logger.info(f'Progress {counter}/{daily_cut}')
+        for ix, game in enumerate(games):
+            logger.info(f'Progress {ix}/{len(games)}')
             scrape_game(game)
 
-        # logger.info(''.join(['='] * 99))
-        # logger.info('Scraping new games...')
-        # games = Game.objects.filter(scraped_at__isnull=True).all()
-        # for game in games:
-        #     scrape_game(game)
-        #
-        # logger.info(''.join(['='] * 99))
-        # logger.info('No more new games, will scrape for next one...')
-        # scrape_rankings()
+        logger.info(''.join(['='] * 99))
+        logger.info('Scraping new games...')
+        games = Game.objects.filter(scraped_at__isnull=True).all()
+        for ix, game in enumerate(games):
+            logger.info(f'Progress {ix}/{len(games)}')
+            scrape_game(game)
 
         logger.info(''.join(['='] * 99))
-        logger.info('Scraping done')
+        logger.info('No more new games, will scrape for next one...')
+        scrape_rankings()
+
+        logger.info(''.join(['='] * 50) + ' scraping done ' + ''.join(['='] * 50))
