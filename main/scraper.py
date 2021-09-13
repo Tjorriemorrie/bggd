@@ -217,9 +217,9 @@ def scrape_game_reviews(game: Game):
 
 
 def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
-    item['rating'] = round(item['rating'], 1)
-    item['rating'] = max([1, item['rating']])
-    item['rating'] = min([10, item['rating']])
+    item['rating'] = round(float(item['rating']), 1)
+    item['rating'] = max([1., item['rating']])
+    item['rating'] = min([10., item['rating']])
     player, _ = Player.objects.get_or_create(
         nick=item['user']['username'],
         defaults={
@@ -314,8 +314,8 @@ def scrape_player_ratings(player: Player):
             if rating_info[0] == 'N/A':
                 continue
             rating = round(float(rating_info[0]), 1)
-            rating = min(10, rating)
-            rating = max(1, rating)
+            rating = min(10., rating)
+            rating = max(1., rating)
             rated_on = make_aware(datetime.strptime(rating_info[1].rstrip('*'), '%b %Y'))
             # get comment
             comment_and_date = list(cells[3].stripped_strings)

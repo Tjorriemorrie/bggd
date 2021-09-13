@@ -2,7 +2,9 @@ import logging
 from datetime import timedelta
 
 from django.core.management import BaseCommand
+from django.db import OperationalError
 from django.utils.timezone import now
+from retry import retry
 
 from main.models import Game
 from main.scraper import scrape_rankings, scrape_game
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = 'Scrape bgg for data'
 
+    @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def handle(self, *args, **options):
 
         limit = 3

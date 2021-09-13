@@ -5,7 +5,7 @@ from operator import attrgetter
 import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
-from django.db.models import Q, Count, Sum, F
+from django.db.models import Q, Count, Sum, F, Avg
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -44,9 +44,10 @@ def about_view(request):
     ctx = cache.get('about_view')
     if not ctx:
         # player updated
-        oldest_updated_rec = Player.objects.filter(
-            rec_at__isnull=False).order_by('rec_at').first()
-        player_turnover = (now() - oldest_updated_rec.rec_at).days
+        player_cnt = Player.objects.count()
+        median_updated_rec = Player.objects.filter(
+            rec_at__isnull=False).order_by('rec_at')[player_cnt // 2]
+        player_turnover = (now() - median_updated_rec.rec_at).days
         # game added
         one_month = now() - timedelta(days=30)
         first_game = Game.objects.filter(
