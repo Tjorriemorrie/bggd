@@ -32,7 +32,7 @@ def home_view(request):
             'nav': 'home',
             'game_cnt': Game.objects.count(),
             'player_cnt': Player.objects.count(),
-            'review_cnt': Review.objects.count(),
+            'reviews_cnt': Review.objects.count(),
             'hotness': Game.objects.order_by('-hotness')[:10],
             'upcoming': upcoming,
         }

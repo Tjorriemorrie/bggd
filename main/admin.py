@@ -15,13 +15,13 @@ def scrape_game_cmd(modeladmin, request, queryset):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt', 'scraped_at', 'bgg_id')
+    list_display = ('rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id')
     ordering = ('-year', 'rank')
     actions = (scrape_game_cmd,)
 
-    def reviews_cnt(self, obj: Game):
+    def reviews_cnt_fmt(self, obj: Game):
         url = reverse('admin:main_review_changelist')
-        return format_html(f'<a href="{url}?game={obj.pk}">{obj.reviews.count()}</a>')
+        return format_html(f'<a href="{url}?game={obj.pk}">{obj.reviews_cnt}</a>')
 
     def title(self, obj: Game):
         return format_html(

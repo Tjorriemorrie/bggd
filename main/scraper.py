@@ -211,7 +211,7 @@ def scrape_game_reviews(game: Game):
     # update rating
     avg_rating = game.reviews.all().aggregate(Avg('rating'))
     game.rating = avg_rating['rating__avg']
-    game.review_cnt = game.reviews.count()
+    game.reviews_cnt = game.reviews.count()
 
     logger.info(f'Finished scraping reviews for {game}!')
 
