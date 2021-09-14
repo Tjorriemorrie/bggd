@@ -86,9 +86,7 @@
                   <h5 class="card-title">{{ up.name }}</h5>
                   <p class="card-text">
                     <small class="text-muted">
-                      # recs: {{ up.recs_cnt|intcomma }}
-                      <br/>
-                      # ratings: {{ up.reviews_cnt|intcomma }}
+                      score: {{ up.score|floatformat }}
                     </small>
                   </p>
                 </div>

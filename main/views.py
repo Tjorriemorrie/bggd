@@ -26,7 +26,7 @@ def home_view(request):
             Q(recs_cnt__isnull=False) &
             Q(hotness__isnull=False) &
             Q(hotness__gt=0)
-        ).annotate(score=F('recs_cnt') / F('reviews_cnt')).order_by(
+        ).annotate(score=F('recs_cnt') / (F('reviews_cnt') + F('hotness'))).order_by(
             '-score').all()[:5]
         ctx = {
             'nav': 'home',
