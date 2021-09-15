@@ -70,7 +70,7 @@ def get(url: str) -> requests.Response:
 def scrape_rankings() -> List[Game]:
     logger.info('Scraping rankings...')
     games = []
-    name_pattern = re.compile(r'(.*)\s\((\d{4})\)')
+    name_pattern = re.compile(r'(.*)\s\((-?\d+)\)')
     id_pattern = re.compile(r'/boardgame/(\d+)/')
     created = False
     page = 0

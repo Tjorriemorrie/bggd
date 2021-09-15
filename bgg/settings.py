@@ -33,6 +33,8 @@ DEBUG = True
 ALLOWED_HOSTS = [
     '127.0.0.1',
     '178.62.218.44',
+    'bggdata.co.za',
+    'www.bggdata.co.za',
 ]
 
 

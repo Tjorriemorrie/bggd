@@ -37,8 +37,8 @@ class Game(models.Model):
 
     bgg_id = models.PositiveIntegerField(db_index=True)
     name = models.CharField(max_length=250)
-    year = models.PositiveIntegerField(
-        validators=[MinValueValidator(1900), MaxValueValidator(now().year)])
+    year = models.IntegerField(
+        validators=[MinValueValidator(-2500), MaxValueValidator(now().year + 1)])
     url = models.CharField(max_length=250)
     rank = models.PositiveIntegerField()
 
