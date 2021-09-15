@@ -133,7 +133,7 @@
               </a>
             </td>
             <td>{{ game.year }}</td>
-            <td>{{ game.weight_avg|floatformat:2 }}</td>
+            <td>{% if game.weight_tag %}{{ game.weight_tag }}{% endif %}</td>
             <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.hotness %}{{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>

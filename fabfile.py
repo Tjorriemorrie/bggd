@@ -35,12 +35,10 @@ def get_conn() -> Connection:
 def backup_data(ctx):
     print('Backing up data...')
     conn = get_conn()
-    conn.run(f'mkdir -p {dir}/backups', echo=True)
-    today = datetime.utcnow().strftime('%y%m%d')
-    db_file = f'db.sqlite3.{today}'
-    mdl_file = f'model.pkl.{today}'
-    conn.run(f'cp {dir}/db.sqlite3 {dir}/backups/{db_file}', echo=True)
-    conn.run(f'cp {dir}/model.pkl {dir}/backups/{mdl_file}', echo=True)
+    db_file = 'db.sqlite3.bck'
+    mdl_file = 'model.pkl.bck'
+    conn.run(f'cp {dir}/db.sqlite3 {dir}/{db_file}', echo=True)
+    conn.run(f'cp {dir}/model.pkl {dir}/{mdl_file}', echo=True)
     return db_file, mdl_file
 
 
@@ -64,8 +62,11 @@ def retrieve_data(ctx):
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
-    conn.local(f'cp backups/{db_file} db.sqlite3', echo=True)
-    conn.local(f'cp backups/{mdl_file} model.pkl', echo=True)
+    today = datetime.utcnow().strftime('%y%m%d')
+    conn.local(f'mv backups/{db_file} db.sqlite3.{today}')
+    conn.local(f'cp backups/db.sqlite3.{today} db.sqlite3', echo=True)
+    conn.local(f'mv backups/{mdl_file} model.pkl.{today}')
+    conn.local(f'cp backups/model.pkl.{today} model.pkl', echo=True)
 
 
 @task

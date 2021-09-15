@@ -75,7 +75,7 @@
           <p>{{ game.reviews_cnt|intcomma }} reviews</p>
         {% endif %}
         {% if game.weight_avg %}
-          <h5>Weight: {{ game.weight_avg|floatformat:2 }}</h5>
+          <h5>Weight: {{ game.weight_tag }}</h5>
         {% endif %}
         {% if rating_graph %}
           <p>{{ rating_graph|safe }}</p>

@@ -1,6 +1,12 @@
-from django.db.models import Sum, Avg, F
+import logging
+from datetime import timedelta
 
-from main.models import Player, GameDay, Day
+from django.db.models import Sum, Avg, F, Q
+from django.utils.timezone import now
+import numpy as np
+from main.models import Player, GameDay, Day, Game
+
+logger = logging.getLogger(__name__)
 
 
 def update_gamedays(player: Player):
@@ -55,3 +61,35 @@ def update_gamedays(player: Player):
         day.reviews_avg = day.gamedays.aggregate(Avg('reviews_avg'))['reviews_avg__avg']
         day.reviews_adj = day.gamedays.aggregate(Avg('reviews_adj'))['reviews_adj__avg']
         day.save()
+
+
+def update_hotness():
+    logger.info('Updating hotness...')
+    one_month = now() - timedelta(days=30)
+    gamedays_one_month = GameDay.objects.filter(
+        day__day__gte=one_month).order_by('game').values('game').annotate(
+        score=Sum(F('reviews_cnt') * F('reviews_adj')))
+    for info in gamedays_one_month:
+        game = Game.objects.get(id=info['game'])
+        game.hotness = info['score']
+        game.save()
+
+
+def update_weights():
+    weights = Game.objects.filter(weight_avg__isnull=False).values_list('weight_avg', flat=True)
+    weights = np.array(weights)
+    cuts = np.percentile(weights, [33, 66])
+    logger.info(f'Updating weights between {cuts[0]:.2f} and {cuts[1]:.2f}')
+    Game.objects.filter(
+        Q(weight_avg__isnull=False) &
+        Q(weight_avg__lt=cuts[0])
+    ).update(weight_tag='Light')
+    Game.objects.filter(
+        Q(weight_avg__isnull=False) &
+        Q(weight_avg__gt=cuts[1])
+    ).update(weight_tag='Heavy')
+    Game.objects.filter(
+        Q(weight_avg__isnull=False) &
+        Q(weight_avg__gte=cuts[0]) &
+        Q(weight_avg__lte=cuts[1])
+    ).update(weight_tag='Medium')

@@ -61,6 +61,7 @@ class Game(models.Model):
     best_max_players = models.PositiveSmallIntegerField(null=True)
     # weight
     weight_avg = models.FloatField(null=True)
+    weight_tag = models.CharField(max_length=20, null=True)
 
     # from reviews
     rating = models.FloatField(null=True)  # scrape cron update
