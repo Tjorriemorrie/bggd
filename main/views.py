@@ -5,7 +5,7 @@ from operator import attrgetter
 import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
-from django.db.models import Q, Count, Sum, F, Avg
+from django.db.models import Q, Count, F
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
@@ -14,7 +14,8 @@ from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
 
-from main.models import Game, Player, Review, Day, GameDay
+from bgg.settings import CACHE_DURATION
+from main.models import Game, Player, Review, Day
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +69,7 @@ class ViewError(Exception):
     """Bad view setup"""
 
 
-# @method_decorator(cache_page(60 * 60 * 24), name='dispatch')
+@method_decorator(cache_page(CACHE_DURATION), name='dispatch')
 class CachedDispatch(View):
     pass
 

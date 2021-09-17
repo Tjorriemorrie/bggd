@@ -114,7 +114,7 @@ def deploy(ctx):
     ]
     conn.run(' && '.join(cmds), echo=True)
     conn.run(f'sed -i "s/DEBUG = True/DEBUG = False/g" {dir}/bgg/settings.py', echo=True)
-    conn.run(f'sed -i "s/# @method_decorator/@method_decorator/g" {dir}/main/views.py', echo=True)
+    # conn.run(f'sed -i "s/# @method_decorator/@method_decorator/g" {dir}/main/views.py', echo=True)
     conn.run(f'rm {dir}/deploy.tar.gz', echo=True)
 
     systemctl(ctx, 'start nginx')

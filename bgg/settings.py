@@ -94,11 +94,12 @@ DATABASES = {
 }
 
 # Local Memory Cache
+CACHE_DURATION = DEBUG and 1 or 60 * 60 * 1
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         # 'LOCATION': 'DataFlair',
-        'TIMEOUT': DEBUG and 1 or 60 * 60 * 24
+        'TIMEOUT': CACHE_DURATION
     }
 }
 
