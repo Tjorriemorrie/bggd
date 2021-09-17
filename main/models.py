@@ -185,6 +185,9 @@ class GameDay(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    class Meta:
+        unique_together = ('game', 'day')
+
     def __str__(self) -> str:
         return f'<GameDay game={self.game.name} {self.day.day:"%y-%m-%d"} cnt={self.reviews_cnt} avg={round(self.reviews_avg, 1)}>'
 
