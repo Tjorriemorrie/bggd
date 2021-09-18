@@ -25,7 +25,6 @@ def update_gamedays(player: Player):
             defaults={
                 'reviews_cnt': 1,
                 'reviews_avg': review.rating,
-                'reviews_adj': adj_rating,
                 'last_review_id': review.id,
                 'last_review_update': review.updated_at})
         gameday, gameday_created = GameDay.objects.get_or_create(
@@ -33,8 +32,7 @@ def update_gamedays(player: Player):
             day=day,
             defaults={
                 'reviews_cnt': 1,
-                'reviews_avg': review.rating,
-                'reviews_adj': adj_rating})
+                'reviews_avg': review.rating})
         review.gameday = gameday
         review.save()
 
@@ -51,15 +49,12 @@ def update_gamedays(player: Player):
         gameday.reviews_cnt = gameday.reviews.count()
         gameday.reviews_avg = gameday.reviews.aggregate(
             avg_rating=Avg('rating'))['avg_rating']
-        gameday.reviews_adj = gameday.reviews.aggregate(
-            adj_rating=Avg(F('rating') * F('player__reviews_scr')))['adj_rating']
         gameday.save()
 
     # update days in one go
     for day in outdated_days:
         day.reviews_cnt = day.gamedays.aggregate(Sum('reviews_cnt'))['reviews_cnt__sum']
         day.reviews_avg = day.gamedays.aggregate(Avg('reviews_avg'))['reviews_avg__avg']
-        day.reviews_adj = day.gamedays.aggregate(Avg('reviews_adj'))['reviews_adj__avg']
         day.save()
 
 
@@ -68,7 +63,7 @@ def update_hotness():
     one_month = now() - timedelta(days=30)
     gamedays_one_month = GameDay.objects.filter(
         day__day__gte=one_month).order_by('game').values('game').annotate(
-        score=Sum(F('reviews_cnt') * F('reviews_adj')))
+        score=Sum(F('reviews_cnt') * F('reviews_avg')))
     for info in gamedays_one_month:
         game = Game.objects.get(id=info['game'])
         game.hotness = info['score']
