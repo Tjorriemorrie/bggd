@@ -1,5 +1,5 @@
 import logging
-from datetime import timedelta
+from datetime import timedelta, datetime
 from operator import attrgetter
 
 import pandas as pd
@@ -9,7 +9,7 @@ from django.db.models import Q, Count, F
 from django.db.models.functions import TruncMonth
 from django.shortcuts import render
 from django.utils.decorators import method_decorator
-from django.utils.timezone import now
+from django.utils.timezone import now, make_aware
 from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
@@ -25,8 +25,7 @@ def home_view(request):
     if not ctx:
         upcoming = Game.objects.filter(
             Q(recs_cnt__isnull=False) &
-            Q(hotness__isnull=False) &
-            Q(hotness__gt=0)
+            Q(hotness__isnull=False)
         ).annotate(score=F('recs_cnt') / (F('reviews_cnt') + F('hotness'))).order_by(
             '-score').all()[:5]
         ctx = {
@@ -44,11 +43,16 @@ def home_view(request):
 def about_view(request):
     ctx = cache.get('about_view')
     if not ctx:
+        sept13 = make_aware(datetime(2021, 9, 13))
         # player updated
         player_cnt = Player.objects.count()
-        median_updated_rec = Player.objects.filter(
-            rec_at__isnull=False).order_by('rec_at')[player_cnt // 2]
-        player_turnover = (now() - median_updated_rec.rec_at).days
+        last_updated_rec = Player.objects.filter(
+            Q(reviews_scr__gte=1) &
+            Q(reviews_scr__lte=10) &
+            Q(reviews_cnt__gte=3) &
+            Q(updated_at__gt=sept13)
+        ).order_by('rec_at').first()
+        player_turnover = (now() - last_updated_rec.rec_at).days
         # game added
         one_month = now() - timedelta(days=30)
         first_game = Game.objects.filter(
@@ -160,7 +164,11 @@ class PlayerListView(OrderingListView, SearchListView, CachedDispatch):
     paginate_by = 100
     ordering = '-reviews_scr'
     search_by = 'nick'
-    queryset = Player.objects.filter(reviews_scr__isnull=False)
+    queryset = Player.objects.filter(
+        Q(reviews_scr__gt=1) &
+        Q(reviews_scr__lt=10) &
+        Q(reviews_cnt__gte=3) &
+        Q(updated_at__gt=make_aware(datetime(2021, 9, 13))))
 
 
 class PlayerDetailView(DetailView):

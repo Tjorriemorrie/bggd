@@ -33,7 +33,8 @@ def train_model():
     logger.info('Training model...')
 
     logger.info('Loading data...')
-    values = Review.objects.values_list('player_id', 'game_id', 'rating')
+    player_ids = Player.objects.filter(reviews_cnt__gte=3).values_list('id', flat=True)
+    values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
     df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
 
     logger.info('Creating dataset...')
