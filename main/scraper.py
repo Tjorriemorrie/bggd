@@ -220,11 +220,15 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
     item['rating'] = round(float(item['rating']), 1)
     item['rating'] = max([1., item['rating']])
     item['rating'] = min([10., item['rating']])
-    player, _ = Player.objects.get_or_create(
-        nick=item['user']['username'],
-        defaults={
-            'country': item['user']['country'],
-            'avatar': item['user'].get('avatarurl_md')})
+    try:
+        player, _ = Player.objects.get_or_create(
+            nick=item['user']['username'],
+            defaults={
+                'country': item['user']['country'],
+                'avatar': item['user'].get('avatarurl_md')})
+    except Player.MultipleObjectsReturned:
+        logger.info(f'Found multiple nicks {item["user"]["username"]}')
+        raise
     tstamp = item['review_tstamp'] or item['tstamp']
     reviewed_at = make_aware(
         datetime.strptime(tstamp, '%Y-%m-%d %H:%M:%S'))

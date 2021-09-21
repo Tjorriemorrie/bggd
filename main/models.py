@@ -123,7 +123,7 @@ class Game(models.Model):
 
 class Player(models.Model):
     bgg_id = models.PositiveIntegerField(null=True)
-    nick = models.CharField(max_length=256, db_index=True)
+    nick = models.CharField(max_length=256, unique=True)
 
     # updated in scrape
     name = models.CharField(max_length=256, null=True)
