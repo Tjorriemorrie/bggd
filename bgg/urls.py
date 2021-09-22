@@ -22,6 +22,7 @@ urlpatterns = [
     # path('favicon.ico', RedirectView.as_view(url=staticfiles_storage.url('favicon.ico')),),
     path('admin/', admin.site.urls),
     path('', views.home_view, name='home'),
+    path('got/', views.got_view, name='got'),
     path('about/', views.about_view, name='about'),
     path('games/', views.GameListView.as_view(), name='game_list'),
     path('games/<int:pk>', views.GameDetailView.as_view(), name='game_detail'),

@@ -58,9 +58,9 @@
           <th>Name</th>
           <th>
             {% if ordering == 'reviews_cnt' %}
-              <a href="?{% add_param 'o' '-reviews_cnt' %}"># ratings</a>
+              <a href="?{% add_param 'o' '-reviews_cnt' %}"># board games</a>
             {% else %}
-              <a href="?{% add_param 'o' 'reviews_cnt' %}"># ratings</a>
+              <a href="?{% add_param 'o' 'reviews_cnt' %}"># board games</a>
             {% endif %}
             {% if 'reviews_cnt' in ordering %}
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
@@ -74,7 +74,9 @@
           <tr>
             <td class="text-muted">{{ forloop.counter0|add:page_obj.start_index }}</td>
             <td>{{ player.reviews_scr|floatformat }}</td>
-            <td><a href="{% url 'player_detail' player.pk %}">{{ player.nick }}</a></td>
+            <td><a class="text-reset text-decoration-none" href="{% url 'player_detail' player.pk %}">
+              <strong>{{ player.nick }}</strong>
+            </a></td>
             <td>{% if player.name %}{{ player.name }}{% endif %}</td>
             <td>{{ player.reviews_cnt|intcomma }}</td>
             <td>{{ player.geo }}</td>

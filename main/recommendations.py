@@ -52,7 +52,7 @@ def train_model():
     with open(FILE_MODEL, 'w+b') as fp:
         pickle.dump(algo, fp)
 
-    logger.info(f'algorithm fitted on {df.size}!')
+    logger.info(f'algorithm fitted on {len(df)}!')
 
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)

@@ -1,10 +1,15 @@
 import logging
-from datetime import timedelta
+from copy import copy
+from datetime import timedelta, datetime
 
 from django.db.models import Sum, Avg, F, Q
 from django.utils.timezone import now
 import numpy as np
-from main.models import Player, GameDay, Day, Game
+import pandas as pd
+
+from main.constants import START_GAME_OF_THE
+from main.models import Player, GameDay, Day, Game, Award, AWARD_GAME_OF_THE_MONTH, \
+    AWARD_GAME_OF_THE_YEAR
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +22,6 @@ def update_gamedays(player: Player):
     outdated_gamedays = set()
 
     for review in player.reviews.all():
-        adj_rating = review.rating * (player.reviews_scr / 10)
-
         # create to set review's gameday
         day, day_created = Day.objects.get_or_create(
             day=review.day,
@@ -88,3 +91,85 @@ def update_weights():
         Q(weight_avg__gte=cuts[0]) &
         Q(weight_avg__lte=cuts[1])
     ).update(weight_tag='Medium')
+
+
+def go_to_next_month(dt: datetime) -> datetime:
+    dt_copy = copy(dt)
+    current_month = dt.month
+    while dt_copy.month == current_month:
+        dt_copy += timedelta(days=1)
+    return dt_copy
+
+
+def update_game_of_the_month():
+    logger.info('Awarding game of the month!')
+    logger.info('Clearing existing awards...')
+    Award.objects.filter(type=AWARD_GAME_OF_THE_MONTH).delete()
+    current_month = START_GAME_OF_THE
+    next_month = go_to_next_month(current_month)
+    used_game_ids = set()
+    while next_month < now():
+        cutoff = current_month - timedelta(days=30)
+        top_game = GameDay.objects.exclude(
+            game_id__in=used_game_ids
+        ).filter(
+            Q(day__day__lt=next_month)
+            & Q(day__day__gte=cutoff)
+        ).order_by('game_id').values('game_id').annotate(
+            score=Sum(F('reviews_cnt') * F('reviews_avg'))
+        ).order_by('-score').first()
+        if not top_game:
+            logger.warning(f'No top game for {current_month}')
+        else:
+            award = Award.objects.create(
+                type=AWARD_GAME_OF_THE_MONTH,
+                awarded_at=current_month,
+                game_id=top_game['game_id'],
+                description=f'Game of the Month {current_month:%b %y}',
+                badge=f'{current_month:%b %y}',
+                score=top_game['score'])
+            used_game_ids.add(top_game['game_id'])
+            logger.info(f'{award}')
+
+        current_month, next_month = next_month, go_to_next_month(next_month)
+
+
+def go_to_next_year(dt: datetime) -> datetime:
+    dt_copy = copy(dt)
+    current_year = dt.year
+    while dt_copy.year == current_year:
+        dt_copy += timedelta(days=1)
+    return dt_copy
+
+
+def update_game_of_the_year():
+    logger.info('Awarding game of the year!')
+    logger.info('Clearing existing awards...')
+    Award.objects.filter(type=AWARD_GAME_OF_THE_YEAR).delete()
+    current_year = START_GAME_OF_THE
+    next_year = go_to_next_year(current_year)
+    used_game_ids = set()
+    while next_year < now():
+        cutoff = current_year - timedelta(days=360)
+        top_game = GameDay.objects.exclude(
+            game_id__in=used_game_ids
+        ).filter(
+            Q(day__day__lt=next_year)
+            & Q(day__day__gte=cutoff)
+        ).order_by('game_id').values('game_id').annotate(
+            score=Sum(F('reviews_cnt') * F('reviews_avg'))
+        ).order_by('-score').first()
+        if not top_game:
+            logger.warning(f'No top game for {current_year}')
+        else:
+            award = Award.objects.create(
+                type=AWARD_GAME_OF_THE_YEAR,
+                awarded_at=current_year,
+                    game_id=top_game['game_id'],
+                    description=f'Game of the Year {current_year:%Y}',
+                    badge=f'{current_year:%Y}',
+                    score=top_game['score'])
+            used_game_ids.add(top_game['game_id'])
+            logger.info(f'{award}')
+
+        current_year, next_year = next_year, go_to_next_year(next_year)

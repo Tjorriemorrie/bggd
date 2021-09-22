@@ -69,6 +69,9 @@
 
       <div class="col-4 text-center">
         <h2>#{{ game.rank }}</h2>
+        {% if game.awards.count %}
+          <h6>{{ game.awards_fmt|safe }}</h6>
+        {% endif %}
         <br/>
         <h3>{{ game.rating|floatformat }}</h3>
         {% if game.reviews_cnt %}

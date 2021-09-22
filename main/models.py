@@ -11,6 +11,9 @@ LABEL_MECHANIC = 'mechanic'
 LABEL_FAMILY = 'family'
 LABEL_SUBDOMAIN = 'subdomain'
 
+AWARD_GAME_OF_THE_MONTH = 'Game of the month'
+AWARD_GAME_OF_THE_YEAR = 'Game of the year'
+
 
 class Label(models.Model):
     CHOICES_LABELS = (
@@ -120,6 +123,21 @@ class Game(models.Model):
             return f'{self.min_age}+'
         return ''
 
+    def awards_fmt(self) -> str:
+        badges = []
+        for award in self.awards.all():
+            if award.type == AWARD_GAME_OF_THE_YEAR:
+                bg = 'bg-success text-light'
+                trophy = '<i class="bi bi-trophy-fill"></i>'
+            else:
+                bg = 'bg-light text-muted'
+                trophy = '<i class="bi bi-trophy"></i>'
+            badges.append(f"""<span class="badge {bg}" title="{award.description}">
+                {trophy}
+                {award.badge}
+            </span>""")
+        return ''.join(badges)
+
 
 class Player(models.Model):
     bgg_id = models.PositiveIntegerField(null=True)
@@ -223,3 +241,23 @@ class Review(models.Model):
     @property
     def day(self) -> datetime:
         return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)
+
+
+class Award(models.Model):
+    CHOICES_AWARDS = (
+        (AWARD_GAME_OF_THE_MONTH, AWARD_GAME_OF_THE_MONTH),
+        (AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_YEAR),
+    )
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='awards', null=True)
+
+    type = models.CharField(max_length=256, choices=CHOICES_AWARDS)
+    description = models.CharField(max_length=256, null=True)
+    badge = models.CharField(max_length=256, null=True)
+    awarded_at = models.DateTimeField(null=True)
+    score = models.FloatField(null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f'<Award {self.description} game={self.game}>'

@@ -1,0 +1,104 @@
+{% extends 'main/base.html' %}
+
+{% block content %}
+  <div class="container">
+
+    {% include 'main/navbar.html' with nav='got' %}
+
+    <br/>
+    <div class="row">
+      <div class="col">
+        <h2>Game of the</h2>
+        <p>The game of the month/year follow the same scoring as hotness - for
+          ratings during that month/year - so it does not relate to the
+          release date.</p>
+        <p>Basically the hotness of the month/year award. May the most and
+          best rated game win.</p>
+        <p>Awarded since {{ start_at|date:'M Y' }}.</p>
+      </div>
+    </div>
+
+    {% for year, cat in award_groups.items %}
+      <div class="row">
+        <div class="col">
+          <br/>
+          <br/>
+          <h3>{{ year }}</h3>
+          <br/>
+        </div>
+      </div>
+
+      <div class="row">
+        <div class="col-3">
+          {% with cat.year as award %}
+            {% if award %}
+              <div class="card border-dark">
+                <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
+                  <img src="{{ award.game.img }}" class="card-img-top"/>
+                  <div class="card-body">
+                    <h5 class="card-title">{{ award.game.name }}</h5>
+                    <p class="card-text">
+                      {{ award.description }}
+                    </p>
+                  </div>
+                </a>
+              </div>
+            {% endif %}
+          {% endwith %}
+        </div>
+
+        <div class="col-9">
+
+          {# top row #}
+          <div class="row">
+            <div class="col">
+              {% if cat.top %}
+                <div class="card-group">
+                  {% for award in cat.top %}
+                    <div class="card border-dark">
+                      <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
+                        <img src="{{ award.game.img }}" class="card-img-top"/>
+                        <div class="card-body">
+                          <h5 class="card-title">{{ award.game.name }}</h5>
+                          <p class="card-text">
+                            {{ award.description }}
+                          </p>
+                        </div>
+                      </a>
+                    </div>
+                  {% endfor %}
+                </div>
+              {% endif %}
+            </div>
+          </div>
+
+          {# bottom row #}
+          <div class="row">
+            <div class="col">
+              {% if cat.bottom %}
+                <div class="card-group">
+                  {% for award in cat.bottom %}
+                    <div class="card border-dark">
+                      <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
+                        <img src="{{ award.game.img }}" class="card-img-top"/>
+                        <div class="card-body">
+                          <h5 class="card-title">{{ award.game.name }}</h5>
+                          <p class="card-text">
+                            {{ award.description }}
+                          </p>
+                        </div>
+                      </a>
+                    </div>
+                  {% endfor %}
+                </div>
+            {% endif %}
+            </div>
+          </div>
+
+        </div>{# col9 #}
+
+      </div>{# row #}
+    {% endfor %}
+
+  </div>{# container #}
+{% endblock %}

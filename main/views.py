@@ -15,7 +15,9 @@ from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
 
 from bgg.settings import CACHE_DURATION
-from main.models import Game, Player, Review, Day
+from main.constants import START_GAME_OF_THE
+from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR, \
+    AWARD_GAME_OF_THE_MONTH
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +40,37 @@ def home_view(request):
         }
         cache.set('home_view', ctx)
     return render(request, 'main/home.html', ctx)
+
+
+def got_view(request):
+    ctx = cache.get('got_view')
+    if not ctx:
+        award_groups = {}
+        to = now().year + 1
+        for year in reversed(range(2010, to)):
+            half_year = make_aware(datetime(year, 7, 1))
+            award_groups[year] = {
+                'year': Award.objects.filter(
+                    Q(type=AWARD_GAME_OF_THE_YEAR)
+                    & Q(awarded_at__year=year)
+                ).first(),
+                'top': Award.objects.filter(
+                    Q(type=AWARD_GAME_OF_THE_MONTH)
+                    & Q(awarded_at__year=year)
+                    & Q(awarded_at__lt=half_year)
+                ).order_by('awarded_at').all(),
+                'bottom': Award.objects.filter(
+                    Q(type=AWARD_GAME_OF_THE_MONTH)
+                    & Q(awarded_at__year=year)
+                    & Q(awarded_at__gte=half_year)
+                ).order_by('awarded_at').all(),
+            }
+        ctx = {
+            'start_at': START_GAME_OF_THE,
+            'award_groups': award_groups,
+        }
+        cache.set('got_view', ctx)
+    return render(request, 'main/got.html', context=ctx)
 
 
 def about_view(request):

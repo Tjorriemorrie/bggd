@@ -3,7 +3,7 @@ from django.db.models import F
 from django.urls import reverse
 from django.utils.html import format_html
 
-from main.models import Game, Review, Player
+from main.models import Game, Review, Player, Day
 from main.scraper import scrape_game
 
 
@@ -45,3 +45,9 @@ class ReviewAdmin(admin.ModelAdmin):
 class PlayerAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'nick')
     search_fields = ('nick',)
+
+
+@admin.register(Day)
+class PlayerAdmin(admin.ModelAdmin):
+    list_display = ('id', 'day', 'reviews_cnt', 'reviews_avg')
+    ordering = ('day',)

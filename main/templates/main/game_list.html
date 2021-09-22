@@ -127,7 +127,7 @@
             </td>
             <td>
               <a class="text-reset text-decoration-none" href="{% url 'game_detail' game.pk %}">
-                {{ game.name }}
+                <strong>{{ game.name }}</strong> {{ game.awards_fmt|safe }}
                 <br/>
                 <small class="text-muted">{{ game.pitch }}</small>
               </a>
