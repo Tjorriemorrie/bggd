@@ -23,6 +23,13 @@ class Command(BaseCommand):
         daily_cut = total_game_cnt // limit
 
         logger.info(''.join(['='] * 99))
+        logger.info('Updating top 10 hotness for home page...')
+        games = Game.objects.order_by('-hotness').all()[:10]
+        for ix, game in enumerate(games):
+            logger.info(f'Progress {ix}/{len(games)}')
+            scrape_game(game)
+
+        logger.info(''.join(['='] * 99))
         logger.info('Updating already scraped games...')
         time_ago = now() - timedelta(days=limit)
         games = Game.objects.filter(scraped_at__lt=time_ago).all()[:daily_cut]

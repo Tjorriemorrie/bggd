@@ -1,6 +1,7 @@
 import logging
 from copy import copy
 from datetime import timedelta, datetime
+from operator import itemgetter
 
 from django.db.models import Sum, Avg, F, Q
 from django.utils.timezone import now
@@ -109,14 +110,13 @@ def update_game_of_the_month():
     next_month = go_to_next_month(current_month)
     used_game_ids = set()
     while next_month < now():
-        cutoff = current_month - timedelta(days=30)
         top_game = GameDay.objects.exclude(
             game_id__in=used_game_ids
         ).filter(
             Q(day__day__lt=next_month)
-            & Q(day__day__gte=cutoff)
+            & Q(day__day__gte=current_month)
         ).order_by('game_id').values('game_id').annotate(
-            score=Sum(F('reviews_cnt') * F('reviews_avg'))
+            score=Avg(F('reviews_cnt') * F('reviews_avg'))
         ).order_by('-score').first()
         if not top_game:
             logger.warning(f'No top game for {current_month}')
@@ -150,14 +150,13 @@ def update_game_of_the_year():
     next_year = go_to_next_year(current_year)
     used_game_ids = set()
     while next_year < now():
-        cutoff = current_year - timedelta(days=360)
         top_game = GameDay.objects.exclude(
             game_id__in=used_game_ids
         ).filter(
             Q(day__day__lt=next_year)
-            & Q(day__day__gte=cutoff)
+            & Q(day__day__gte=current_year)
         ).order_by('game_id').values('game_id').annotate(
-            score=Sum(F('reviews_cnt') * F('reviews_avg'))
+            score=Avg(F('reviews_cnt') * F('reviews_avg'))
         ).order_by('-score').first()
         if not top_game:
             logger.warning(f'No top game for {current_year}')

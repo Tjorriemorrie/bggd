@@ -14,7 +14,7 @@
           release date.</p>
         <p>Basically the hotness of the month/year award. May the most and
           best rated game win.</p>
-        <p>Awarded since {{ start_at|date:'M Y' }}.</p>
+        <p>Calculated since {{ start_at|date:'M Y' }}.</p>
       </div>
     </div>
 
@@ -36,7 +36,9 @@
                 <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
                   <img src="{{ award.game.img }}" class="card-img-top"/>
                   <div class="card-body">
-                    <h5 class="card-title">{{ award.game.name }}</h5>
+                    <h5 class="card-title">
+                      {{ award.game.name }}
+                    </h5>
                     <p class="card-text">
                       {{ award.description }}
                     </p>
@@ -59,7 +61,9 @@
                       <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
                         <img src="{{ award.game.img }}" class="card-img-top"/>
                         <div class="card-body">
-                          <h5 class="card-title">{{ award.game.name }}</h5>
+                          <h5 class="card-title">
+                            {{ award.game.name }}
+                          </h5>
                           <p class="card-text">
                             {{ award.description }}
                           </p>
@@ -82,7 +86,9 @@
                       <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
                         <img src="{{ award.game.img }}" class="card-img-top"/>
                         <div class="card-body">
-                          <h5 class="card-title">{{ award.game.name }}</h5>
+                          <h5 class="card-title">
+                            {{ award.game.name }}
+                          </h5>
                           <p class="card-text">
                             {{ award.description }}
                           </p>
@@ -91,11 +97,12 @@
                     </div>
                   {% endfor %}
                 </div>
-            {% endif %}
+              {% endif %}
             </div>
           </div>
 
-        </div>{# col9 #}
+        </div>
+        {# col9 #}
 
       </div>{# row #}
     {% endfor %}
