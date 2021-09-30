@@ -8,7 +8,7 @@ from django.utils.timezone import now
 import numpy as np
 import pandas as pd
 
-from main.constants import START_GAME_OF_THE
+from main.constants import START_GAME_OF_THE, WEIGHT_LIGHT, WEIGHT_HEAVY, WEIGHT_MEDIUM
 from main.models import Player, GameDay, Day, Game, Award, AWARD_GAME_OF_THE_MONTH, \
     AWARD_GAME_OF_THE_YEAR
 
@@ -82,16 +82,16 @@ def update_weights():
     Game.objects.filter(
         Q(weight_avg__isnull=False) &
         Q(weight_avg__lt=cuts[0])
-    ).update(weight_tag='Light')
+    ).update(weight_tag=WEIGHT_LIGHT)
     Game.objects.filter(
         Q(weight_avg__isnull=False) &
         Q(weight_avg__gt=cuts[1])
-    ).update(weight_tag='Heavy')
+    ).update(weight_tag=WEIGHT_HEAVY)
     Game.objects.filter(
         Q(weight_avg__isnull=False) &
         Q(weight_avg__gte=cuts[0]) &
         Q(weight_avg__lte=cuts[1])
-    ).update(weight_tag='Medium')
+    ).update(weight_tag=WEIGHT_MEDIUM)
 
 
 def go_to_next_month(dt: datetime) -> datetime:

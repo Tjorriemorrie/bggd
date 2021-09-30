@@ -30,28 +30,70 @@
             BGG link
           </a>
         </h6>
-
-        <br/><br/>
-        <h4>Recommended games</h4>
-        <h6 class="text-muted">Last updated {{ player.rec_at }}</h6>
-        {% if player.game_recs.count %}
-          <br/>
-          {% for game in player.game_recs.all|slice:3 %}
-            <p>
-              <figure class="figure">
-                <a href="{% url 'game_detail' game.pk %}">
-                  <img src="{{ game.img }}" class="figure-img img-fluid rounded" alt="{{ game.name }} cover">
-                </a>
-                <figcaption class="figure-caption">{{ game.name }}</figcaption>
-              </figure>
-            </p>
-          {% endfor %}
-        {% else %}
-          <p>None available.</p>
-        {% endif %}
       </div>
 
       <div class="col-8">
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <br/>
+        <h3>Recommendations</h3>
+        <h6 class="text-muted">Last updated {{ player.rec_at }}</h6>
+        {% if player.recs.count %}
+          <table class="table">
+            <thead>
+            <tr>
+              <th class="text-center">&nbsp;</th>
+              <th class="text-center">Solo</th>
+              <th class="text-center">Duel</th>
+              <th class="text-center">3 players</th>
+              <th class="text-center">4+ players</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for weight_tag in weights %}
+              <tr>
+                <td class="align-middle"><strong>{{ weight_tag }}</strong></td>
+                {% for player_size in player_sizes %}
+                  {% rec_by player weight_tag player_size as rec %}
+                  {% if rec %}
+                    <td>
+                      <div class="card border-dark {% if rec.is_primary %}bg-secondary text-light{% endif %}">
+                        <a href="{% url 'game_detail' rec.game.id %}" class="text-reset text-decoration-none">
+                          <img src="{{ rec.game.img }}" class="card-img-top"/>
+                          <div class="card-body">
+                            <h5 class="card-title">{{ rec.game.name }}</h5>
+                            <p class="card-text">
+                              <small class="text-muted"></small>
+                            </p>
+                          </div>
+                          <div class="card-footer">
+                            {% if rec.is_primary %}
+                              <div class="float-start">
+                                Recommended!
+                              </div>
+                            {% endif %}
+                            <div class="float-end">
+                              Predict {{ rec.predicted|floatformat }}
+                            </div>
+                            <div class="clearfix"></div>
+                          </div>
+                        </a>
+                      </div>
+                    </td>
+                  {% else %}
+                    <td class="align-middle text-center">N/A</td>
+                  {% endif %}
+                {% endfor %}
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% else %}
+          <p>No recommendations.</p>
+        {% endif %}
 
         {% if graph %}
           {{ graph|safe }}

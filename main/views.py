@@ -15,7 +15,7 @@ from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
 
 from bgg.settings import CACHE_DURATION
-from main.constants import START_GAME_OF_THE
+from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES
 from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH
 
@@ -210,6 +210,9 @@ class PlayerDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
+
+        data['weights'] = WEIGHTS
+        data['player_sizes'] = PLAYERS_SIZES
 
         # graph
         fig_data = [

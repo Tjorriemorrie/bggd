@@ -1,10 +1,11 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.timezone import now
 
+from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT
 
 LABEL_CATEGORY = 'category'
 LABEL_MECHANIC = 'mechanic'
@@ -13,6 +14,12 @@ LABEL_SUBDOMAIN = 'subdomain'
 
 AWARD_GAME_OF_THE_MONTH = 'Game of the month'
 AWARD_GAME_OF_THE_YEAR = 'Game of the year'
+
+CHOICES_WEIGHTS = (
+    (WEIGHT_HEAVY, WEIGHT_HEAVY),
+    (WEIGHT_MEDIUM, WEIGHT_MEDIUM),
+    (WEIGHT_LIGHT, WEIGHT_LIGHT),
+)
 
 
 class Label(models.Model):
@@ -64,7 +71,7 @@ class Game(models.Model):
     best_max_players = models.PositiveSmallIntegerField(null=True)
     # weight
     weight_avg = models.FloatField(null=True)
-    weight_tag = models.CharField(max_length=20, null=True)
+    weight_tag = models.CharField(max_length=20, null=True, choices=CHOICES_WEIGHTS)
 
     # from reviews
     rating = models.FloatField(null=True)  # scrape cron update
@@ -153,7 +160,6 @@ class Player(models.Model):
     # updated in predict (joined with scrape)
     reviews_cnt = models.IntegerField(null=True)
     reviews_scr = models.FloatField(null=True)
-    game_recs = models.ManyToManyField(Game, related_name='player_recs')
     rec_at = models.DateTimeField(db_index=True, null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -174,6 +180,15 @@ class Player(models.Model):
         if self.area:
             geo += f' {self.area}'
         return geo or ''
+
+    def recs_by_heavy(self) -> List['Rec']:
+        return self.recs.filter(weight_tag=WEIGHT_HEAVY).order_by('best_players').all()
+
+    def recs_medium(self) -> List['Rec']:
+        return self.recs.filter(weight_tag=WEIGHT_MEDIUM).order_by('best_players').all()
+
+    def recs_light(self) -> List['Rec']:
+        return self.recs.filter(weight_tag=WEIGHT_LIGHT).order_by('best_players').all()
 
 
 class Day(models.Model):
@@ -261,3 +276,26 @@ class Award(models.Model):
 
     def __str__(self) -> str:
         return f'<Award {self.description} game={self.game}>'
+
+
+class Rec(models.Model):
+    player = models.ForeignKey(
+        Player, on_delete=models.CASCADE, related_name='recs')
+    weight_tag = models.CharField(max_length=20, choices=CHOICES_WEIGHTS)
+    best_players = models.PositiveSmallIntegerField()
+
+    game = models.ForeignKey(
+        Game, on_delete=models.CASCADE, related_name='recs', null=True)
+    predicted = models.FloatField(null=True)
+    is_primary = models.BooleanField(default=False)
+
+    rec_at = models.DateTimeField(null=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('player', 'weight_tag', 'best_players')
+
+    def __str__(self) -> str:
+        return f'<Rec {self.weight_tag} {self.best_players} {self.game.name} -> {self.player.nick}>'

@@ -8,14 +8,14 @@ from typing import List, Tuple
 import requests
 from bs4 import BeautifulSoup
 from django.db import IntegrityError, OperationalError
-from django.db.models import Avg, F, Sum
+from django.db.models import Avg, F, Sum, Q
 from django.utils.timezone import now, make_aware
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError
 from main.models import Game, Label, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player, \
-    GameDay, Day
+    GameDay, Day, Rec
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +159,9 @@ def scrape_game(game: Game):
 
     scrape_game_reviews(game)
 
-    game.recs_cnt = game.player_recs.count()
+    game.recs_cnt = Rec.objects.filter(
+        Q(game=game)
+        & Q(is_primary=True)).count()
     game.scraped_at = now()
     game.save()
 

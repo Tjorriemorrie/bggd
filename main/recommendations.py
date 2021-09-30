@@ -1,5 +1,6 @@
 import logging
 import pickle
+from copy import copy
 from typing import Tuple, List
 
 import numpy as np
@@ -11,7 +12,8 @@ from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase
 
 from bgg.settings import BASE_DIR
-from main.models import Review, Player, Game
+from main.constants import REC_COMBOS, PLAYERS_SIZES
+from main.models import Review, Player, Game, Rec
 
 logger = logging.getLogger(__name__)
 
@@ -59,8 +61,7 @@ def train_model():
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def predict_player(
-        player: Player, game_ids: List[id], top_n=10
-) -> List[Tuple[float, int]]:
+        player: Player, game_ids: List[id]) -> List[Tuple[float, int]]:
     algo = get_algo()
     reviews = player.reviews.all()
     player.reviews_cnt = len(reviews)
@@ -80,12 +81,39 @@ def predict_player(
         prediction = algo.predict(player.id, game_id)
         sc[prediction.est] = game_id
 
-    # set top recs
-    player.game_recs.clear()
-    top_recs = list(reversed(sc.items()))[:top_n]
+    # set/overwrite top recs
+    top_recs = list(reversed(sc.items()))
+    rec_combos = copy(REC_COMBOS)
+    is_primary = True
     for val, game_id in top_recs:
         game = Game.objects.get(id=game_id)
-        player.game_recs.add(game)
+        if not game.best_min_players or not game.best_max_players:
+            # logger.info(f'Skipping {game} for not having best players scraped.')
+            continue
+        for cur_best_players in range(game.best_min_players, game.best_max_players + 1):
+            best_players = cur_best_players if cur_best_players in PLAYERS_SIZES else 4
+            game_combo = (game.weight_tag, best_players)
+            if game_combo in rec_combos:
+                break
+        else:
+            # logger.info(
+            #     f'Skipping {game} due to all combos taken: '
+            #     f'{game.weight_tag} {game.best_min_players}-{game.best_max_players}')
+            continue
+        rec, _ = Rec.objects.get_or_create(
+            player=player,
+            weight_tag=game.weight_tag,
+            best_players=best_players)
+        if rec.game != game or rec.is_primary != is_primary or rec.predicted != val:
+            rec.game = game
+            rec.is_primary = is_primary
+            rec.predicted = val
+            rec.rec_at = now()
+            rec.save()
+        is_primary = False
+        rec_combos.remove(game_combo)
+        if not rec_combos:
+            break
     player.rec_at = now()
 
     # score player

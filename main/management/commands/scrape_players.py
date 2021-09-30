@@ -58,7 +58,7 @@ class Command(BaseCommand):
 
             else:
                 # recommendations
-                predict_player(player, game_ids, top_n=3)
+                predict_player(player, game_ids)
 
                 # once player score is updated...
                 # update gamedays for reviews
