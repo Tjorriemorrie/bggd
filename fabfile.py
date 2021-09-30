@@ -52,7 +52,7 @@ def retrieve_data(ctx):
     zip_file = 'data.tar.gz'
     cmds = [
         f'cd {dir}',
-        f'tar -czvf {zip_file} backups/{db_file} backups/{mdl_file}',  # --xform s:^.*/::
+        f'tar -czvf {zip_file} {db_file} {mdl_file}',  # --xform s:^.*/::
     ]
     conn.run(' && '.join(cmds), echo=True)
 
@@ -60,13 +60,15 @@ def retrieve_data(ctx):
     print('downloading zip file...')
     conn.get(f'{dir}/{zip_file}')
 
+    print('backing up local data...')
+    today = datetime.utcnow().strftime('%y%m%d')
+    conn.local(f'cp db.sqlite3 backups/db.sqlite3.{today}', echo=True)
+    conn.local(f'cp model.pkl backups/model.pkl.{today}', echo=True)
+
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
-    today = datetime.utcnow().strftime('%y%m%d')
-    conn.local(f'mv backups/{db_file} db.sqlite3.{today}')
-    conn.local(f'cp backups/db.sqlite3.{today} db.sqlite3', echo=True)
-    conn.local(f'mv backups/{mdl_file} model.pkl.{today}')
-    conn.local(f'cp backups/model.pkl.{today} model.pkl', echo=True)
+    conn.local('l')
+    print('done')
 
 
 @task

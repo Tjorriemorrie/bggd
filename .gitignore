@@ -144,3 +144,8 @@ logs/
 *.tar.gz
 *.pkl
 fabfile.py
+
+# backup files
+db.sqlite3.bck
+model.pkl.bck
+

@@ -34,7 +34,9 @@ def train_model():
 
     logger.info('Loading data...')
     player_ids = Player.objects.filter(reviews_cnt__gte=3).values_list('id', flat=True)
+    logger.info(f'Found {len(player_ids)} players with >= 3 ratings')
     values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
+    logger.info(f'Found {len(values)} ratings from those players')
     df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
 
     logger.info('Creating dataset...')
@@ -45,14 +47,14 @@ def train_model():
     train_set = dataset.build_full_trainset()
     algo = SVD()
 
-    logger.info(f'Fitting dataset to {algo}')
+    logger.info(f'Fitting dataset to {algo}. This will take 30min...')
     algo.fit(train_set)
 
     logger.info(f'Saving model to {FILE_MODEL}')
     with open(FILE_MODEL, 'w+b') as fp:
         pickle.dump(algo, fp)
 
-    logger.info(f'algorithm fitted on {len(df)}!')
+    logger.info(''.join(['='] * 50) + ' done ' + ''.join(['='] * 50))
 
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
