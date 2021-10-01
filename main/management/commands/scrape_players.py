@@ -37,6 +37,7 @@ class Command(BaseCommand):
 
     def _process(self, players: List[Player], game_ids: List[int], keyword: str):
         for player in players:
+            time_start = time()
             self._check_watch()
 
             # details
@@ -53,25 +54,20 @@ class Command(BaseCommand):
             time_int = time()
             try:
                 scrape_player_ratings(player)
-                logger.info(f'scrape_player_ratings took {time() - time_int:.1f}s')
-            except PlayerRatingNewGameError:
-                pass
+            except PlayerRatingNewGameError as exc:
+                pass  # stopped at new game
+            logger.info(f'scrape_player_ratings took {time() - time_int:.1f}s')
+
             if not player.reviews.count():
                 player.delete()
                 logger.info(f'Deleted player without ratings {player}')
-
             else:
                 # recommendations
                 time_int = time()
                 predict_player(player, game_ids)
                 logger.info(f'predict_player took {time() - time_int:.1f}s')
 
-                # once player score is updated...
-                # update gamedays for reviews
-                time_int = time()
-                update_gamedays(player)
-                logger.info(f'update_gamedays took {time() - time_int:.1f}s')
-
+            logger.info(f'total took {time() - time_start:.1f}s')
             logger.info(f'{self.prefix} {keyword} {player}')
 
     def _loader(self):

@@ -210,8 +210,8 @@ class GameDay(models.Model):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='gamedays')
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='gamedays')
 
-    reviews_cnt = models.IntegerField()
-    reviews_avg = models.FloatField()
+    reviews_cnt = models.IntegerField(db_index=True)
+    reviews_avg = models.FloatField(db_index=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

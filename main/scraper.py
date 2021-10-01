@@ -8,14 +8,14 @@ from typing import List, Tuple
 import requests
 from bs4 import BeautifulSoup
 from django.db import IntegrityError, OperationalError
-from django.db.models import Avg, F, Sum, Q
+from django.db.models import Avg, Q
 from django.utils.timezone import now, make_aware
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError
 from main.models import Game, Label, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player, \
-    GameDay, Day, Rec
+    Rec
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +300,7 @@ def scrape_player_ratings(player: Player):
             rows = table.find_all('tr')
         except Exception as exc:
             logger.error(f'{player} {exc}')
-            raise PlayerRatingNewGameError()
+            raise
         if len(rows) < 2:
             break
         for row in rows[1:]:
@@ -314,7 +314,7 @@ def scrape_player_ratings(player: Player):
             try:
                 game = Game.objects.get(bgg_id=game_bgg_id)
             except Game.DoesNotExist:
-                raise PlayerRatingNewGameError(f'Stopping at unknown game {cells[0].text}')
+                raise PlayerRatingNewGameError(f'Stopping at unknown game {cells[0].text.strip()}')
             # get rating
             rating_info = list(cells[1].stripped_strings)
             if rating_info[0] == 'N/A':
