@@ -40,17 +40,21 @@ class Command(BaseCommand):
             self._check_watch()
 
             # details
+            time_int = time()
             try:
                 scrape_player(player)
+                logger.info(f'scrape_player took {time() - time_int:.1f}s')
             except PlayerScrapeError:
                 player.delete()
                 logger.info(f'Deleted bad user {player}')
                 continue
 
             # ratings
+            time_int = time()
             try:
                 scrape_player_ratings(player)
-            except PlayerRatingNewGameError as exc:
+                logger.info(f'scrape_player_ratings took {time() - time_int:.1f}s')
+            except PlayerRatingNewGameError:
                 pass
             if not player.reviews.count():
                 player.delete()
@@ -58,22 +62,20 @@ class Command(BaseCommand):
 
             else:
                 # recommendations
+                time_int = time()
                 predict_player(player, game_ids)
+                logger.info(f'predict_player took {time() - time_int:.1f}s')
 
                 # once player score is updated...
                 # update gamedays for reviews
+                time_int = time()
                 update_gamedays(player)
+                logger.info(f'update_gamedays took {time() - time_int:.1f}s')
 
             logger.info(f'{self.prefix} {keyword} {player}')
 
     def _loader(self):
         game_ids = Game.objects.values_list('id', flat=True)
-        limit = 7
-        total_player_cnt = Player.objects.count()
-        daily_cut = total_player_cnt // limit
-        running = 0
-        total = 0
-        remainder = daily_cut - running
 
         # NEW PLAYERS
         logger.info(''.join(['='] * 99))

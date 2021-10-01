@@ -21,6 +21,8 @@ from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR
 
 logger = logging.getLogger(__name__)
 
+OCT1 = make_aware(datetime(2021, 10, 1))
+
 
 def home_view(request):
     ctx = cache.get('home_view')
@@ -76,14 +78,12 @@ def got_view(request):
 def about_view(request):
     ctx = cache.get('about_view')
     if not ctx:
-
         # player updated
-        oct1 = make_aware(datetime(2021, 10, 1))
         last_updated_rec = Player.objects.filter(
             Q(reviews_scr__gte=1) &
             Q(reviews_scr__lte=10) &
             Q(reviews_cnt__gte=3) &
-            Q(updated_at__gt=oct1)
+            Q(updated_at__gt=OCT1)
         ).order_by('rec_at').first()
         player_turnover = (now() - last_updated_rec.rec_at).days
 
@@ -203,7 +203,13 @@ class PlayerListView(OrderingListView, SearchListView, CachedDispatch):
         Q(reviews_scr__gt=1) &
         Q(reviews_scr__lt=10) &
         Q(reviews_cnt__gte=3) &
-        Q(updated_at__gt=make_aware(datetime(2021, 9, 13))))
+        Q(updated_at__gt=OCT1))
+
+    def get_context_data(self, **kwargs) -> dict:
+        data = super().get_context_data(**kwargs)
+        data['total'] = Player.objects.filter(Q(reviews_cnt__gte=3)).count()
+        data['progress'] = data['paginator'].count * 100 // data['total']
+        return data
 
 
 class PlayerDetailView(DetailView):
