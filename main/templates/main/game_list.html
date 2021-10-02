@@ -2,6 +2,8 @@
 {% load humanize %}
 {% load params %}
 
+{% block title %}Games - {{ block.super }}{% endblock %}
+
 {% block content %}
   <div class="container">
     {% include 'main/navbar.html' with nav='games' %}

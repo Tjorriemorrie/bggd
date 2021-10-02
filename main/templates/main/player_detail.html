@@ -1,6 +1,8 @@
 {% extends 'main/base.html' %}
 {% load params %}
 
+{% block title %}{{ player.nick }} - Players - {{ block.super }}{% endblock %}
+
 {% block content %}
   <div class="container">
 

@@ -1,5 +1,7 @@
 {% extends 'main/base.html' %}
 
+{% block title %}About - {{ block.super }}{% endblock %}
+
 {% block content %}
   <div class="container">
 
@@ -13,15 +15,13 @@
           an analysis site of BGG to calculate recommendations of what to buy next.</p>
         <p>Games are scraped for their ratings. This takes long and only
           the top few games on the ranking is currently known.</p>
-        <p>The ratings were used to build a recommender system.
+        <p>The ratings were used to build a recommender system using SVD.
           Recommendations are calculated based of each players' ratings .</p>
         <p>Look up your username and there should be recommendations
-          on the user's page. It is updated <strong>about every {{ player_turnover }}
-            days</strong> and should change if new ratings were made or changed to the
-          list of games.</p>
+          on the user's page. It is updated within ~3 days when new ratings were made
+          or changed to the list of games.</p>
         <p>More games will be added but it takes a long time.
-          <strong>About {{ game_added }}
-            games</strong> are added every day.</p>
+          <strong>About {{ game_added }} games</strong> are added every day.</p>
       </div>
     </div>
   </div>

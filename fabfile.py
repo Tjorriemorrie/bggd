@@ -67,7 +67,6 @@ def retrieve_data(ctx):
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
-    conn.local('l')
     print('done')
 
 
