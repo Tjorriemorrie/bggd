@@ -298,8 +298,8 @@ def scrape_player_ratings(player: Player):
         table = html.find('table', id='collectionitems')
         try:
             rows = table.find_all('tr')
-        except Exception as exc:
-            logger.error(f'{player} {exc}')
+        except Exception:
+            logger.info(f'URL = {url}')
             raise
         if len(rows) < 2:
             break

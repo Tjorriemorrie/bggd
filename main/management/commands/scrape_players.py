@@ -5,6 +5,7 @@ from typing import List
 from django.core.management import BaseCommand
 from django.db import OperationalError
 from django.db.models import Q, F, Max
+from django.db.models.functions import Greatest, Least
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError
@@ -35,89 +36,115 @@ class Command(BaseCommand):
             exp = self.timeout / duration * self.count
         self.prefix = f'[{self.count}/{int(exp)}]'
 
-    def _process(self, players: List[Player], game_ids: List[int], keyword: str):
-        for player in players:
-            time_start = time()
-            self._check_watch()
-
-            # details
-            time_int = time()
-            try:
-                scrape_player(player)
-                logger.info(f'scrape_player took {time() - time_int:.1f}s')
-            except PlayerScrapeError:
-                player.delete()
-                logger.info(f'Deleted bad user {player}')
-                continue
-
-            # ratings
-            time_int = time()
-            try:
-                scrape_player_ratings(player)
-            except PlayerRatingNewGameError as exc:
-                pass  # stopped at new game
-            logger.info(f'scrape_player_ratings took {time() - time_int:.1f}s')
-
-            if not player.reviews.count():
-                player.delete()
-                logger.info(f'Deleted player without ratings {player}')
-            else:
-                # recommendations
-                time_int = time()
-                predict_player(player, game_ids)
-                logger.info(f'predict_player took {time() - time_int:.1f}s')
-
-            logger.info(f'total took {time() - time_start:.1f}s')
-            logger.info(f'{self.prefix} {keyword} {player}')
-
-    def _loader(self):
-        game_ids = Game.objects.values_list('id', flat=True)
-
-        # NEW PLAYERS
-        logger.info(''.join(['='] * 99))
-        logger.info('Scraping new players...')
+    def _scrape_new_players(self):
+        """scrape brand new players details"""
+        logger.info(''.join(['='] * 40) + ' scraping new players ' + ''.join(['='] * 40))
         players = Player.objects.filter(
-            Q(scraped_at__isnull=True) |
-            Q(rec_at__isnull=True)).order_by(
+            scraped_at__isnull=True).order_by(
             'created_at').all()[:1_000]
         while players:
-            self._process(players, game_ids, 'created')
+            for player in players:
+                self._check_watch()
+                try:
+                    scrape_player(player)
+                    logger.info(f'{self.prefix} Scraped details of {player}')
+                except PlayerScrapeError:
+                    player.delete()
+                    logger.info(f'Deleted bad user {player}')
+            # renew while
             players = Player.objects.filter(
-                Q(scraped_at__isnull=True) |
-                Q(rec_at__isnull=True)).order_by(
+                scraped_at__isnull=True).order_by(
                 'created_at').all()[:1_000]
 
-        # UPDATED PLAYERS
-        logger.info(''.join(['='] * 99))
-        logger.info('Updating new data on scraped players...')
+    def _predict_new_players(self, game_ids: List[int]):
+        """give player predictions which does not have any yet"""
+        logger.info(''.join(['='] * 40) + ' predicting new players ' + ''.join(['='] * 40))
+        players = Player.objects.filter(
+            rec_at__isnull=False
+        ).order_by('created_at').all()[:1_000]
+        while players:
+            for player in players:
+                self._check_watch()
+                predict_player(player, game_ids)
+                logger.info(f'{self.prefix} Recommendations for new {player}')
+            # renew while
+            players = Player.objects.filter(
+                rec_at__isnull=False).order_by(
+                'created_at').all()[:1_000]
+
+    def _predict_changed_players(self, game_ids: List[int]):
+        """update player predictions who have made a new rating"""
+        logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
         players = Player.objects.annotate(
             last_review=Max('reviews__reviewed_at')).filter(
             Q(rec_at__isnull=False) &
             Q(last_review__gt=F('rec_at'))).order_by(
             'rec_at').all()[:1_000]
         while players:
-            self._process(players, game_ids, 'updated')
+            for player in players:
+                self._check_watch()
+                predict_player(player, game_ids)
+                logger.info(f'{self.prefix} Recommendations for changed {player}')
             players = Player.objects.annotate(
                 last_review=Max('reviews__reviewed_at')).filter(
                 Q(rec_at__isnull=False) &
                 Q(last_review__gt=F('rec_at'))).order_by(
                 'rec_at').all()[:1_000]
 
-        # UPKEEPING PLAYERS
-        logger.info(''.join(['='] * 99))
-        logger.info('Upkeeping old players...')
-        players = Player.objects.order_by(
-            'scraped_at').all()[:1_000]
+    def _upkeep(self, game_ids: List[int]):
+        """upkeep players for remaining time"""
+        logger.info(''.join(['='] * 40) + ' upkeeping players ' + ''.join(['='] * 40))
+        players = Player.objects.annotate(
+            oldest_date=Least('scraped_at', 'rec_at')
+        ).order_by('oldest_date').all()[:1_000]
         while players:
-            self._process(players, game_ids, 'upkeeped')
-            players = Player.objects.order_by(
-                'scraped_at').all()[:1_000]
+            for player in players:
+                self._check_watch()
 
-        logger.info(''.join(['='] * 50) + ' scraping done ' + ''.join(['='] * 50))
+                # details
+                try:
+                    scrape_player(player)
+                except PlayerScrapeError:
+                    player.delete()
+                    logger.info(f'Deleted bad user {player}')
+                    continue
+
+                # upkeep ratings
+                try:
+                    scrape_player_ratings(player)
+                except PlayerRatingNewGameError as exc:
+                    pass  # stopped at new game
+
+                # dud player?
+                if not player.reviews.count():
+                    player.delete()
+                    logger.info(f'Deleted player without ratings {player}')
+                    continue
+
+                # recommendations
+                predict_player(player, game_ids)
+
+                logger.info(f'{self.prefix} upkeeped {player}')
+
+            # renew loop
+            players = Player.objects.annotate(
+                oldest_date=Least('scraped_at', 'rec_at')).order_by(
+                'oldest_date').all()[:1_000]
+
+    def _loader(self):
+        game_ids = Game.objects.values_list('id', flat=True)
+
+        # perform these steps
+        self._scrape_new_players()
+        self._predict_new_players(game_ids)
+        self._predict_changed_players(game_ids)
+
+        # with remaining time
+        self._upkeep(game_ids)
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def handle(self, *args, **options):
         try:
             self._loader()
         except OutOfTimeError:
-            logger.info(''.join(['='] * 50) + ' outta time ' + ''.join(['='] * 50))
+            logger.info(''.join(['='] * 40) + ' outta time ' + ''.join(['='] * 40))

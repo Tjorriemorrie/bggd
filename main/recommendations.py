@@ -1,7 +1,7 @@
 import logging
 import pickle
 from copy import copy
-from typing import Tuple, List
+from typing import Tuple, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -61,10 +61,16 @@ def train_model():
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def predict_player(
-        player: Player, game_ids: List[id]) -> List[Tuple[float, int]]:
+        player: Player, game_ids: List[id]) -> Optional[List[Tuple[float, int]]]:
     algo = get_algo()
     reviews = player.reviews.all()
     player.reviews_cnt = len(reviews)
+    player.rec_at = now()
+    player.reviews_scr = None
+
+    if player.reviews_cnt < 3:
+        player.save()
+        return
 
     # set predicted on existing reviews
     existing_game_ids = set()
@@ -114,15 +120,12 @@ def predict_player(
         rec_combos.remove(game_combo)
         if not rec_combos:
             break
-    player.rec_at = now()
 
     # score player
-    player.reviews_scr = None  # filter used on listing
-    if player.reviews_cnt >= 3:
-        ratings = SortedList([r.rating for r in reviews])
-        spaces = np.linspace(1, 10, num=len(ratings))
-        diffs = [9 - abs(r - s) for r, s in zip(ratings, spaces)]
-        player.reviews_scr = (sum(diffs) / (len(ratings) * 9)) * 10
+    ratings = SortedList([r.rating for r in reviews])
+    spaces = np.linspace(1, 10, num=len(ratings))
+    diffs = [9 - abs(r - s) for r, s in zip(ratings, spaces)]
+    player.reviews_scr = (sum(diffs) / (len(ratings) * 9)) * 10
 
     player.save()
     return top_recs
