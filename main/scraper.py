@@ -159,9 +159,7 @@ def scrape_game(game: Game):
 
     scrape_game_reviews(game)
 
-    game.recs_cnt = Rec.objects.filter(
-        Q(game=game)
-        & Q(is_primary=True)).count()
+    game.recs_cnt = game.recs.filter(is_primary=True).count()
     game.scraped_at = now()
     game.save()
 

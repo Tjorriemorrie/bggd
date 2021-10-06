@@ -28,9 +28,9 @@ def home_view(request):
     ctx = cache.get('home_view')
     if not ctx:
         upcoming = Game.objects.filter(
-            Q(recs_cnt__isnull=False) &
-            Q(hotness__isnull=False)
-        ).annotate(score=F('recs_cnt') / (F('reviews_cnt') + F('hotness'))).order_by(
+            Q(recs_cnt__gt=0) &
+            Q(hotness__gt=0)
+        ).annotate(score=100 * F('recs_cnt') / F('reviews_cnt')).order_by(
             '-score').all()[:5]
         ctx = {
             'nav': 'home',
@@ -78,6 +78,14 @@ def got_view(request):
 def about_view(request):
     ctx = cache.get('about_view')
     if not ctx:
+        # player updated
+        last_updated_rec = Player.objects.filter(
+            Q(reviews_scr__gte=1) &
+            Q(reviews_scr__lte=10) &
+            Q(reviews_cnt__gte=3)
+        ).order_by('rec_at').first()
+        player_turnover = (now() - last_updated_rec.rec_at).days
+
         # game added
         one_month = now() - timedelta(days=30)
         first_game = Game.objects.filter(
@@ -89,6 +97,7 @@ def about_view(request):
 
         ctx = {
             'game_added': game_added,
+            'player_turnover': player_turnover
         }
         cache.set('about_view', ctx)
     return render(request, 'main/about.html', context=ctx)
