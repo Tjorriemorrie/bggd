@@ -91,6 +91,9 @@
 
 
     <p>Players need at least 3 ratings to show up on the list.</p>
-    <p>Processed {{ progress }}% of players.</p>
+    {% if progress < 100 %}
+      <p>Processed {{ progress }}% of players. Please be patient for your username
+      to show up if it is missing.</p>
+    {% endif %}
   </div>
 {% endblock %}

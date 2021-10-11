@@ -109,6 +109,7 @@
           <table class="table">
             <thead>
             <tr>
+              <th>&nbsp;</th>
               <th>Rating</th>
               <th>&nbsp;</th>
               <th>Game</th>
@@ -118,6 +119,7 @@
             <tbody>
             {% for review in reviews %}
               <tr>
+                <td class="text-muted">{{ forloop.counter }}</td>
                 <td>{{ review.rating|floatformat }}</td>
                 <td class="text-end"><img height="30px" src="{{ review.game.img }}"/></td>
                 <td>

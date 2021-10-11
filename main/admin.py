@@ -4,6 +4,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 
 from main.models import Game, Review, Player, Day
+from main.recommendations import predict_player
 from main.scraper import scrape_game
 
 
@@ -11,6 +12,13 @@ from main.scraper import scrape_game
 def scrape_game_cmd(modeladmin, request, queryset):
     for obj in queryset:
         scrape_game(obj)
+
+
+@admin.action(description='Predict players')
+def predict_player_cmd(modeladmin, request, queryset):
+    game_ids = Game.objects.values_list('id', flat=True)
+    for obj in queryset:
+        predict_player(obj, game_ids)
 
 
 @admin.register(Game)
@@ -43,8 +51,9 @@ class ReviewAdmin(admin.ModelAdmin):
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'nick')
+    list_display = ('id', 'nick', 'reviews_cnt', 'name', 'scraped_at', 'rec_at')
     search_fields = ('nick',)
+    actions = (predict_player_cmd,)
 
 
 @admin.register(Day)

@@ -238,7 +238,7 @@ class PlayerDetailView(DetailView):
         # reviews sorted
         if self.object.reviews.count():
             reviews = list(self.object.reviews.all())
-            reviews.sort(key=attrgetter('diff'), reverse=True)
+            reviews.sort(key=attrgetter('diff_combine'), reverse=True)
             data['reviews'] = reviews
 
         return data

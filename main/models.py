@@ -254,6 +254,10 @@ class Review(models.Model):
         return self.rating - self.predicted
 
     @property
+    def diff_combine(self) -> float:
+        return self.rating + self.diff
+
+    @property
     def day(self) -> datetime:
         return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)
 

@@ -12,7 +12,8 @@ from django.db.models import Avg, Q
 from django.utils.timezone import now, make_aware
 from retry import retry
 
-from main.errors import PlayerScrapeError, PlayerRatingNewGameError
+from main.errors import PlayerScrapeError, PlayerRatingNewGameError, \
+    PlayerRatingUsernameNotFoundError
 from main.models import Game, Label, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player, \
     Rec
@@ -296,9 +297,9 @@ def scrape_player_ratings(player: Player):
         table = html.find('table', id='collectionitems')
         try:
             rows = table.find_all('tr')
-        except Exception:
-            logger.info(f'URL = {url}')
-            raise
+        except Exception as exc:
+            logger.error(f'No ratings for player URL = {url}')
+            raise PlayerRatingUsernameNotFoundError() from exc
         if len(rows) < 2:
             break
         for row in rows[1:]:

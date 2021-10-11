@@ -1,12 +1,10 @@
 import logging
 from copy import copy
 from datetime import timedelta, datetime
-from operator import itemgetter
 
+import numpy as np
 from django.db.models import Sum, Avg, F, Q
 from django.utils.timezone import now
-import numpy as np
-import pandas as pd
 
 from main.constants import START_GAME_OF_THE, WEIGHT_LIGHT, WEIGHT_HEAVY, WEIGHT_MEDIUM
 from main.models import Player, GameDay, Day, Game, Award, AWARD_GAME_OF_THE_MONTH, \
@@ -125,8 +123,8 @@ def update_game_of_the_month():
                 type=AWARD_GAME_OF_THE_MONTH,
                 awarded_at=current_month,
                 game_id=top_game['game_id'],
-                description=f'Game of the Month {current_month:%b %y}',
-                badge=f'{current_month:%b %y}',
+                description=f'Game of the Month {current_month:%b \'%y}',
+                badge=f'{current_month:%b \'%y}',
                 score=top_game['score'])
             used_game_ids.add(top_game['game_id'])
             logger.info(f'{award}')

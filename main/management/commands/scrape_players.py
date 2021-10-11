@@ -8,7 +8,8 @@ from django.db.models import Q, F, Max
 from django.db.models.functions import Greatest, Least
 from retry import retry
 
-from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError
+from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError, \
+    PlayerRatingUsernameNotFoundError
 from main.models import Player, Game
 from main.recommendations import predict_player
 from main.scraper import scrape_player, scrape_player_ratings
@@ -60,7 +61,7 @@ class Command(BaseCommand):
         """give player predictions which does not have any yet"""
         logger.info(''.join(['='] * 40) + ' predicting new players ' + ''.join(['='] * 40))
         players = Player.objects.filter(
-            rec_at__isnull=False
+            rec_at__isnull=True
         ).order_by('created_at').all()[:1_000]
         while players:
             for player in players:
@@ -69,7 +70,7 @@ class Command(BaseCommand):
                 logger.info(f'{self.prefix} Recommendations for new {player}')
             # renew while
             players = Player.objects.filter(
-                rec_at__isnull=False).order_by(
+                rec_at__isnull=True).order_by(
                 'created_at').all()[:1_000]
 
     def _predict_changed_players(self, game_ids: List[int]):
@@ -112,7 +113,9 @@ class Command(BaseCommand):
                 # upkeep ratings
                 try:
                     scrape_player_ratings(player)
-                except PlayerRatingNewGameError as exc:
+                except (TypeError, KeyError,
+                        PlayerRatingNewGameError,
+                        PlayerRatingUsernameNotFoundError):
                     pass  # stopped at new game
 
                 # dud player?
