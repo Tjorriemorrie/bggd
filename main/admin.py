@@ -14,11 +14,16 @@ def scrape_game_cmd(modeladmin, request, queryset):
         scrape_game(obj)
 
 
-@admin.action(description='Scrape & predict players')
-def upkeep_player_cmd(modeladmin, request, queryset):
-    game_ids = Game.objects.values_list('id', flat=True)
+@admin.action(description='Scrape players')
+def scrape_player_cmd(modeladmin, request, queryset):
     for obj in queryset:
         scrape_player(obj)
+
+
+@admin.action(description='Predict players')
+def predict_player_cmd(modeladmin, request, queryset):
+    game_ids = Game.objects.values_list('id', flat=True)
+    for obj in queryset:
         predict_player(obj, game_ids)
 
 
@@ -54,7 +59,8 @@ class ReviewAdmin(admin.ModelAdmin):
 class PlayerAdmin(admin.ModelAdmin):
     list_display = ('id', 'nick', 'reviews_cnt', 'name', 'scraped_at', 'rec_at')
     search_fields = ('nick',)
-    actions = (upkeep_player_cmd,)
+    exclude = ('reviews_cnt', 'reviews_scr')
+    actions = (scrape_player_cmd, predict_player_cmd)
 
 
 @admin.register(Day)

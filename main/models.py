@@ -151,16 +151,16 @@ class Player(models.Model):
     nick = models.CharField(max_length=256, unique=True)
 
     # updated in scrape
-    name = models.CharField(max_length=256, null=True)
-    country = models.CharField(max_length=150, null=True)
-    area = models.CharField(max_length=150, null=True)
-    avatar = models.CharField(max_length=256, null=True)
-    scraped_at = models.DateTimeField(db_index=True, null=True)
+    name = models.CharField(max_length=256, null=True, blank=True)
+    country = models.CharField(max_length=150, null=True, blank=True)
+    area = models.CharField(max_length=150, null=True, blank=True)
+    avatar = models.CharField(max_length=256, null=True, blank=True)
+    scraped_at = models.DateTimeField(db_index=True, null=True, blank=True)
 
     # updated in predict (joined with scrape)
     reviews_cnt = models.IntegerField(null=True)
     reviews_scr = models.FloatField(null=True)
-    rec_at = models.DateTimeField(db_index=True, null=True)
+    rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
