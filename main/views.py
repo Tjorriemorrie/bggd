@@ -5,9 +5,9 @@ from operator import attrgetter
 import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
-from django.db.models import Q, Count, F, Max
+from django.db.models import Q, Count, F
 from django.db.models.functions import TruncMonth
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
 from django.utils.timezone import now, make_aware
 from django.views import View
@@ -18,6 +18,7 @@ from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES
 from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH
+from main.recommendations import predict_player
 
 logger = logging.getLogger(__name__)
 
@@ -198,17 +199,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedDispatch):
     paginate_by = 100
     ordering = '-reviews_scr'
     search_by = 'nick'
-    queryset = Player.objects.filter(
-        Q(reviews_scr__gt=1) &
-        Q(reviews_scr__lt=10) &
-        Q(reviews_cnt__gte=3) &
-        Q(updated_at__gt=OCT1))
-
-    def get_context_data(self, **kwargs) -> dict:
-        data = super().get_context_data(**kwargs)
-        data['total'] = Player.objects.filter(Q(reviews_cnt__gte=3)).count()
-        data['progress'] = data['paginator'].count * 100 // data['total']
-        return data
+    queryset = Player.objects.filter(reviews_cnt__gte=3)
 
 
 class PlayerDetailView(DetailView):
@@ -241,7 +232,19 @@ class PlayerDetailView(DetailView):
             reviews.sort(key=attrgetter('diff_combine'), reverse=True)
             data['reviews'] = reviews
 
+        three_days_ago = now() - timedelta(days=3)
+        data['can_refresh'] = self.object.rec_at < three_days_ago
+
         return data
+
+
+def player_predict_view(request, pk):
+    player = Player.objects.get(pk=pk)
+    three_days_ago = now() - timedelta(days=3)
+    if player.rec_at < three_days_ago:
+        game_ids = Game.objects.values_list('id', flat=True)
+        predict_player(player, game_ids)
+    return redirect(player)
 
 
 class ReviewView(TemplateView, CachedDispatch):

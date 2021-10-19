@@ -43,15 +43,20 @@
         <br/>
         <h3>Recommendations</h3>
         <h6 class="text-muted">Last updated {{ player.rec_at }}</h6>
+        {% if can_refresh %}
+          <p><a href="{% url 'player_predict' player.id %}">
+            <button class="button">Recalculate</button>
+          </a></p>
+        {% endif %}
         {% if player.recs.count %}
           <table class="table">
             <thead>
             <tr>
-              <th class="text-center">&nbsp;</th>
-              <th class="text-center">Solo</th>
-              <th class="text-center">Duel</th>
-              <th class="text-center">3 players</th>
-              <th class="text-center">4+ players</th>
+              <th class="text-center col-sm-1">&nbsp;</th>
+              <th class="text-center col-sm-2">Solo</th>
+              <th class="text-center col-sm-2">Duel</th>
+              <th class="text-center col-sm-2">3 players</th>
+              <th class="text-center col-sm-2">4+ players</th>
             </tr>
             </thead>
             <tbody>

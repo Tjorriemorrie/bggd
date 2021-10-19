@@ -173,6 +173,9 @@ class Player(models.Model):
     def bgg_link(self):
         return f'https://www.boardgamegeek.com/user/{self.nick}'
 
+    def get_absolute_url(self) -> str:
+        return f'/players/{self.id}'
+
     def geo(self):
         geo = ''
         if self.country:
