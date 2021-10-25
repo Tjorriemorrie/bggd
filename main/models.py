@@ -1,8 +1,9 @@
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Union
 
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
+from django.db.models import QuerySet
 from django.utils.timezone import now
 
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT
@@ -80,6 +81,9 @@ class Game(models.Model):
 
     # hotness
     hotness = models.FloatField(null=True)  # update hotness cron
+
+    # similar
+    mechanic_cluster = models.IntegerField(null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -282,7 +286,7 @@ class Award(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
-        return f'<Award {self.description} game={self.game}>'
+        return f'<Award {self.description} game={self.game} score={int(self.score)}>'
 
 
 class Rec(models.Model):

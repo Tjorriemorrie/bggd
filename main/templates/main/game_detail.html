@@ -58,14 +58,14 @@
           </div>
         </div>
 
-        <br/>
-        <div class="row">
-          {% if day_graph %}
+        {% if day_graph %}
+          <br/>
+          <div class="row">
             <div class="col">
               {{ day_graph|safe }}
             </div>
-          {% endif %}
-        </div>
+          </div>
+        {% endif %}
 
       </div>
 

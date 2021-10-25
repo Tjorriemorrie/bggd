@@ -30,4 +30,5 @@ urlpatterns = [
     path('players/<int:pk>', views.PlayerDetailView.as_view(), name='player_detail'),
     path('players/<int:pk>/predict', views.player_predict_view, name='player_predict'),
     path('reviews/', views.ReviewView.as_view(), name='reviews'),
+    path('mechanics/', views.mec_view, name='mec'),
 ]

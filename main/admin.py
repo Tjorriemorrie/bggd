@@ -3,7 +3,7 @@ from django.db.models import F
 from django.urls import reverse
 from django.utils.html import format_html
 
-from main.models import Game, Review, Player, Day
+from main.models import Game, Review, Player, Day, Award
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
 
@@ -29,9 +29,10 @@ def predict_player_cmd(modeladmin, request, queryset):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id')
+    list_display = ('id', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id')
     ordering = ('-year', 'rank')
     actions = (scrape_game_cmd,)
+    search_fields = ('name',)
 
     def reviews_cnt_fmt(self, obj: Game):
         url = reverse('admin:main_review_changelist')
@@ -67,3 +68,9 @@ class PlayerAdmin(admin.ModelAdmin):
 class PlayerAdmin(admin.ModelAdmin):
     list_display = ('id', 'day', 'reviews_cnt', 'reviews_avg')
     ordering = ('day',)
+
+
+@admin.register(Award)
+class AwardAdmin(admin.ModelAdmin):
+    list_display = ('game', 'type', 'description', 'badge', 'awarded_at', 'score')
+    ordering = ('-awarded_at',)

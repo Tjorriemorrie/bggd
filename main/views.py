@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 from datetime import timedelta, datetime
 from operator import attrgetter
 
@@ -276,3 +277,27 @@ class ReviewView(TemplateView, CachedDispatch):
         data['graph_day'] = fig_day.to_html(full_html=False)
 
         return data
+
+
+def mec_view(request):
+    ctx = cache.get('mec_view')
+    if not ctx:
+        grouped = dict()
+        for i in range(8):
+            games = Game.objects.filter(mechanic_cluster=i).order_by('-hotness').all()
+            mechanics = [m.name for g in games for m in g.mechanics.all()]
+            counter = Counter(mechanics)
+            total = sum(counter.values())
+            mecs = []
+            for mec_name, mec_cnt in counter.most_common(100):
+                if sum(v for _, v in mecs) < total * 0.50:
+                    mecs.append((mec_name, mec_cnt))
+            grouped[i] = {
+                'games': games,
+                'mecs': mecs,
+            }
+        ctx = {
+            'grouped': grouped,
+        }
+        cache.set('mec_view', ctx)
+    return render(request, 'main/mec.html', context=ctx)

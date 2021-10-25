@@ -8,30 +8,41 @@ import pandas as pd
 from django.db import OperationalError
 from django.utils.timezone import now
 from retry import retry
+from sklearn.cluster import KMeans
 from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase
 
 from bgg.settings import BASE_DIR
 from main.constants import REC_COMBOS, PLAYERS_SIZES
-from main.models import Review, Player, Game, Rec
+from main.models import Review, Player, Game, Rec, Label, LABEL_MECHANIC
 
 logger = logging.getLogger(__name__)
 
-FILE_MODEL = BASE_DIR / 'model.pkl'
+FILE_REC_MODEL = BASE_DIR / 'model.pkl'
+FILE_MEC_MODEL = BASE_DIR / 'model_mec.pkl'
 
 _algo = None
 
 
-def get_algo() -> AlgoBase:
+def get_rec_algo() -> AlgoBase:
     global _algo
     if not _algo:
-        logger.info('loading algorithm...')
-        with open(FILE_MODEL, 'r+b') as fp:
+        logger.info('loading rec algorithm...')
+        with open(FILE_REC_MODEL, 'r+b') as fp:
             _algo = pickle.load(fp)
     return _algo
 
 
-def train_model():
+def get_mec_algo() -> AlgoBase:
+    global _algo
+    if not _algo:
+        logger.info('loading rec algorithm...')
+        with open(FILE_MEC_MODEL, 'r+b') as fp:
+            _algo = pickle.load(fp)
+    return _algo
+
+
+def train_rec_model():
     logger.info('Training model...')
 
     logger.info('Loading data...')
@@ -52,17 +63,40 @@ def train_model():
     logger.info(f'Fitting dataset to {algo}. This will take 30min...')
     algo.fit(train_set)
 
-    logger.info(f'Saving model to {FILE_MODEL}')
-    with open(FILE_MODEL, 'w+b') as fp:
+    logger.info(f'Saving model to {FILE_REC_MODEL}')
+    with open(FILE_REC_MODEL, 'w+b') as fp:
         pickle.dump(algo, fp)
 
-    logger.info(''.join(['='] * 50) + ' done ' + ''.join(['='] * 50))
+
+def train_mec_model():
+    logger.info('Training mechanic model...')
+
+    logger.info('Loading data...')
+    games = Game.objects.all()
+    mechanics = Label.objects.filter(type=LABEL_MECHANIC).all()
+    logger.info(f'Found {len(games)} games and {len(mechanics)} mechanics')
+
+    data = []
+    for game in games:
+        game_mecs = game.mechanics.all()
+        row = [int(m in game_mecs) for m in mechanics]
+        data.append(row)
+
+    logger.info('Training kmeans...')
+    km = KMeans()
+    km.fit(data)
+    y = km.predict(data)
+
+    logger.info('Saving and updating games...')
+    for game, cluster in zip(games, y):
+        game.mechanic_cluster = cluster
+        game.save()
 
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def predict_player(
         player: Player, game_ids: List[id]) -> Optional[List[Tuple[float, int]]]:
-    algo = get_algo()
+    algo = get_rec_algo()
     reviews = player.reviews.all()
     player.reviews_cnt = len(reviews)
     player.rec_at = now()
@@ -129,3 +163,8 @@ def predict_player(
 
     player.save()
     return top_recs
+
+
+@retry(OperationalError, delay=3, jitter=3, max_delay=30)
+def similar_mechanics(game: Game):
+    algo = get_mec_algo()
