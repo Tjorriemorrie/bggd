@@ -251,6 +251,10 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
                 'rating': item['rating'],
                 'reviewed_at': reviewed_at})
         logger.warning(f'{created and "Created" or "Updated"} review')
+    except Review.MultipleObjectsReturned:
+        logger.warning(f'Multiple objects returned for {item}!')
+        Review.objects.filter(game=game, player=player).delete()
+        return parse_game_review(game, item)
 
     # update existing review if different review tstamp or rating
     if review.reviewed_at != reviewed_at or review.rating != item['rating']:
