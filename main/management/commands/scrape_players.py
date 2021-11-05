@@ -46,6 +46,7 @@ class Command(BaseCommand):
         while players:
             for player in players:
                 self._check_watch()
+                # update details
                 try:
                     scrape_player(player)
                     logger.info(f'{self.prefix} Scraped details of {player}')
@@ -68,6 +69,8 @@ class Command(BaseCommand):
                 self._check_watch()
                 predict_player(player, game_ids)
                 logger.info(f'{self.prefix} Recommendations for new {player}')
+                # update game days (updated from player's reviews)
+                update_gamedays(player)
             # renew while
             players = Player.objects.filter(
                 rec_at__isnull=True).order_by(
@@ -86,6 +89,8 @@ class Command(BaseCommand):
                 self._check_watch()
                 predict_player(player, game_ids)
                 logger.info(f'{self.prefix} Recommendations for changed {player}')
+                # update game days (updated from player's reviews)
+                update_gamedays(player)
             players = Player.objects.annotate(
                 last_review=Max('reviews__reviewed_at')).filter(
                 Q(rec_at__isnull=False) &
