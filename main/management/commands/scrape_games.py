@@ -18,7 +18,7 @@ class Command(BaseCommand):
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def handle(self, *args, **options):
 
-        limit = 3
+        limit = 7
         total_game_cnt = Game.objects.count()
         daily_cut = total_game_cnt // limit
 
