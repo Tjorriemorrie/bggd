@@ -3,7 +3,7 @@ from django.db.models import F
 from django.urls import reverse
 from django.utils.html import format_html
 
-from main.models import Game, Review, Player, Day, Award
+from main.models import Game, Review, Player, Day, Award, PlayerProxy
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
 
@@ -74,3 +74,11 @@ class PlayerAdmin(admin.ModelAdmin):
 class AwardAdmin(admin.ModelAdmin):
     list_display = ('game', 'type', 'description', 'badge', 'awarded_at', 'score')
     ordering = ('-awarded_at',)
+
+
+@admin.register(PlayerProxy)
+class PlayerScheduleAdmin(admin.ModelAdmin):
+    list_display = (
+        'id', 'nick', 'redo_requested_at', 'redo_started_at', 'redo_completed_at')
+    search_fields = ('nick',)
+    ordering = ('-redo_requested_at', '-redo_started_at', '-redo_completed_at')

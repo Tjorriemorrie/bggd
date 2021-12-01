@@ -90,6 +90,7 @@ def deploy(ctx):
         'bgg',
         'manage.py',
         'cron.sh',
+        'cron_redo.sh',
     }
     # clean dir
     conn.local('find . -iname ".ds_store" -delete', echo=True)

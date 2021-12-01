@@ -30,6 +30,7 @@ def get_rec_algo() -> AlgoBase:
         logger.info('loading rec algorithm...')
         with open(FILE_REC_MODEL, 'r+b') as fp:
             _algo = pickle.load(fp)
+        logger.info('loaded')
     return _algo
 
 
@@ -39,6 +40,7 @@ def get_mec_algo() -> AlgoBase:
         logger.info('loading rec algorithm...')
         with open(FILE_MEC_MODEL, 'r+b') as fp:
             _algo = pickle.load(fp)
+        logger.info('loaded')
     return _algo
 
 

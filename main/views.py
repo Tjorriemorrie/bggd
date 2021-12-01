@@ -233,18 +233,17 @@ class PlayerDetailView(DetailView):
             reviews.sort(key=attrgetter('diff_combine'), reverse=True)
             data['reviews'] = reviews
 
-        three_days_ago = now() - timedelta(days=3)
-        data['can_refresh'] = self.object.rec_at < three_days_ago
-
         return data
 
 
 def player_predict_view(request, pk):
+    """
+    Prevent spam by checking requested_at is empty.
+    """
     player = Player.objects.get(pk=pk)
-    three_days_ago = now() - timedelta(days=3)
-    if player.rec_at < three_days_ago:
-        game_ids = Game.objects.values_list('id', flat=True)
-        predict_player(player, game_ids)
+    if not player.redo_requested_at:
+        player.redo_requested_at = now()
+        player.save()
     return redirect(player)
 
 

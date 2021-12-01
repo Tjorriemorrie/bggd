@@ -43,10 +43,12 @@
         <br/>
         <h3>Recommendations</h3>
         <h6 class="text-muted">Last updated {{ player.rec_at }}</h6>
-        {% if can_refresh %}
+        {% if not player.redo_requested_at %}
           <p><a href="{% url 'player_predict' player.id %}">
             <button class="button">Recalculate</button>
           </a></p>
+        {% else %}
+          <h6 class="text-muted">Prediction rescheduled...</h6>
         {% endif %}
         {% if player.recs.count %}
           <table class="table">

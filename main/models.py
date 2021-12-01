@@ -166,6 +166,11 @@ class Player(models.Model):
     reviews_scr = models.FloatField(null=True)
     rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
 
+    # reschedule prediction for cron pickup
+    redo_requested_at = models.DateTimeField(null=True, blank=True)
+    redo_started_at = models.DateTimeField(null=True, blank=True)
+    redo_completed_at = models.DateTimeField(null=True, blank=True)
+
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -196,6 +201,11 @@ class Player(models.Model):
 
     def recs_light(self) -> List['Rec']:
         return self.recs.filter(weight_tag=WEIGHT_LIGHT).order_by('best_players').all()
+
+
+class PlayerProxy(Player):
+    class Meta:
+        proxy = True
 
 
 class Day(models.Model):
