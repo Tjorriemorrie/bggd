@@ -31,6 +31,7 @@ class Command(BaseCommand):
         ).first()
         if player:
             player.redo_started_at = now()
+            player.redo_completed_at = None
             player.save()
         return player
 
