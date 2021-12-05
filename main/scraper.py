@@ -292,6 +292,7 @@ def scrape_player(player: Player):
 
 
 def scrape_player_ratings(player: Player):
+    orphan_game_ids = list(player.reviews.values_list('game_id', flat=True))
     page = 0
     while True:
         page += 1
@@ -342,9 +343,15 @@ def scrape_player_ratings(player: Player):
                     comment=comment,
                     reviewed_at=rated_on)
                 logger.info(f'Created missed {review} for existing {game}!')
-                continue
-            if review.rating != rating or review.comment != comment:
-                logger.info(f'Rating for {game} changed from {review.rating} to {rating}: {comment}')
-                review.rating = rating
-                review.comment = comment
-                review.save()
+            else:
+                orphan_game_ids.remove(review.game.id)
+                if review.rating != rating or review.comment != comment:
+                    logger.info(f'Rating for {game} changed from {review.rating} to {rating}: {comment}')
+                    review.rating = rating
+                    review.comment = comment
+                    review.save()
+
+    # remove orphan reviews
+    cnt = Review.objects.filter(player=player, game_id__in=orphan_game_ids).delete()
+    if cnt:
+        logger.info(f'Deleted {cnt} orphan reviews')

@@ -143,9 +143,9 @@ class Command(BaseCommand):
         game_ids = Game.objects.values_list('id', flat=True)
 
         # perform these steps
-        self._scrape_new_players()
-        self._predict_new_players(game_ids)
-        self._predict_changed_players(game_ids)
+        # self._scrape_new_players()
+        # self._predict_new_players(game_ids)
+        # self._predict_changed_players(game_ids)
 
         # with remaining time
         self._upkeep(game_ids)
