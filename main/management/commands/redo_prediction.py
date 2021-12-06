@@ -7,6 +7,7 @@ from django.utils.timezone import now
 
 from main.models import Player, Game
 from main.recommendations import predict_player
+from main.scraper import scrape_player_ratings
 
 logger = logging.getLogger(__name__)
 
@@ -41,6 +42,10 @@ class Command(BaseCommand):
             logger.info('No player requested redo')
             return
 
+        # first refresh ratings
+        scrape_player_ratings(player, ignore_unknown=True)
+
+        # then redo prediction
         game_ids = Game.objects.values_list('id', flat=True)
         self._predict_player(game_ids, player)
         logger.info('Prediction done')

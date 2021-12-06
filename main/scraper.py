@@ -291,7 +291,7 @@ def scrape_player(player: Player):
     player.save()
 
 
-def scrape_player_ratings(player: Player):
+def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
     orphan_game_ids = list(player.reviews.values_list('game_id', flat=True))
     page = 0
     while True:
@@ -318,6 +318,8 @@ def scrape_player_ratings(player: Player):
             try:
                 game = Game.objects.get(bgg_id=game_bgg_id)
             except Game.DoesNotExist:
+                if ignore_unknown:
+                    continue
                 raise PlayerRatingNewGameError(f'Stopping at unknown game {cells[0].text.strip()}')
             # get rating
             rating_info = list(cells[1].stripped_strings)
@@ -343,15 +345,18 @@ def scrape_player_ratings(player: Player):
                     comment=comment,
                     reviewed_at=rated_on)
                 logger.info(f'Created missed {review} for existing {game}!')
-            else:
-                orphan_game_ids.remove(review.game.id)
-                if review.rating != rating or review.comment != comment:
-                    logger.info(f'Rating for {game} changed from {review.rating} to {rating}: {comment}')
-                    review.rating = rating
-                    review.comment = comment
-                    review.save()
+                continue
+
+            orphan_game_ids.remove(review.game.id)
+
+            if review.rating != rating or review.comment != comment:
+                logger.info(f'Rating for {game} changed from {review.rating} to {rating}: {comment}')
+                review.rating = rating
+                review.comment = comment
+                review.save()
 
     # remove orphan reviews
-    cnt = Review.objects.filter(player=player, game_id__in=orphan_game_ids).delete()
-    if cnt:
-        logger.info(f'Deleted {cnt} orphan reviews')
+    for game_id in orphan_game_ids:
+        review = Review.objects.get(player=player, game_id=game_id)
+        logger.info(f'Deleting orphan: {review}')
+        review.delete()

@@ -243,6 +243,7 @@ def player_predict_view(request, pk):
     player = Player.objects.get(pk=pk)
     if not player.redo_requested_at:
         player.redo_requested_at = now()
+        player.redo_started_at = None
         player.save()
     return redirect(player)
 
