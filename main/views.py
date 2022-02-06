@@ -51,7 +51,7 @@ def got_view(request):
     if not ctx:
         award_groups = {}
         to = now().year + 1
-        for year in reversed(range(2010, to)):
+        for year in reversed(range(START_GAME_OF_THE.year, to)):
             half_year = make_aware(datetime(year, 7, 1))
             award_groups[year] = {
                 'year': Award.objects.filter(

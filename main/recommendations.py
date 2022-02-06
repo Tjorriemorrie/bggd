@@ -13,7 +13,7 @@ from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase
 
 from bgg.settings import BASE_DIR
-from main.constants import REC_COMBOS, PLAYERS_SIZES, REC_MIN_CUTOFF
+from main.constants import REC_PLAYER_LIMIT, REC_COMBOS, PLAYERS_SIZES, REC_MIN_CUTOFF
 from main.models import Review, Player, Game, Rec, Label, LABEL_MECHANIC
 
 logger = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def train_rec_model():
     logger.info('Loading data...')
     player_ids = Player.objects.filter(
         reviews_cnt__gte=REC_MIN_CUTOFF).order_by(
-        '-reviews_scr').values_list('id', flat=True)[:100_000]
+        '-reviews_scr').values_list('id', flat=True)[:REC_PLAYER_LIMIT]
     logger.info(f'Found {len(player_ids)} players with >= {REC_MIN_CUTOFF} ratings')
     values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
     logger.info(f'Found {len(values)} ratings from those players')

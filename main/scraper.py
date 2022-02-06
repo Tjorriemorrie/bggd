@@ -336,6 +336,10 @@ def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
             # update review
             try:
                 review = Review.objects.get(game=game, player=player)
+                try:  # should always have game id if review exists
+                    orphan_game_ids.remove(review.game.id)
+                except ValueError:
+                    logger.error(f'{review.game.id} not found in remaining game ids {orphan_game_ids}')
             except Review.DoesNotExist:
                 review = Review.objects.create(
                     player=player,
@@ -346,8 +350,6 @@ def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
                     reviewed_at=rated_on)
                 logger.info(f'Created missed {review} for existing {game}!')
                 continue
-
-            orphan_game_ids.remove(review.game.id)
 
             if review.rating != rating or review.comment != comment:
                 logger.info(f'Rating for {game} changed from {review.rating} to {rating}: {comment}')
