@@ -82,8 +82,8 @@ class Command(BaseCommand):
         players = Player.objects.annotate(
             last_review=Max('reviews__reviewed_at')).filter(
             Q(rec_at__isnull=False) &
-            Q(last_review__gt=F('rec_at'))).order_by(
-            'rec_at').all()[:1_000]
+            Q(last_review__gt=F('rec_at')))
+            #.order_by('rec_at').all()[:1_000]
         while players:
             for player in players:
                 self._check_watch()
@@ -94,8 +94,8 @@ class Command(BaseCommand):
             players = Player.objects.annotate(
                 last_review=Max('reviews__reviewed_at')).filter(
                 Q(rec_at__isnull=False) &
-                Q(last_review__gt=F('rec_at'))).order_by(
-                'rec_at').all()[:1_000]
+                Q(last_review__gt=F('rec_at')))
+                #.order_by('rec_at').all()[:1_000]
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""
