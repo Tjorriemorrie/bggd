@@ -155,7 +155,7 @@ class SearchListView(ListView):
 
 class GameListView(OrderingListView, SearchListView, CachedDispatch):
     model = Game
-    paginate_by = 50
+    paginate_by = 100
     ordering = '-hotness'
     search_by = 'name'
     queryset = Game.objects.filter(rating__isnull=False)

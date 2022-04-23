@@ -43,7 +43,7 @@ def backup_data(ctx):
 
 
 @task
-def retrieve_data(ctx):
+def download_db(ctx):
     print('Retrieving db and model')
     conn = get_conn()
     db_file, mdl_file = backup_data(ctx)
@@ -52,7 +52,7 @@ def retrieve_data(ctx):
     zip_file = 'data.tar.gz'
     cmds = [
         f'cd {dir}',
-        f'tar -czvf {zip_file} {db_file} {mdl_file}',  # --xform s:^.*/::
+        f'tar -czvf {zip_file} {db_file}',  # --xform s:^.*/::
     ]
     conn.run(' && '.join(cmds), echo=True)
 
@@ -63,10 +63,29 @@ def retrieve_data(ctx):
     print('backing up local data...')
     today = datetime.utcnow().strftime('%y%m%d')
     conn.local(f'cp db.sqlite3 backups/db.sqlite3.{today}', echo=True)
-    conn.local(f'cp model.pkl backups/model.pkl.{today}', echo=True)
+    # conn.local(f'cp model.pkl backups/model.pkl.{today}', echo=True)
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
+    print('done')
+
+
+@task
+def upload_model(ctx):
+    print('Uploading model to site...')
+    conn = get_conn()
+
+    print('zipping model...')
+    zip_file = 'model.tar.gz'
+    mdl_file = 'model.pkl'
+    conn.local(f'tar -czvf {zip_file} {mdl_file}', echo=True)
+
+    print('Copying model file to server...')
+    conn.put(f'{zip_file}', f'{dir}/')
+
+    db_file, mdl_file = backup_data(ctx)
+    conn.run(f'tar -xf {dir}/{zip_file} -C {dir}', echo=True)
+
     print('done')
 
 

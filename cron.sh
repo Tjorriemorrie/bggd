@@ -9,8 +9,6 @@ function main() {
   cd /home/django/bggd
   source env/bin/activate
 
-  ./manage.py train_models
-
   while [ $SECONDS -lt $end ];
   do
     for cmd in 'scrape_games' 'scrape_players'
@@ -20,6 +18,8 @@ function main() {
   done
 
   ./manage.py update_game_stats
+
+#  ./manage.py train_models
 }
 
 main
