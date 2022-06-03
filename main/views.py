@@ -33,7 +33,7 @@ def home_view(request):
             Q(recs_cnt__gt=0) &
             Q(hotness__gt=0)
         ).annotate(score=100 * F('recs_cnt') / F('reviews_cnt')).order_by(
-            '-score').all()[:5]
+            '-score').all()[:10]
         ctx = {
             'nav': 'home',
             'game_cnt': Game.objects.count(),
@@ -301,3 +301,20 @@ def mec_view(request):
         }
         cache.set('mec_view', ctx)
     return render(request, 'main/mec.html', context=ctx)
+
+
+def shop_view(request):
+    ctx = cache.get('shop_view')
+    if not ctx:
+        mean = Game.objects.filter(
+            ps_available=True, ps_mean__isnull=False
+        ).order_by('ps_mean').all()[:10]
+        range_ = Game.objects.filter(
+            ps_available=True, ps_range__isnull=False
+        ).order_by('ps_range').all()[:10]
+        ctx = {
+            'mean': mean,
+            'range_': range_,
+        }
+        cache.set('shop_view', ctx)
+    return render(request, 'main/shop.html', context=ctx)

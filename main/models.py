@@ -5,6 +5,7 @@ from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.db.models import QuerySet
 from django.utils.timezone import now
+from jsonfield import JSONField
 
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT
 
@@ -41,10 +42,10 @@ class Label(models.Model):
 
 
 class Game(models.Model):
-    categories = models.ManyToManyField(Label, related_name='cat_games')
-    mechanics = models.ManyToManyField(Label, related_name='mec_games')
-    families = models.ManyToManyField(Label, related_name='fam_games')
-    subdomains = models.ManyToManyField(Label, related_name='dom_games')
+    categories = models.ManyToManyField(Label, related_name='cat_games', blank=True)
+    mechanics = models.ManyToManyField(Label, related_name='mec_games', blank=True)
+    families = models.ManyToManyField(Label, related_name='fam_games', blank=True)
+    subdomains = models.ManyToManyField(Label, related_name='dom_games', blank=True)
 
     bgg_id = models.PositiveIntegerField(db_index=True)
     name = models.CharField(max_length=250)
@@ -54,22 +55,22 @@ class Game(models.Model):
     rank = models.PositiveIntegerField()
 
     # details
-    scraped_at = models.DateTimeField(null=True)
-    img = models.CharField(max_length=250, null=True)
-    pitch = models.CharField(max_length=256, null=True)
-    description = models.TextField(null=True)
-    min_play_time = models.PositiveSmallIntegerField(null=True)
-    max_play_time = models.PositiveSmallIntegerField(null=True)
+    scraped_at = models.DateTimeField(null=True, blank=True)
+    img = models.CharField(max_length=250, null=True, blank=True)
+    pitch = models.CharField(max_length=256, null=True, blank=True)
+    description = models.TextField(null=True, blank=True)
+    min_play_time = models.PositiveSmallIntegerField(null=True, blank=True)
+    max_play_time = models.PositiveSmallIntegerField(null=True, blank=True)
     # age
-    min_age = models.PositiveSmallIntegerField(null=True)
-    rec_min_age = models.PositiveSmallIntegerField(null=True)
+    min_age = models.PositiveSmallIntegerField(null=True, blank=True)
+    rec_min_age = models.PositiveSmallIntegerField(null=True, blank=True)
     # players
-    min_players = models.PositiveSmallIntegerField(null=True)
-    max_players = models.PositiveSmallIntegerField(null=True)
-    rec_min_players = models.PositiveSmallIntegerField(null=True)
-    rec_max_players = models.PositiveSmallIntegerField(null=True)
-    best_min_players = models.PositiveSmallIntegerField(null=True)
-    best_max_players = models.PositiveSmallIntegerField(null=True)
+    min_players = models.PositiveSmallIntegerField(null=True, blank=True)
+    max_players = models.PositiveSmallIntegerField(null=True, blank=True)
+    rec_min_players = models.PositiveSmallIntegerField(null=True, blank=True)
+    rec_max_players = models.PositiveSmallIntegerField(null=True, blank=True)
+    best_min_players = models.PositiveSmallIntegerField(null=True, blank=True)
+    best_max_players = models.PositiveSmallIntegerField(null=True, blank=True)
     # weight
     weight_avg = models.FloatField(null=True)
     weight_tag = models.CharField(max_length=20, null=True, choices=CHOICES_WEIGHTS)
@@ -83,7 +84,16 @@ class Game(models.Model):
     hotness = models.FloatField(null=True)  # update hotness cron
 
     # similar
-    mechanic_cluster = models.IntegerField(null=True)
+    mechanic_cluster = models.IntegerField(null=True, blank=True)
+
+    # price story
+    ps_available = models.BooleanField(null=True)
+    ps_url = models.CharField(max_length=250, null=True, blank=True, unique=True)
+    ps_data = JSONField(null=True, blank=True)
+    ps_price = models.IntegerField(null=True, blank=True)
+    ps_mean = models.FloatField(null=True, blank=True)
+    ps_range = models.FloatField(null=True, blank=True)
+    ps_scraped_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -78,16 +78,34 @@
     <div class="row">
       <div class="col">
         <div class="card-group">
-          {% for up in upcoming %}
+          {% for upc in upcoming|slice:':4' %}
             <div class="card border-dark">
-              <a href="{% url 'game_detail' up.id %}" class="text-reset text-decoration-none">
-                <img src="{{ up.img }}" class="card-img-top"/>
+              <a href="{% url 'game_detail' upc.id %}" class="text-reset text-decoration-none">
+                <img src="{{ upc.img }}" class="card-img-top card-img-top-4"/>
                 <div class="card-body">
-                  <h5 class="card-title">{{ up.name }}</h5>
+                  <h5 class="card-title">{{ upc.name }}</h5>
                   <p class="card-text">
-                    <small class="text-muted">
-                      score: {{ up.score|floatformat }}
-                    </small>
+                    <small class="text-muted">Score: {{ upc.score|floatformat:0|intcomma }}</small>
+                  </p>
+                </div>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card-group">
+          {% for upc in upcoming|slice:'4:' %}
+            <div class="card border-dark">
+              <a href="{% url 'game_detail' upc.id %}" class="text-reset text-decoration-none">
+                <img src="{{ upc.img }}" class="card-img-top"/>
+                <div class="card-body">
+                  <h5 class="card-title">{{ upc.name }}</h5>
+                  <p class="card-text">
+                    <small class="text-muted">Score: {{ upc.score|floatformat:0|intcomma }}</small>
                   </p>
                 </div>
               </a>

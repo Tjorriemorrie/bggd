@@ -10,3 +10,4 @@ sortedcontainers==2.4.0
 plotly==5.2.1
 fabric==2.6.0
 scikit-learn==1.0.1
+django-jsonfield==1.4.1

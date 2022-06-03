@@ -1,32 +1,31 @@
 import json
 import logging
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import sleep
 from typing import List, Tuple
 
 import requests
 from bs4 import BeautifulSoup
 from django.db import IntegrityError, OperationalError
-from django.db.models import Avg, Q
+from django.db.models import Avg
 from django.utils.timezone import now, make_aware
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, \
     PlayerRatingUsernameNotFoundError
 from main.models import Game, Label, \
-    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player, \
-    Rec
+    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
 
 logger = logging.getLogger(__name__)
 
 URL_RANKINGS = r'https://www.boardgamegeek.com/browse/boardgame/page/'
 URL_GAME = r'https://www.boardgamegeek.com/boardgame/{bgg_id}'
-URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'
-URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'
-URL_GAME_NUMPLAYERS = r'https://www.boardgamegeek.com/geekitempoll.php?action=view&itempolltype=numplayers&objectid={bgg_id}&objecttype=thing'
+URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'  # noqa: E501
+URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'  # noqa: E501
+URL_GAME_NUMPLAYERS = r'https://www.boardgamegeek.com/geekitempoll.php?action=view&itempolltype=numplayers&objectid={bgg_id}&objecttype=thing'  # noqa: E501
 URL_GAME_NUMPLAYERS_RESULTS = r'https://www.boardgamegeek.com/geekpoll.php?action=results&pollid={poll_id}'
-URL_PLAYER_RATINGS = r'https://www.boardgamegeek.com/geekcollection.php?ajax=1&action=collectionpage&username={nick}&gallery=&sort=rating&sortdir=desc&page=&pageID={page}&ff=1&hiddencolumns=&publisherid=&searchstr=&rankobjecttype=subtype&rankobjectid=1&columns[]=title&columns[]=rating&columns[]=bggrating&columns[]=comment&minrating=&rating=&minbggrating=&bggrating=&minplays=&maxplays=&searchfield=title&geekranks=Board%20Game%20Rank&subtype=boardgame&excludesubtype=boardgameexpansion&own=both&trade=both&want=both&wanttobuy=both&prevowned=both&comment=both&wishlist=both&rated=both&played=both&wanttoplay=both&preordered=both&hasparts=both&wantparts=both&wishlistpriority='
+URL_PLAYER_RATINGS = r'https://www.boardgamegeek.com/geekcollection.php?ajax=1&action=collectionpage&username={nick}&gallery=&sort=rating&sortdir=desc&page=&pageID={page}&ff=1&hiddencolumns=&publisherid=&searchstr=&rankobjecttype=subtype&rankobjectid=1&columns[]=title&columns[]=rating&columns[]=bggrating&columns[]=comment&minrating=&rating=&minbggrating=&bggrating=&minplays=&maxplays=&searchfield=title&geekranks=Board%20Game%20Rank&subtype=boardgame&excludesubtype=boardgameexpansion&own=both&trade=both&want=both&wanttobuy=both&prevowned=both&comment=both&wishlist=both&rated=both&played=both&wanttoplay=both&preordered=both&hasparts=both&wantparts=both&wishlistpriority='  # noqa: E501
 
 
 class TooManyRequestsError(Exception):
@@ -140,13 +139,13 @@ def scrape_game(game: Game):
     game.weight_avg = polls['boardgameweight']['averageweight']
 
     # labels
-    GAME_LINKS_LABELS = {
+    game_links_labels = {
         'boardgamecategory': ('categories', LABEL_CATEGORY),
         'boardgamemechanic': ('mechanics', LABEL_MECHANIC),
         'boardgamefamily': ('families', LABEL_FAMILY),
         'boardgamesubdomain': ('subdomains', LABEL_SUBDOMAIN),
     }
-    for key, val in GAME_LINKS_LABELS.items():
+    for key, val in game_links_labels.items():
         data = []
         for link_item in preload['item']['links'][key]:
             label, _ = Label.objects.get_or_create(
@@ -163,6 +162,8 @@ def scrape_game(game: Game):
     game.recs_cnt = game.recs.filter(is_primary=True).count()
     game.scraped_at = now()
     game.save()
+
+    scrape_shop(game)
 
     logger.info(f'Saved game {game}')
 
@@ -313,7 +314,7 @@ def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
             cells = row.find_all('td')
             # get game
             game_row = cells[0].find('a')['href']
-            matches = re.search(r'\/boardgame\/(\d+)\/', game_row)
+            matches = re.search(r'/boardgame/(\d+)/', game_row)
             game_bgg_id = int(matches.group(1))
             try:
                 game = Game.objects.get(bgg_id=game_bgg_id)
@@ -362,3 +363,38 @@ def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
         review = Review.objects.get(player=player, game_id=game_id)
         logger.info(f'Deleting orphan: {review}')
         review.delete()
+
+
+@retry(OperationalError, delay=3, jitter=3, max_delay=30)
+def scrape_shop(game: Game) -> None:
+    if not game.ps_url:
+        return
+    hrs_30_ago = now() - timedelta(hours=30)
+    if game.ps_scraped_at and game.ps_scraped_at > hrs_30_ago:
+        return
+
+    ps_url = f'https://api.pricestory.co.za/product/{game.ps_url}'
+    logger.info(f'Scraping shop {ps_url} for {game}')
+    raw = get(ps_url)
+    res = raw.json()
+
+    game.ps_available = res['stock_history'][-1]['stock_status'] == 'available'
+    if not game.ps_available:
+        game.ps_price = None
+        game.ps_mean = None
+        game.ps_range = None
+    else:
+        price = res['price_history'][-1]['price']
+        range_ = res['aggregations']['price']['max'] - res['aggregations']['price']['min']
+        mean = res['aggregations']['price']['mean']
+        game.ps_price = int(price)
+        if range_:
+            game.ps_mean = price / mean
+            game.ps_range = (price - res['aggregations']['price']['min']) / range_
+        else:
+            game.ps_mean = None
+            game.ps_range = None
+
+    game.ps_data = res
+    game.ps_scraped_at = now()
+    game.save()

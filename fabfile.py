@@ -67,6 +67,7 @@ def download_db(ctx):
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
+    conn.local(f'mv -f db.sqlite3.bck db.sqlite3', echo=True)
     print('done')
 
 

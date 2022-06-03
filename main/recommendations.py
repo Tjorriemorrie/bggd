@@ -131,6 +131,8 @@ def predict_player(
     is_primary = True
     for val, game_id in top_recs:
         game = Game.objects.get(id=game_id)
+        if not game.ps_available or not game.ps_price:  # skip if cannot buy
+            continue
         if not game.best_min_players or not game.best_max_players:
             # logger.info(f'Skipping {game} for not having best players scraped.')
             continue

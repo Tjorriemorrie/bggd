@@ -1,0 +1,70 @@
+{% extends 'main/base.html' %}
+{% load humanize %}
+{% load shops %}
+
+{% block title %}Shop - {{ block.super }}{% endblock %}
+
+{% block content %}
+    <div class="container">
+
+        {% include 'main/navbar.html' with nav='shop' %}
+
+        <br/>
+        <div class="row">
+            <div class="col">
+                <h2>Shop</h2>
+                <p>Games available for purchase</p>
+            </div>
+        </div>
+
+
+        {# MEAN first 5 #}
+        <br/>
+        <div class="row">
+            <div class="col">
+                <h3>Below average price</h3>
+                <div class="card-group">
+                    {% for game in mean|slice:':5' %}
+                        {% include 'main/shop_card.html' with game=game msr='mean' %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {# MEAN last 5 #}
+{#        <div class="row">#}
+{#            <div class="col">#}
+{#                <div class="card-group">#}
+{#                    {% for game in mean|slice:'5:' %}#}
+{#                        {% include 'main/shop_card.html' with game=game msr='mean' %}#}
+{#                    {% endfor %}#}
+{#                </div>#}
+{#            </div>#}
+{#        </div>#}
+
+
+        {# RANGE first 5 #}
+        <br/>
+        <div class="row">
+            <div class="col">
+                <h3>Closest to mininum</h3>
+                <div class="card-group">
+                    {% for game in range_|slice:':5' %}
+                        {% include 'main/shop_card.html' with game=game msr='range' %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {# last 5 #}
+{#        <div class="row">#}
+{#            <div class="col">#}
+{#                <div class="card-group">#}
+{#                    {% for game in range_|slice:'5:' %}#}
+{#                        {% include 'main/shop_card.html' with game=game msr='range' %}#}
+{#                    {% endfor %}#}
+{#                </div>#}
+{#            </div>#}
+{#        </div>#}
+
+
+    </div>{# container #}
+{% endblock %}

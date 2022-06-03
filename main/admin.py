@@ -5,13 +5,19 @@ from django.utils.html import format_html
 
 from main.models import Game, Review, Player, Day, Award, PlayerProxy
 from main.recommendations import predict_player
-from main.scraper import scrape_game, scrape_player
+from main.scraper import scrape_game, scrape_player, scrape_shop
 
 
 @admin.action(description='Scrape games')
 def scrape_game_cmd(modeladmin, request, queryset):
     for obj in queryset:
         scrape_game(obj)
+
+
+@admin.action(description='Scrape games shop')
+def scrape_games_shop_cmd(modeladmin, request, queryset):
+    for obj in queryset:
+        scrape_shop(obj)
 
 
 @admin.action(description='Scrape players')
@@ -29,10 +35,12 @@ def predict_player_cmd(modeladmin, request, queryset):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('id', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id')
-    ordering = ('-year', 'rank')
-    actions = (scrape_game_cmd,)
+    list_display = ('id', 'hotness', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id', 'ps_price')
+    list_filter = ('ps_available',)
+    ordering = ('-hotness',)
+    actions = (scrape_game_cmd, scrape_games_shop_cmd,)
     search_fields = ('name',)
+    exclude = ('ps_data', 'ps_price', 'ps_mean', 'ps_range', 'hotness', 'mechanic_cluster')
 
     def reviews_cnt_fmt(self, obj: Game):
         url = reverse('admin:main_review_changelist')
@@ -82,3 +90,18 @@ class PlayerScheduleAdmin(admin.ModelAdmin):
         'id', 'nick', 'redo_requested_at', 'redo_started_at', 'redo_completed_at')
     search_fields = ('nick',)
     ordering = ('-redo_requested_at', '-redo_started_at', '-redo_completed_at')
+
+
+class Shop(Game):
+    class Meta:
+        proxy = True
+
+
+@admin.register(Shop)
+class ShopAdmin(admin.ModelAdmin):
+    list_display = ('name', 'year', 'ps_scraped_at', 'ps_available', 'ps_price', 'ps_mean', 'ps_range', 'ps_url')
+    list_filter = ('ps_available',)
+    ordering = (F('ps_range').asc(nulls_last=True), 'ps_mean')
+    actions = (scrape_games_shop_cmd,)
+    search_fields = ('name',)
+    fields = ('ps_scraped_at', 'ps_available', 'ps_url')
