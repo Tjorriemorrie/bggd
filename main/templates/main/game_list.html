@@ -117,6 +117,16 @@
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
             {% endif %}
           </th>
+          <th>
+            {% if ordering == '-ps_price' %}
+              <a href="?{% add_param 'o' 'ps_price' %}">Price</a>
+            {% else %}
+              <a href="?{% add_param 'o' '-ps_price' %}">Price</a>
+            {% endif %}
+            {% if 'ps_price' in ordering %}
+              <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
+            {% endif %}
+          </th>
         </tr>
         </thead>
         <tbody>
@@ -139,6 +149,11 @@
             <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.hotness %}{{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>
+            <td>{% if game.ps_available and game.ps_price %}
+                <a href="https://pricestory.co.za/product/{{ game.ps_url }}" target="_blank" class="text-decoration-none {% if game.ps_mean_saving > 0 %}text-success{% else %}text-danger{% endif %}">
+                    {{ game.ps_price|floatformat:0|intcomma }}
+                </a>
+            {% endif %}</td>
           </tr>
         {% endfor %}
         </tbody>

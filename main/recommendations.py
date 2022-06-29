@@ -51,7 +51,7 @@ def train_rec_model():
     player_ids = Player.objects.filter(
         reviews_cnt__gte=REC_MIN_CUTOFF).order_by(
         '-reviews_scr').values_list('id', flat=True)[:REC_PLAYER_LIMIT]
-    logger.info(f'Found {len(player_ids)} players with >= {REC_MIN_CUTOFF} ratings')
+    logger.info(f'Found {len(player_ids)} (max {REC_PLAYER_LIMIT}) players with >= {REC_MIN_CUTOFF} ratings')
     values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
     logger.info(f'Found {len(values)} ratings from those players')
     df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
@@ -105,6 +105,9 @@ def predict_player(
     player.reviews_cnt = len(reviews)
     player.rec_at = now()
     player.reviews_scr = None
+
+    # clear player recs, to remove games out of stock in spots not getting replaced.
+    Rec.objects.filter(player=player).delete()
 
     if player.reviews_cnt < 3:
         player.save()

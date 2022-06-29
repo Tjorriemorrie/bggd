@@ -18,4 +18,5 @@ def mean_filter(game: Game):
 def range_filter(game: Game):
     perc = int(game.ps_range * 100)
     min_ = int(game.ps_data['aggregations']['price']['min'])
-    return f'{ perc }% above min R{ min_ }'
+    max_ = int(game.ps_data['aggregations']['price']['max'])
+    return f'Min R{ min_ } [{ perc }%] max R{ max_ }'

@@ -47,6 +47,18 @@
                 {{ game.max_play_time }}{% endif %}</h6>
             <h6>Age: {{ game.age_fmt }}</h6>
             <h6><a href="{{ game.bgg_link }}" target="_blank">GBB link</a></h6>
+              <br/>
+              {% if game.ps_available %}
+                <h5>{% if game.ps_price %}
+                    <span class="badge {% if game.ps_mean_saving > 0 %}bg-success{% else %}bg-danger{% endif %}">
+                        <a href="https://pricestory.co.za/product/{{ game.ps_url }}" target="_blank" class="text-decoration-none text-light">R{{ game.ps_price|floatformat:0|intcomma }}</a>
+                    </span>
+                {% endif %}</h5>
+            {% else %}
+                <h5 class="badge bg-warning">
+                    <a href="https://pricestory.co.za/product/{{ game.ps_url }}" target="_blank" class="text-decoration-none text-dark">Out of stock</a>
+                </h5>
+            {% endif %}
           </div>
         </div>
 

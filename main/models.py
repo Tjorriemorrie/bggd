@@ -1,13 +1,12 @@
 from datetime import datetime
-from typing import Optional, List, Union
+from typing import List
 
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
-from django.db.models import QuerySet
 from django.utils.timezone import now
 from jsonfield import JSONField
 
-from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT
+from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, STOCK_OUT, SHOP_RARU
 
 LABEL_CATEGORY = 'category'
 LABEL_MECHANIC = 'mechanic'
@@ -89,11 +88,13 @@ class Game(models.Model):
     # price story
     ps_available = models.BooleanField(null=True)
     ps_url = models.CharField(max_length=250, null=True, blank=True, unique=True)
+    ps_url_at = models.DateTimeField(null=True)
     ps_data = JSONField(null=True, blank=True)
     ps_price = models.IntegerField(null=True, blank=True)
-    ps_mean = models.FloatField(null=True, blank=True)
-    ps_range = models.FloatField(null=True, blank=True)
-    ps_scraped_at = models.DateTimeField(null=True, blank=True)
+    ps_priced_at = models.DateTimeField(null=True, blank=True)
+    ps_mean_saving = models.FloatField(null=True, blank=True)
+    ps_min_saving = models.FloatField(null=True, blank=True)
+    ps_est_saving = models.FloatField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -102,7 +103,7 @@ class Game(models.Model):
         ordering = ('rank',)
 
     def __str__(self) -> str:
-        return f'<Game-{self.bgg_id} {self.name} ({self.year})>'
+        return f'{self.name} ({self.year})'
 
     @property
     def bgg_link(self):
@@ -232,6 +233,20 @@ class Day(models.Model):
     def __str__(self) -> str:
         return f'<Day {self.day:"%y-%m-%d} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
 
+    @staticmethod
+    def get_today() -> 'Day':
+        today = now()
+        day, _ = Day.objects.get_or_create(
+            day=datetime(today.year, today.month, today.day),
+            defaults={
+                'reviews_cnt': 0,
+                'reviews_avg': 0,
+                'last_review_id': 0,
+                'last_review_update': now(),
+            }
+        )
+        return day
+
 
 class GameDay(models.Model):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='gamedays')
@@ -330,3 +345,59 @@ class Rec(models.Model):
 
     def __str__(self) -> str:
         return f'<Rec {self.weight_tag} {self.best_players} {self.game.name} -> {self.player.nick}>'
+
+
+class Shop(models.Model):
+    SHOP_CHOICES = (
+        (SHOP_RARU, SHOP_RARU),
+    )
+    name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
+    host = models.CharField(max_length=150, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self) -> str:
+        return f'{self.name}'
+
+
+class ShopGame(models.Model):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='shopgames')
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='shopgames')
+    url = models.CharField(max_length=250, unique=True, null=True, blank=True)
+    mia = models.BooleanField(default=False, blank=True)
+
+    current_price = models.FloatField(null=True, blank=True)
+    mean_price = models.FloatField(null=True, blank=True)
+    min_price = models.FloatField(null=True, blank=True)
+    max_price = models.FloatField(null=True, blank=True)
+    mean_saving = models.FloatField(null=True, blank=True)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('shop', 'game')
+
+    def __str__(self) -> str:
+        return f'{self.shop} {self.game} {self.mia}'
+
+
+class Price(models.Model):
+    STOCK_CHOICES = (
+        (STOCK_IN, STOCK_IN),
+        (STOCK_OUT, STOCK_OUT),
+    )
+    shopgame = models.ForeignKey(ShopGame, on_delete=models.CASCADE, related_name='prices')
+    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='prices')
+
+    status = models.CharField(max_length=50, choices=STOCK_CHOICES)
+    price = models.IntegerField()
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('shopgame', 'day')
+
+    def __str__(self) -> str:
+        return f'Price {self.day}  {self.shopgame} {self.status} {self.price}'

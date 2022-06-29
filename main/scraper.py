@@ -163,8 +163,6 @@ def scrape_game(game: Game):
     game.scraped_at = now()
     game.save()
 
-    scrape_shop(game)
-
     logger.info(f'Saved game {game}')
 
 
@@ -370,7 +368,7 @@ def scrape_shop(game: Game) -> None:
     if not game.ps_url:
         return
     hrs_30_ago = now() - timedelta(hours=30)
-    if game.ps_scraped_at and game.ps_scraped_at > hrs_30_ago:
+    if game.ps_priced_at and game.ps_priced_at > hrs_30_ago:
         return
 
     ps_url = f'https://api.pricestory.co.za/product/{game.ps_url}'
@@ -381,20 +379,18 @@ def scrape_shop(game: Game) -> None:
     game.ps_available = res['stock_history'][-1]['stock_status'] == 'available'
     if not game.ps_available:
         game.ps_price = None
-        game.ps_mean = None
-        game.ps_range = None
+        game.ps_mean_saving = None
+        game.ps_min_saving = None
+        game.ps_est_saving = None
     else:
         price = res['price_history'][-1]['price']
-        range_ = res['aggregations']['price']['max'] - res['aggregations']['price']['min']
-        mean = res['aggregations']['price']['mean']
-        game.ps_price = int(price)
-        if range_:
-            game.ps_mean = price / mean
-            game.ps_range = (price - res['aggregations']['price']['min']) / range_
-        else:
-            game.ps_mean = None
-            game.ps_range = None
+        mean_saving = res['aggregations']['price']['mean'] - price
+        min_saving = price - res['aggregations']['price']['min']
+        game.ps_price = price
+        game.ps_mean_saving = mean_saving
+        game.ps_min_saving = min_saving
+        game.ps_est_saving = mean_saving - min_saving
 
     game.ps_data = res
-    game.ps_scraped_at = now()
+    game.ps_priced_at = now()
     game.save()

@@ -13,58 +13,51 @@
         <div class="row">
             <div class="col">
                 <h2>Shop</h2>
-                <p>Games available for purchase</p>
+                <p>Best priced games available</p>
             </div>
         </div>
 
 
-        {# MEAN first 5 #}
+        {# first 5 #}
         <br/>
         <div class="row">
             <div class="col">
-                <h3>Below average price</h3>
                 <div class="card-group">
-                    {% for game in mean|slice:':5' %}
+                    {% for game in games|slice:':5' %}
+                        {% include 'main/shop_card.html' with game=game %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {# second 5 #}
+        <div class="row">
+            <div class="col">
+                <div class="card-group">
+                    {% for game in games|slice:'5:10' %}
                         {% include 'main/shop_card.html' with game=game msr='mean' %}
                     {% endfor %}
                 </div>
             </div>
         </div>
-        {# MEAN last 5 #}
-{#        <div class="row">#}
-{#            <div class="col">#}
-{#                <div class="card-group">#}
-{#                    {% for game in mean|slice:'5:' %}#}
-{#                        {% include 'main/shop_card.html' with game=game msr='mean' %}#}
-{#                    {% endfor %}#}
-{#                </div>#}
-{#            </div>#}
-{#        </div>#}
-
-
-        {# RANGE first 5 #}
-        <br/>
+        {# third 5 #}
         <div class="row">
             <div class="col">
-                <h3>Closest to mininum</h3>
                 <div class="card-group">
-                    {% for game in range_|slice:':5' %}
-                        {% include 'main/shop_card.html' with game=game msr='range' %}
+                    {% for game in games|slice:'10:15' %}
+                        {% include 'main/shop_card.html' with game=game msr='mean' %}
                     {% endfor %}
                 </div>
             </div>
         </div>
-        {# last 5 #}
-{#        <div class="row">#}
-{#            <div class="col">#}
-{#                <div class="card-group">#}
-{#                    {% for game in range_|slice:'5:' %}#}
-{#                        {% include 'main/shop_card.html' with game=game msr='range' %}#}
-{#                    {% endfor %}#}
-{#                </div>#}
-{#            </div>#}
-{#        </div>#}
-
-
+        {# fourth 5 #}
+        <div class="row">
+            <div class="col">
+                <div class="card-group">
+                    {% for game in games|slice:'15:' %}
+                        {% include 'main/shop_card.html' with game=game msr='mean' %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
     </div>{# container #}
 {% endblock %}

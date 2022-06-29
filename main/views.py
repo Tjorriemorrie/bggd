@@ -306,15 +306,11 @@ def mec_view(request):
 def shop_view(request):
     ctx = cache.get('shop_view')
     if not ctx:
-        mean = Game.objects.filter(
-            ps_available=True, ps_mean__isnull=False
-        ).order_by('ps_mean').all()[:10]
-        range_ = Game.objects.filter(
-            ps_available=True, ps_range__isnull=False
-        ).order_by('ps_range').all()[:10]
+        games = Game.objects.filter(
+            ps_available=True, ps_est_saving__gt=0
+        ).order_by('-ps_mean_saving').all()[:20]
         ctx = {
-            'mean': mean,
-            'range_': range_,
+            'games': games,
         }
         cache.set('shop_view', ctx)
     return render(request, 'main/shop.html', context=ctx)

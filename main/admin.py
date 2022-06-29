@@ -2,8 +2,10 @@ from django.contrib import admin
 from django.db.models import F
 from django.urls import reverse
 from django.utils.html import format_html
+from django.utils.timezone import now
 
-from main.models import Game, Review, Player, Day, Award, PlayerProxy
+from main.constants import SHOP_RARU
+from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, ShopGame
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player, scrape_shop
 
@@ -40,7 +42,7 @@ class GameAdmin(admin.ModelAdmin):
     ordering = ('-hotness',)
     actions = (scrape_game_cmd, scrape_games_shop_cmd,)
     search_fields = ('name',)
-    exclude = ('ps_data', 'ps_price', 'ps_mean', 'ps_range', 'hotness', 'mechanic_cluster')
+    exclude = ('ps_data', 'ps_price', 'ps_saving', 'hotness', 'mechanic_cluster')
 
     def reviews_cnt_fmt(self, obj: Game):
         url = reverse('admin:main_review_changelist')
@@ -92,16 +94,58 @@ class PlayerScheduleAdmin(admin.ModelAdmin):
     ordering = ('-redo_requested_at', '-redo_started_at', '-redo_completed_at')
 
 
-class Shop(Game):
-    class Meta:
-        proxy = True
-
-
 @admin.register(Shop)
 class ShopAdmin(admin.ModelAdmin):
-    list_display = ('name', 'year', 'ps_scraped_at', 'ps_available', 'ps_price', 'ps_mean', 'ps_range', 'ps_url')
-    list_filter = ('ps_available',)
-    ordering = (F('ps_range').asc(nulls_last=True), 'ps_mean')
-    actions = (scrape_games_shop_cmd,)
-    search_fields = ('name',)
-    fields = ('ps_scraped_at', 'ps_available', 'ps_url')
+    pass
+
+
+class ShopGameProxy(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Raru price'
+        verbose_name_plural = 'Raru prices'
+
+
+@admin.register(ShopGameProxy)
+class ShopGameProxyAdmin(admin.ModelAdmin):
+    list_display = ('raru', 'title', 'year', 'hotness_fmt')
+    # list_display = ('shop', 'game', 'url')
+    # list_filter = ('raru',)
+    ordering = ('hotness', 'year')
+    # actions = (scrape_games_shop_cmd,)
+    # search_fields = ('shop', 'game', 'url')
+
+    # def formfield_for_foreignkey(self, db_field, request, **kwargs):
+    #     if db_field.name == 'game':
+    #         kwargs['queryset'] = Game.objects.order_by('name')
+    #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    def title(self, obj: Game):
+        return format_html(
+            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+
+    def raru(self, obj: Game):
+        raru = Shop.objects.get(name=SHOP_RARU)
+        try:
+            rarugame = ShopGame.objects.get(shop=raru, game=obj)
+            return format_html(f'<p>found</p>')
+        except ShopGame.DoesNotExist:
+            return format_html(
+                f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={obj.id}">add</a>')
+
+    def hotness_fmt(self, obj: Game):
+        hotness = int(obj.hotness) if obj.hotness else 0
+        return format_html(f'{hotness}')
+    # def save_model(self, request, obj: Game, form, change):
+    #     obj.ps_url_at = now()
+    #     if obj.ps_available is None:
+    #         obj.ps_available = False
+    #     super().save_model(request, obj, form, change)
+
+    def get_queryset(self, request):
+        return Game.objects.exclude(shopgames__shop__name=SHOP_RARU)
+
+
+@admin.register(ShopGame)
+class ShopGameAdmin(admin.ModelAdmin):
+    fields = ['shop', 'game', 'url', 'mia']

@@ -7,7 +7,7 @@ from django.utils.timezone import now
 from retry import retry
 
 from main.models import Game
-from main.scraper import scrape_rankings, scrape_game
+from main.scraper import scrape_rankings, scrape_game, scrape_shop
 
 logger = logging.getLogger(__name__)
 
@@ -15,12 +15,29 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = 'Scrape bgg for data'
 
+    def _scrape_shops(self):
+        days_ago = 3
+        total_game_cnt = Game.objects.filter(ps_url__isnull=False).count()
+        daily_cut = total_game_cnt // days_ago
+
+        logger.info(''.join(['='] * 99))
+        logger.info('Updating shop stats for games...')
+        time_ago = now() - timedelta(days=days_ago)
+        games = Game.objects.filter(
+            ps_url__isnull=False,
+            ps_priced_at__lt=time_ago).all()[:daily_cut]
+        for ix, game in enumerate(games):
+            logger.info(f'Progress {ix}/{len(games)}')
+            scrape_shop(game)
+
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def handle(self, *args, **options):
 
-        limit = 7
+        # self._scrape_shops()
+
+        days_ago = 14
         total_game_cnt = Game.objects.count()
-        daily_cut = total_game_cnt // limit
+        daily_cut = total_game_cnt // days_ago
 
         logger.info(''.join(['='] * 99))
         logger.info('Updating top 10 hotness for home page...')
@@ -31,7 +48,7 @@ class Command(BaseCommand):
 
         logger.info(''.join(['='] * 99))
         logger.info('Updating already scraped games...')
-        time_ago = now() - timedelta(days=limit)
+        time_ago = now() - timedelta(days=days_ago)
         games = Game.objects.filter(scraped_at__lt=time_ago).all()[:daily_cut]
         for ix, game in enumerate(games):
             logger.info(f'Progress {ix}/{len(games)}')

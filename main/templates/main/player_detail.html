@@ -77,7 +77,7 @@
                             <h5 class="card-title">{{ rec.game.name }}</h5>
                             <p class="card-text">
                               <a href="https://pricestory.co.za/product/{{ rec.game.ps_url }}" target="_blank" class="text-decoration-none">
-                                  <small class="text-muted ">R{{ rec.game.ps_price|floatformat:0|intcomma }}</small>
+                                  <small class="{% if rec.is_primary %}text-white{% else %}text-muted{% endif %}">R{{ rec.game.ps_price|floatformat:0|intcomma }}</small>
                               </a>
                             </p>
                           </div>

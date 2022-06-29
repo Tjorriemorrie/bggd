@@ -4,17 +4,15 @@
     <a href="{% url 'game_detail' game.id %}" class="text-reset text-decoration-none">
         <img src="{{ game.img }}" class="card-img-top card-img-top-4"/>
         <div class="card-body">
-            <h5 class="card-title">{{ game.name }}</h5>
+            <h5 class="card-title">{{ game.name }} <small class="text-muted">[{{ game.year }}]</small></h5>
             <a href="https://pricestory.co.za/product/{{ game.ps_url }}" target="_blank" class="btn btn-primary" title="{{ game.ps_data.product.store_id }}">
                 R{{ game.ps_price|floatformat:0|intcomma }}
             </a>
-            <p class="card-text text-muted">&nbsp;
-                {% if msr == 'mean' %}
-                    {% shop_mean game %}
-                {% else %}
-                    {% shop_range game %}
-                {% endif %}
-            </p>
+            <br/>
+            <br/>
+            <p class="card-text text-muted">Below average by R{{ game.ps_mean_saving|floatformat:0|intcomma }}</p>
+            <p class="card-text text-muted">Above minimum by R{{ game.ps_min_saving|floatformat:0|intcomma }}</p>
+            <p class="card-text text-muted">Est saving of R{{ game.ps_est_saving|floatformat:0|intcomma }}</p>
         </div>
     </a>
 </div>
