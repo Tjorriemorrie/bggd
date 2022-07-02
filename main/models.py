@@ -364,6 +364,7 @@ class ShopGame(models.Model):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='shopgames')
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='shopgames')
     url = models.CharField(max_length=250, unique=True, null=True, blank=True)
+    url_at = models.DateTimeField()
     mia = models.BooleanField(default=False, blank=True)
 
     current_price = models.FloatField(null=True, blank=True)

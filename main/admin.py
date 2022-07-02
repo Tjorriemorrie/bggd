@@ -1,5 +1,6 @@
 from django.contrib import admin
 from django.db.models import F
+from django.shortcuts import redirect
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.timezone import now
@@ -99,26 +100,17 @@ class ShopAdmin(admin.ModelAdmin):
     pass
 
 
-class ShopGameProxy(Game):
+class ShopGameRaru(Game):
     class Meta:
         proxy = True
-        verbose_name = 'Raru price'
-        verbose_name_plural = 'Raru prices'
+        verbose_name = 'Shop Raru'
+        verbose_name_plural = 'Shop Raru'
 
 
-@admin.register(ShopGameProxy)
-class ShopGameProxyAdmin(admin.ModelAdmin):
+@admin.register(ShopGameRaru)
+class ShopGameRaruAdmin(admin.ModelAdmin):
     list_display = ('raru', 'title', 'year', 'hotness_fmt')
-    # list_display = ('shop', 'game', 'url')
-    # list_filter = ('raru',)
     ordering = ('hotness', 'year')
-    # actions = (scrape_games_shop_cmd,)
-    # search_fields = ('shop', 'game', 'url')
-
-    # def formfield_for_foreignkey(self, db_field, request, **kwargs):
-    #     if db_field.name == 'game':
-    #         kwargs['queryset'] = Game.objects.order_by('name')
-    #     return super().formfield_for_foreignkey(db_field, request, **kwargs)
 
     def title(self, obj: Game):
         return format_html(
@@ -126,21 +118,12 @@ class ShopGameProxyAdmin(admin.ModelAdmin):
 
     def raru(self, obj: Game):
         raru = Shop.objects.get(name=SHOP_RARU)
-        try:
-            rarugame = ShopGame.objects.get(shop=raru, game=obj)
-            return format_html(f'<p>found</p>')
-        except ShopGame.DoesNotExist:
-            return format_html(
-                f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={obj.id}">add</a>')
+        return format_html(
+            f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={obj.id}">add url</a>')
 
     def hotness_fmt(self, obj: Game):
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
-    # def save_model(self, request, obj: Game, form, change):
-    #     obj.ps_url_at = now()
-    #     if obj.ps_available is None:
-    #         obj.ps_available = False
-    #     super().save_model(request, obj, form, change)
 
     def get_queryset(self, request):
         return Game.objects.exclude(shopgames__shop__name=SHOP_RARU)
@@ -148,4 +131,15 @@ class ShopGameProxyAdmin(admin.ModelAdmin):
 
 @admin.register(ShopGame)
 class ShopGameAdmin(admin.ModelAdmin):
+    list_display = ['shop', 'game', 'url', 'mia', 'url_at']
     fields = ['shop', 'game', 'url', 'mia']
+
+    def save_model(self, request, obj, form, change):
+        obj.url_at = now()
+        super().save_model(request, obj, form, change)
+
+    def _response_post_save(self, request, obj):
+        if obj.shop.name == SHOP_RARU:
+            return redirect('/admin/main/shopgameraru/')
+        else:
+            return super().response_post_save_change(request, obj)
