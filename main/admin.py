@@ -1,3 +1,5 @@
+import re
+
 from django.contrib import admin
 from django.db.models import F
 from django.shortcuts import redirect
@@ -118,7 +120,11 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
 
     def raru(self, obj: Game):
         raru = Shop.objects.get(name=SHOP_RARU)
+        words = re.findall('(\w+)', obj.name)
+        words.sort(key=len, reverse=True)
+        raru_search = 'https://raru.co.za/boards-dice/search/' + '+'.join(words[:3])
         return format_html(
+            f'<a href="{raru_search}" target="_blank">search raru</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={obj.id}">add url</a>')
 
     def hotness_fmt(self, obj: Game):
