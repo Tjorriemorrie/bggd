@@ -18,7 +18,7 @@ from django.views.generic import ListView, TemplateView, DetailView
 from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES
 from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR, \
-    AWARD_GAME_OF_THE_MONTH
+    AWARD_GAME_OF_THE_MONTH, ShopGame
 from main.recommendations import predict_player
 
 logger = logging.getLogger(__name__)
@@ -306,7 +306,8 @@ def mec_view(request):
 def shop_view(request):
     ctx = cache.get('shop_view')
     if not ctx:
-        games = Game.objects.filter(
+        games = ShopGame.objects.filter(
+            mia=False,
             ps_available=True, ps_est_saving__gt=0
         ).order_by('-ps_mean_saving').all()[:20]
         ctx = {

@@ -9,6 +9,8 @@ function main() {
   cd /home/django/bggd
   source env/bin/activate
 
+  ./manage.py scrape_shop raru
+
   while [ $SECONDS -lt $end ];
   do
     for cmd in 'scrape_games' 'scrape_players'

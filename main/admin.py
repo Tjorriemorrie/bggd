@@ -8,7 +8,7 @@ from django.utils.html import format_html
 from django.utils.timezone import now
 
 from main.constants import SHOP_RARU
-from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, ShopGame
+from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, ShopGame, Price
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player, scrape_shop
 
@@ -122,6 +122,9 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
         raru = Shop.objects.get(name=SHOP_RARU)
         words = re.findall('(\w+)', obj.name)
         words.sort(key=len, reverse=True)
+        words = [w for w in words if w.lower() not in ['edition', 'board', 'game']]
+        words = [f"{w}'s" if f"{w}'s" in obj.name else w for w in words if w != 's']
+        words = [f"{w}'t" if f"{w}'t" in obj.name else w for w in words if w != 't']
         raru_search = 'https://raru.co.za/boards-dice/search/' + '+'.join(words[:3])
         return format_html(
             f'<a href="{raru_search}" target="_blank">search raru</a><br/><br/>'
@@ -137,8 +140,11 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
 
 @admin.register(ShopGame)
 class ShopGameAdmin(admin.ModelAdmin):
-    list_display = ['shop', 'game', 'url', 'mia', 'url_at']
+    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia']
     fields = ['shop', 'game', 'url', 'mia']
+    search_fields = ['game__name', 'url']
+    list_filter = ['shop__name']
+    ordering = [F('mean_saving').desc(nulls_last=True), '-updated_at']
 
     def save_model(self, request, obj, form, change):
         obj.url_at = now()
@@ -149,3 +155,8 @@ class ShopGameAdmin(admin.ModelAdmin):
             return redirect('/admin/main/shopgameraru/')
         else:
             return super().response_post_save_change(request, obj)
+
+
+@admin.register(Price)
+class PriceAdmin(admin.ModelAdmin):
+    list_display = ['shopgame', 'day', 'status', 'price']

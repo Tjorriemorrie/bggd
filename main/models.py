@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
@@ -85,6 +85,11 @@ class Game(models.Model):
     # similar
     mechanic_cluster = models.IntegerField(null=True, blank=True)
 
+    # shops aggregate
+    shop_available = models.BooleanField(null=True, blank=True)
+    shop_price = models.IntegerField(null=True, blank=True)
+    shop_saving = models.FloatField(null=True, blank=True)
+
     # price story
     ps_available = models.BooleanField(null=True)
     ps_url = models.CharField(max_length=250, null=True, blank=True, unique=True)
@@ -108,6 +113,11 @@ class Game(models.Model):
     @property
     def bgg_link(self):
         return f'https://www.boardgamegeek.com/boardgame/{self.bgg_id}'
+
+    def best_shop(self) -> Optional['ShopGame']:
+        return self.shopgames.filter(
+            current_available=True,
+        ).order_by('-mean_saving', 'updated_at').first()
 
     def mechanics_comma(self) -> str:
         return ', '.join([m.name for m in self.mechanics.all()])
@@ -367,6 +377,7 @@ class ShopGame(models.Model):
     url_at = models.DateTimeField()
     mia = models.BooleanField(default=False, blank=True)
 
+    current_available = models.BooleanField(null=True, blank=True)
     current_price = models.FloatField(null=True, blank=True)
     mean_price = models.FloatField(null=True, blank=True)
     min_price = models.FloatField(null=True, blank=True)
