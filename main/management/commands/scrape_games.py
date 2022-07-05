@@ -6,8 +6,8 @@ from django.db import OperationalError
 from django.utils.timezone import now
 from retry import retry
 
-from main.models import Game, ShopGame
-from main.scraper import scrape_rankings, scrape_game, scrape_shop
+from main.models import Game
+from main.scraper import scrape_rankings, scrape_game
 
 logger = logging.getLogger(__name__)
 

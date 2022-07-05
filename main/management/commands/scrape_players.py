@@ -10,7 +10,7 @@ from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError, \
     PlayerRatingUsernameNotFoundError
-from main.models import Player, Game
+from main.models import Player, Game, Review
 from main.recommendations import predict_player
 from main.scraper import scrape_player, scrape_player_ratings
 from main.stats import update_gamedays
@@ -97,6 +97,32 @@ class Command(BaseCommand):
                 Q(last_review__gt=F('rec_at')))
                 #.order_by('rec_at').all()[:1_000]
 
+    def _predict_changed_players2(self, game_ids: List[int]):
+        """update player predictions who have made a new rating"""
+        logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
+        start_at = 0
+        reviews = Review.objects.prefetch_related('player').order_by(
+            '-updated_at').all()[0:(start_at + 1_000)]
+        end = False
+        players_done = set()
+        while not end:
+            for review in reviews:
+                if review.player.id in players_done:
+                    continue
+                if review.player.rec_at > review.updated_at:
+                    end = True
+                    break
+                self._check_watch()
+                predict_player(review.player, game_ids)
+                players_done.add(review.player.id)
+                logger.info(f'{self.prefix} Recommendations for changed {review.player}')
+                # update game days (updated from player's reviews)
+                update_gamedays(review.player)
+            # next batch
+            start_at += 1_000
+            reviews = Review.objects.prefetch_related('player').order_by(
+                '-updated_at').all()[start_at:(start_at + 1_000)]
+
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""
         logger.info(''.join(['='] * 40) + ' upkeeping players ' + ''.join(['='] * 40))
@@ -132,6 +158,10 @@ class Command(BaseCommand):
                 # recommendations
                 predict_player(player, game_ids)
 
+                # no update game days (updated from player's reviews)
+                # as all reviews are refreshed, only needed for changed players
+                # this upkeep is to refresh the rec values of games
+
                 logger.info(f'{self.prefix} upkeeped {player}')
 
             # renew loop
@@ -145,7 +175,7 @@ class Command(BaseCommand):
         # perform these steps
         self._scrape_new_players()
         self._predict_new_players(game_ids)
-        self._predict_changed_players(game_ids)
+        self._predict_changed_players2(game_ids)
 
         # with remaining time
         self._upkeep(game_ids)

@@ -90,17 +90,6 @@ class Game(models.Model):
     shop_price = models.IntegerField(null=True, blank=True)
     shop_saving = models.FloatField(null=True, blank=True)
 
-    # price story
-    ps_available = models.BooleanField(null=True)
-    ps_url = models.CharField(max_length=250, null=True, blank=True, unique=True)
-    ps_url_at = models.DateTimeField(null=True)
-    ps_data = JSONField(null=True, blank=True)
-    ps_price = models.IntegerField(null=True, blank=True)
-    ps_priced_at = models.DateTimeField(null=True, blank=True)
-    ps_mean_saving = models.FloatField(null=True, blank=True)
-    ps_min_saving = models.FloatField(null=True, blank=True)
-    ps_est_saving = models.FloatField(null=True, blank=True)
-
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -115,9 +104,7 @@ class Game(models.Model):
         return f'https://www.boardgamegeek.com/boardgame/{self.bgg_id}'
 
     def best_shop(self) -> Optional['ShopGame']:
-        return self.shopgames.filter(
-            current_available=True,
-        ).order_by('-mean_saving', 'updated_at').first()
+        return self.shopgames.order_by('-mean_saving', 'updated_at').first()
 
     def mechanics_comma(self) -> str:
         return ', '.join([m.name for m in self.mechanics.all()])

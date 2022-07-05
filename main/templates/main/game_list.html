@@ -1,6 +1,7 @@
 {% extends 'main/base.html' %}
 {% load humanize %}
 {% load params %}
+{% load shops %}
 
 {% block title %}Games - {{ block.super }}{% endblock %}
 
@@ -10,12 +11,15 @@
 
     <br/>
     <div class="row">
-      <form>
-        <div class="col-8">
+      <div class="col-8">
+        <form>
           <input type="text" name="s" class="form-control" placeholder="Search for game by name..." {% if s %}value="{{ s }}"{% endif %}>
           <input type="hidden" name="o" value="{{ ordering }}">
-        </div>
-      </form>
+        </form>
+      </div>
+      <div class="col-4">
+
+      </div>
     </div>
 
     <br/>
@@ -118,12 +122,12 @@
             {% endif %}
           </th>
           <th>
-            {% if ordering == '-ps_price' %}
-              <a href="?{% add_param 'o' 'ps_price' %}">Price</a>
+            {% if ordering == '-shop_price' %}
+              <a href="?{% add_param 'o' 'shop_price' %}">Price</a>
             {% else %}
-              <a href="?{% add_param 'o' '-ps_price' %}">Price</a>
+              <a href="?{% add_param 'o' '-shop_price' %}">Price</a>
             {% endif %}
-            {% if 'ps_price' in ordering %}
+            {% if 'shop_price' in ordering %}
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
             {% endif %}
           </th>
@@ -149,11 +153,7 @@
             <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.hotness %}{{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>
-            <td>{% if game.ps_available and game.ps_price %}
-                <a href="https://pricestory.co.za/product/{{ game.ps_url }}" target="_blank" class="text-decoration-none {% if game.ps_mean_saving > 0 %}text-success{% else %}text-danger{% endif %}">
-                    {{ game.ps_price|floatformat:0|intcomma }}
-                </a>
-            {% endif %}</td>
+            <td><small>{{ game|price|safe }}</small></td>
           </tr>
         {% endfor %}
         </tbody>
@@ -171,7 +171,7 @@
         <p>recs = Recommendations: an indication of an estimation on how
         many more players would like the game.</p>
         <p>Hotness is a score of ratings for the past 30 days.</p>
-        <p>Weights are the 33.3% and 66.6% percentiles of the weights.</p>
+        <p>Weights are the {{ weights_percentiles }} percentiles of the weight ratings.</p>
       </div>
     </div>
   </div>

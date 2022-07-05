@@ -6,7 +6,8 @@ import numpy as np
 from django.db.models import Sum, Avg, F, Q
 from django.utils.timezone import now
 
-from main.constants import START_GAME_OF_THE, WEIGHT_LIGHT, WEIGHT_HEAVY, WEIGHT_MEDIUM
+from main.constants import START_GAME_OF_THE, WEIGHT_LIGHT, WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_VERY_LIGHT, \
+    WEIGHT_VERY_HEAVY, WEIGHTS_CUTOFF
 from main.models import Player, GameDay, Day, Game, Award, AWARD_GAME_OF_THE_MONTH, \
     AWARD_GAME_OF_THE_YEAR
 
@@ -46,7 +47,7 @@ def update_gamedays(player: Player):
             day.last_review_update = review.updated_at
             outdated_days.add(day)
 
-    # update outdated gamedays
+    # update outdated game days
     for gameday in outdated_gamedays:
         gameday.reviews_cnt = gameday.reviews.count()
         gameday.reviews_avg = gameday.reviews.aggregate(
@@ -75,21 +76,31 @@ def update_hotness():
 def update_weights():
     weights = Game.objects.filter(weight_avg__isnull=False).values_list('weight_avg', flat=True)
     weights = np.array(weights)
-    cuts = np.percentile(weights, [33, 66])
-    logger.info(f'Updating weights between {cuts[0]:.2f} and {cuts[1]:.2f}')
+    cuts = np.percentile(weights, WEIGHTS_CUTOFF)
+    logger.info(f'Updating weights between {cuts}')
     Game.objects.filter(
         Q(weight_avg__isnull=False) &
-        Q(weight_avg__lt=cuts[0])
+        Q(weight_avg__lte=cuts[0])
+    ).update(weight_tag=WEIGHT_VERY_LIGHT)
+    Game.objects.filter(
+        Q(weight_avg__isnull=False) &
+        Q(weight_avg__gt=cuts[0]) &
+        Q(weight_avg__lte=cuts[1])
     ).update(weight_tag=WEIGHT_LIGHT)
     Game.objects.filter(
         Q(weight_avg__isnull=False) &
-        Q(weight_avg__gt=cuts[1])
+        Q(weight_avg__gt=cuts[1]) &
+        Q(weight_avg__lte=cuts[2])
+    ).update(weight_tag=WEIGHT_MEDIUM)
+    Game.objects.filter(
+        Q(weight_avg__isnull=False) &
+        Q(weight_avg__gt=cuts[2]) &
+        Q(weight_avg__lte=cuts[3])
     ).update(weight_tag=WEIGHT_HEAVY)
     Game.objects.filter(
         Q(weight_avg__isnull=False) &
-        Q(weight_avg__gte=cuts[0]) &
-        Q(weight_avg__lte=cuts[1])
-    ).update(weight_tag=WEIGHT_MEDIUM)
+        Q(weight_avg__gt=cuts[3])
+    ).update(weight_tag=WEIGHT_VERY_HEAVY)
 
 
 def go_to_next_month(dt: datetime) -> datetime:

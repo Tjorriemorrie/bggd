@@ -361,36 +361,3 @@ def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
         review = Review.objects.get(player=player, game_id=game_id)
         logger.info(f'Deleting orphan: {review}')
         review.delete()
-
-
-@retry(OperationalError, delay=3, jitter=3, max_delay=30)
-def scrape_shop(game: Game) -> None:
-    if not game.ps_url:
-        return
-    hrs_30_ago = now() - timedelta(hours=30)
-    if game.ps_priced_at and game.ps_priced_at > hrs_30_ago:
-        return
-
-    ps_url = f'https://api.pricestory.co.za/product/{game.ps_url}'
-    logger.info(f'Scraping shop {ps_url} for {game}')
-    raw = get(ps_url)
-    res = raw.json()
-
-    game.ps_available = res['stock_history'][-1]['stock_status'] == 'available'
-    if not game.ps_available:
-        game.ps_price = None
-        game.ps_mean_saving = None
-        game.ps_min_saving = None
-        game.ps_est_saving = None
-    else:
-        price = res['price_history'][-1]['price']
-        mean_saving = res['aggregations']['price']['mean'] - price
-        min_saving = price - res['aggregations']['price']['min']
-        game.ps_price = price
-        game.ps_mean_saving = mean_saving
-        game.ps_min_saving = min_saving
-        game.ps_est_saving = mean_saving - min_saving
-
-    game.ps_data = res
-    game.ps_priced_at = now()
-    game.save()

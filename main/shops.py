@@ -6,17 +6,20 @@ import pandas as pd
 from bs4 import BeautifulSoup
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN
-from main.models import Shop, Price, Day, Game
+from main.models import Shop, Price, Day, Game, ShopGame
 from main.scraper import get
 
 logger = logging.getLogger(__name__)
 
 
-def scrape_raru():
+def scrape_raru(shopgames: List[ShopGame] = None):
     logger.info('Scraping Raru')
     day = Day.get_today()
     shop = Shop.objects.get(name=SHOP_RARU)
-    shopgames = shop.shopgames.all()
+    if not shopgames:
+        shopgames = shop.shopgames.all()
+    else:
+        assert all(sg.shop.name == SHOP_RARU for sg in shopgames)
     for ix, shopgame in enumerate(shopgames):
         logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
         if shopgame.mia:

@@ -5,14 +5,15 @@
         <img src="{{ game.img }}" class="card-img-top card-img-top-4"/>
         <div class="card-body">
             <h5 class="card-title">{{ game.name }} <small class="text-muted">[{{ game.year }}]</small></h5>
-            <a href="https://pricestory.co.za/product/{{ game.ps_url }}" target="_blank" class="btn btn-primary" title="{{ game.ps_data.product.store_id }}">
-                R{{ game.ps_price|floatformat:0|intcomma }}
+            <a href="{{ game.best_shop.url }}" target="_blank" class="btn btn-primary">
+                R{{ game.shop_price|floatformat:0|intcomma }}
             </a>
             <br/>
             <br/>
-            <p class="card-text text-muted">Below average by R{{ game.ps_mean_saving|floatformat:0|intcomma }}</p>
-            <p class="card-text text-muted">Above minimum by R{{ game.ps_min_saving|floatformat:0|intcomma }}</p>
-            <p class="card-text text-muted">Est saving of R{{ game.ps_est_saving|floatformat:0|intcomma }}</p>
+            <p class="card-text text-muted">
+                Below average by R{{ game.shop_saving|floatformat:0|intcomma }}
+                <br/><smaller>from {{ game.best_shop.shop.name }}</smaller>
+            </p>
         </div>
     </a>
 </div>

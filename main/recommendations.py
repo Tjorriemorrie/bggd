@@ -47,13 +47,14 @@ def get_mec_algo() -> AlgoBase:
 def train_rec_model():
     logger.info('Training model...')
 
-    logger.info('Loading data...')
+    logger.info('Loading players...')
     player_ids = Player.objects.filter(
         reviews_cnt__gte=REC_MIN_CUTOFF).order_by(
         '-reviews_scr').values_list('id', flat=True)[:REC_PLAYER_LIMIT]
-    logger.info(f'Found {len(player_ids)} (max {REC_PLAYER_LIMIT}) players with >= {REC_MIN_CUTOFF} ratings')
+    logger.info(f'Found {len(player_ids)} (max {REC_PLAYER_LIMIT}) players')
+    logger.info('Loading the reviews...')
     values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
-    logger.info(f'Found {len(values)} ratings from those players')
+    logger.info(f'Found {len(values)} ratings from those players (min {REC_MIN_CUTOFF} ratings per player)')
     df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
 
     logger.info('Creating dataset...')
@@ -64,7 +65,7 @@ def train_rec_model():
     train_set = dataset.build_full_trainset()
     algo = SVD()
 
-    logger.info(f'Fitting dataset to {algo}. This will take 30min...')
+    logger.info(f'Fitting dataset to {algo}...')
     algo.fit(train_set)
 
     logger.info(f'Saving model to {FILE_REC_MODEL}')
@@ -134,13 +135,14 @@ def predict_player(
     is_primary = True
     for val, game_id in top_recs:
         game = Game.objects.get(id=game_id)
-        if not game.ps_available or not game.ps_price:  # skip if cannot buy
+        if not game.shop_available or not game.shop_price:  # skip if cannot buy
             continue
         if not game.best_min_players or not game.best_max_players:
             # logger.info(f'Skipping {game} for not having best players scraped.')
             continue
         for cur_best_players in range(game.best_min_players, game.best_max_players + 1):
-            best_players = cur_best_players if cur_best_players in PLAYERS_SIZES else 4
+            # anything not in PLAYER_SIZE is a party game, change it to 5
+            best_players = cur_best_players if cur_best_players in PLAYERS_SIZES else 5
             game_combo = (game.weight_tag, best_players)
             if game_combo in rec_combos:
                 break

@@ -10,19 +10,14 @@ from django.utils.timezone import now
 from main.constants import SHOP_RARU
 from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, ShopGame, Price
 from main.recommendations import predict_player
-from main.scraper import scrape_game, scrape_player, scrape_shop
+from main.scraper import scrape_game, scrape_player
+from main.shops import scrape_raru
 
 
 @admin.action(description='Scrape games')
 def scrape_game_cmd(modeladmin, request, queryset):
     for obj in queryset:
         scrape_game(obj)
-
-
-@admin.action(description='Scrape games shop')
-def scrape_games_shop_cmd(modeladmin, request, queryset):
-    for obj in queryset:
-        scrape_shop(obj)
 
 
 @admin.action(description='Scrape players')
@@ -40,12 +35,12 @@ def predict_player_cmd(modeladmin, request, queryset):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('id', 'hotness', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id', 'ps_price')
-    list_filter = ('ps_available',)
+    list_display = ('id', 'hotness', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id', 'shop_price')
+    # list_filter = ('shop_available',)
     ordering = ('-hotness',)
-    actions = (scrape_game_cmd, scrape_games_shop_cmd,)
+    actions = (scrape_game_cmd,)
     search_fields = ('name',)
-    exclude = ('ps_data', 'ps_price', 'ps_saving', 'hotness', 'mechanic_cluster')
+    exclude = ('shop_available', 'shop_price', 'shop_saving', 'hotness', 'mechanic_cluster')
 
     def reviews_cnt_fmt(self, obj: Game):
         url = reverse('admin:main_review_changelist')
@@ -102,6 +97,31 @@ class ShopAdmin(admin.ModelAdmin):
     pass
 
 
+@admin.action(description='Scrape games shop')
+def scrape_games_shop_cmd(modeladmin, request, queryset):
+    scrape_raru(queryset)
+
+
+@admin.register(ShopGame)
+class ShopGameAdmin(admin.ModelAdmin):
+    actions = (scrape_games_shop_cmd,)
+    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia']
+    fields = ['shop', 'game', 'url', 'mia']
+    search_fields = ['game__name', 'url']
+    list_filter = ['shop__name']
+    ordering = [F('mean_saving').desc(nulls_last=True), '-updated_at']
+
+    def save_model(self, request, obj, form, change):
+        obj.url_at = now()
+        super().save_model(request, obj, form, change)
+
+    def _response_post_save(self, request, obj):
+        if obj.shop.name == SHOP_RARU:
+            return redirect('/admin/main/shopgameraru/')
+        else:
+            return super().response_post_save_change(request, obj)
+
+
 class ShopGameRaru(Game):
     class Meta:
         proxy = True
@@ -113,6 +133,9 @@ class ShopGameRaru(Game):
 class ShopGameRaruAdmin(admin.ModelAdmin):
     list_display = ('raru', 'title', 'year', 'hotness_fmt')
     ordering = ('hotness', 'year')
+
+    def get_queryset(self, request):
+        return Game.objects.exclude(shopgames__shop__name=SHOP_RARU)
 
     def title(self, obj: Game):
         return format_html(
@@ -133,28 +156,6 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
     def hotness_fmt(self, obj: Game):
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
-
-    def get_queryset(self, request):
-        return Game.objects.exclude(shopgames__shop__name=SHOP_RARU)
-
-
-@admin.register(ShopGame)
-class ShopGameAdmin(admin.ModelAdmin):
-    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia']
-    fields = ['shop', 'game', 'url', 'mia']
-    search_fields = ['game__name', 'url']
-    list_filter = ['shop__name']
-    ordering = [F('mean_saving').desc(nulls_last=True), '-updated_at']
-
-    def save_model(self, request, obj, form, change):
-        obj.url_at = now()
-        super().save_model(request, obj, form, change)
-
-    def _response_post_save(self, request, obj):
-        if obj.shop.name == SHOP_RARU:
-            return redirect('/admin/main/shopgameraru/')
-        else:
-            return super().response_post_save_change(request, obj)
 
 
 @admin.register(Price)

@@ -16,7 +16,7 @@ from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
 
 from bgg.settings import CACHE_DURATION
-from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES
+from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, WEIGHTS_CUTOFF
 from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame
 from main.recommendations import predict_player
@@ -34,12 +34,13 @@ def home_view(request):
             Q(hotness__gt=0)
         ).annotate(score=100 * F('recs_cnt') / F('reviews_cnt')).order_by(
             '-score').all()[:10]
+        hotness = Game.objects.order_by('-hotness')[:10]
         ctx = {
             'nav': 'home',
             'game_cnt': Game.objects.count(),
             'player_cnt': Player.objects.count(),
             'reviews_cnt': Review.objects.count(),
-            'hotness': Game.objects.order_by('-hotness')[:10],
+            'hotness': hotness,
             'upcoming': upcoming,
         }
         cache.set('home_view', ctx)
@@ -159,6 +160,11 @@ class GameListView(OrderingListView, SearchListView, CachedDispatch):
     ordering = '-hotness'
     search_by = 'name'
     queryset = Game.objects.filter(rating__isnull=False)
+
+    def get_context_data(self, *, object_list=None, **kwargs):
+        ctx = super().get_context_data(object_list=object_list, **kwargs)
+        ctx['weights_percentiles'] = WEIGHTS_CUTOFF
+        return ctx
 
 
 class GameDetailView(DetailView):
@@ -306,10 +312,10 @@ def mec_view(request):
 def shop_view(request):
     ctx = cache.get('shop_view')
     if not ctx:
-        games = ShopGame.objects.filter(
-            mia=False,
-            ps_available=True, ps_est_saving__gt=0
-        ).order_by('-ps_mean_saving').all()[:20]
+        games = Game.objects.filter(
+            shop_available=True,
+            shop_saving__gte=0
+        ).order_by('-shop_saving', '-hotness').all()[:20]
         ctx = {
             'games': games,
         }
