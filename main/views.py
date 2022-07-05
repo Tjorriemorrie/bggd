@@ -224,14 +224,15 @@ class PlayerDetailView(DetailView):
             {'Actual': r.rating, 'Expected': r.predicted, 'Name': r.game.name}
             for r in self.object.reviews.all()
             if r.rating and r.predicted]
-        min_est = min([f['Expected'] for f in fig_data])
-        max_est = max([f['Expected'] for f in fig_data])
-        df = pd.DataFrame(fig_data)
-        fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name')
-        fig.add_shape(type="line", x0=min_est, y0=min_est, x1=max_est, y1=max_est)
-        fig.update_yaxes(dtick=1)
-        fig.update_xaxes(dtick=1)
-        data['graph'] = fig.to_html(full_html=False)
+        if fig_data:
+            min_est = min([f['Expected'] for f in fig_data])
+            max_est = max([f['Expected'] for f in fig_data])
+            df = pd.DataFrame(fig_data)
+            fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name')
+            fig.add_shape(type="line", x0=min_est, y0=min_est, x1=max_est, y1=max_est)
+            fig.update_yaxes(dtick=1)
+            fig.update_xaxes(dtick=1)
+            data['graph'] = fig.to_html(full_html=False)
 
         # reviews sorted
         if self.object.reviews.count():

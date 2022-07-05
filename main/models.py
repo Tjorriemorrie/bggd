@@ -107,7 +107,10 @@ class Game(models.Model):
         return self.shopgames.order_by('-mean_saving', 'updated_at').first()
 
     def comments(self) -> List['Review']:
-        return self.reviews.filter(comment__isnull=False).order_by('-player__reviews_scr').all()
+        return self.reviews.filter(
+            comment__isnull=False,
+            player__reviews_scr__isnull=False
+        ).order_by('-player__reviews_scr').all()
 
     def mechanics_comma(self) -> str:
         return ', '.join([m.name for m in self.mechanics.all()])
