@@ -75,6 +75,19 @@
           </div>
         {% endif %}
 
+        <div class="row">
+          <div class="col">
+              <h4>Reviews:</h4>
+              {% for review in game.comments %}
+                  <p>
+                      <a href="{% url 'player_detail' review.player.id %}"><strong>{{ review.player.nick }}</strong></a>&nbsp;
+                      <small class="text-muted">[{{ review.player.reviews_scr|floatformat:1 }}]</small>:
+                      <br/><strong>{{ review.rating|floatformat:1 }}</strong> {{ review.comment }}
+                  </p>
+              {% endfor %}
+          </div>
+        </div>
+
       </div>
 
       <div class="col-4 text-center">
