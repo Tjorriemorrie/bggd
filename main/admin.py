@@ -105,10 +105,10 @@ def scrape_games_shop_cmd(modeladmin, request, queryset):
 @admin.register(ShopGame)
 class ShopGameAdmin(admin.ModelAdmin):
     actions = (scrape_games_shop_cmd,)
-    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia']
+    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia', 'prices_cnt']
     fields = ['shop', 'game', 'url', 'mia']
     search_fields = ['game__name', 'url']
-    list_filter = ['shop__name']
+    list_filter = ['shop__name', 'mia']
     ordering = [F('mean_saving').desc(nulls_last=True), '-updated_at']
 
     def save_model(self, request, obj, form, change):
@@ -120,6 +120,9 @@ class ShopGameAdmin(admin.ModelAdmin):
             return redirect('/admin/main/shopgameraru/')
         else:
             return super().response_post_save_change(request, obj)
+
+    def prices_cnt(self, obj: ShopGame) -> str:
+        return f'{obj.prices.count()}'
 
 
 class ShopGameRaru(Game):
@@ -161,3 +164,4 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
 @admin.register(Price)
 class PriceAdmin(admin.ModelAdmin):
     list_display = ['shopgame', 'day', 'status', 'price']
+    ordering = ['-day']
