@@ -27,9 +27,15 @@ logger = logging.getLogger(__name__)
 OCT1 = make_aware(datetime(2021, 10, 1))
 
 
-def home_view(request):
-    ctx = cache.get('home_view')
-    if not ctx:
+@method_decorator(cache_page(CACHE_DURATION), name='get')
+class CachedTemplateViewGet(TemplateView):
+    pass
+
+
+class HomeView(CachedTemplateViewGet):
+    template_name = 'main/home.html'
+
+    def get_context_data(self, **kwargs):
         upcoming = Game.objects.filter(
             Q(recs_cnt__gt=0) &
             Q(hotness__gt=0)
@@ -44,13 +50,13 @@ def home_view(request):
             'hotness': hotness,
             'upcoming': upcoming,
         }
-        cache.set('home_view', ctx)
-    return render(request, 'main/home.html', ctx)
+        return ctx
 
 
-def got_view(request):
-    ctx = cache.get('got_view')
-    if not ctx:
+class GotView(CachedTemplateViewGet):
+    template_name = 'main/got.html'
+
+    def get_context_data(self, **kwargs):
         award_groups = {}
         to = now().year + 1
         for year in reversed(range(START_GAME_OF_THE.year, to)):
@@ -75,13 +81,13 @@ def got_view(request):
             'start_at': START_GAME_OF_THE,
             'award_groups': award_groups,
         }
-        cache.set('got_view', ctx)
-    return render(request, 'main/got.html', context=ctx)
+        return ctx
 
 
-def about_view(request):
-    ctx = cache.get('about_view')
-    if not ctx:
+class AboutView(CachedTemplateViewGet):
+    template_name = 'main/about.html'
+
+    def get_context_data(self, **kwargs):
         # player updated
         last_updated_rec = Player.objects.filter(
             Q(reviews_scr__gte=1) &
@@ -103,16 +109,20 @@ def about_view(request):
             'game_added': game_added,
             'player_turnover': player_turnover
         }
-        cache.set('about_view', ctx)
-    return render(request, 'main/about.html', context=ctx)
+        return ctx
 
 
 class ViewError(Exception):
     """Bad view setup"""
 
 
-@method_decorator(cache_page(CACHE_DURATION), name='dispatch')
-class CachedDispatch(View):
+@method_decorator(cache_page(CACHE_DURATION), name='get')
+class CachedListViewGet(ListView):
+    pass
+
+
+@method_decorator(cache_page(CACHE_DURATION), name='get')
+class CachedDetailViewGet(DetailView):
     pass
 
 
@@ -155,7 +165,7 @@ class SearchListView(ListView):
         return queryset
 
 
-class GameListView(OrderingListView, SearchListView, CachedDispatch):
+class GameListView(OrderingListView, SearchListView, CachedListViewGet):
     model = Game
     paginate_by = 100
     ordering = '-hotness'
@@ -168,12 +178,9 @@ class GameListView(OrderingListView, SearchListView, CachedDispatch):
         return ctx
 
 
-class GameDetailView(DetailView, CachedDispatch):
+class GameDetailView(CachedDetailViewGet):
     model = Game
     context_object_name = 'game'
-
-    def dispatch(self, request, *args, **kwargs):
-        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)
@@ -205,7 +212,7 @@ class GameDetailView(DetailView, CachedDispatch):
         return ctx
 
 
-class PlayerListView(OrderingListView, SearchListView, CachedDispatch):
+class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     model = Player
     paginate_by = 100
     ordering = '-reviews_scr'
@@ -213,7 +220,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedDispatch):
     queryset = Player.objects.filter(reviews_cnt__gte=3)
 
 
-class PlayerDetailView(DetailView):
+class PlayerDetailView(CachedDetailViewGet):
     model = Player
     context_object_name = 'player'
 
@@ -259,7 +266,7 @@ def player_predict_view(request, pk):
     return redirect(player)
 
 
-class ReviewView(TemplateView, CachedDispatch):
+class ReviewView(CachedTemplateViewGet):
     template_name = 'main/reviews.html'
 
     def get_context_data(self, **kwargs):
@@ -290,9 +297,10 @@ class ReviewView(TemplateView, CachedDispatch):
         return data
 
 
-def mec_view(request):
-    ctx = cache.get('mec_view')
-    if not ctx:
+class MecView(CachedTemplateViewGet):
+    template_name = 'main/mec.html'
+
+    def get_context_data(self, **kwargs):
         grouped = dict()
         for i in range(8):
             games = Game.objects.filter(mechanic_cluster=i).order_by('-hotness').all()
@@ -310,13 +318,13 @@ def mec_view(request):
         ctx = {
             'grouped': grouped,
         }
-        cache.set('mec_view', ctx)
-    return render(request, 'main/mec.html', context=ctx)
+        return ctx
 
 
-def shop_view(request):
-    ctx = cache.get('shop_view')
-    if not ctx:
+class ShopView(CachedTemplateViewGet):
+    template_name = 'main/shop.html'
+
+    def get_context_data(self, **kwargs):
         games = Game.objects.filter(
             shop_available=True,
             shop_saving__gte=0
@@ -324,5 +332,4 @@ def shop_view(request):
         ctx = {
             'games': games,
         }
-        cache.set('shop_view', ctx)
-    return render(request, 'main/shop.html', context=ctx)
+        return ctx
