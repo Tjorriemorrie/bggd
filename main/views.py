@@ -2,6 +2,7 @@ import logging
 from collections import Counter
 from datetime import timedelta, datetime
 from operator import attrgetter
+from time import sleep
 
 import pandas as pd
 import plotly.express as px
@@ -167,9 +168,12 @@ class GameListView(OrderingListView, SearchListView, CachedDispatch):
         return ctx
 
 
-class GameDetailView(DetailView):
+class GameDetailView(DetailView, CachedDispatch):
     model = Game
     context_object_name = 'game'
+
+    def dispatch(self, request, *args, **kwargs):
+        return super().dispatch(request, *args, **kwargs)
 
     def get_context_data(self, **kwargs):
         ctx = super().get_context_data(**kwargs)

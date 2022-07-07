@@ -165,3 +165,4 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
 class PriceAdmin(admin.ModelAdmin):
     list_display = ['shopgame', 'day', 'status', 'price']
     ordering = ['-day']
+    search_fields = ['shopgame__game__name']
