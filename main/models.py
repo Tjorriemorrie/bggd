@@ -110,7 +110,7 @@ class Game(models.Model):
         return self.reviews.filter(
             comment__isnull=False,
             player__reviews_scr__isnull=False
-        ).order_by('-player__reviews_scr').all()
+        ).order_by('-player__reviews_scr')
 
     def mechanics_comma(self) -> str:
         return ', '.join([m.name for m in self.mechanics.all()])

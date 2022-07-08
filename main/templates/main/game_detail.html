@@ -75,10 +75,11 @@
           </div>
         {% endif %}
 
+        {% if game.comments.count %}
         <div class="row">
           <div class="col">
               <h4>Reviews:</h4>
-              {% for review in game.comments %}
+              {% for review in game.comments.all %}
                   <p>
                       <a href="{% url 'player_detail' review.player.id %}"><strong>{{ review.player.nick }}</strong></a>&nbsp;
                       <small class="text-muted">[{{ review.player.reviews_scr|floatformat:1 }}]</small>:
@@ -87,6 +88,7 @@
               {% endfor %}
           </div>
         </div>
+      {% endif %}
 
       </div>
 
