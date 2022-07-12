@@ -107,11 +107,24 @@
         {% else %}
           <p>No recommendations.</p>
         {% endif %}
+      </div>
+    </div>
 
+    <div class="row">
+        <div class="col-8">
         {% if graph %}
           {{ graph|safe }}
         {% endif %}
+        </div>
+        <div class="col-4">
+        {% if heat %}
+          {{ heat|safe }}
+        {% endif %}
+        </div>
+    </div>
 
+    <div class="row">
+        <div class="col">
         <h4>{{ reviews|length }} boardgames rated</h4>
         <br/>
         {% if not reviews|length %}
@@ -124,6 +137,7 @@
               <th>Rating</th>
               <th>&nbsp;</th>
               <th>Game</th>
+              <th>Best Players</th>
               <th>Expected</th>
             </tr>
             </thead>
@@ -138,6 +152,7 @@
                     {{ review.game.name }}
                   </a>
                 </td>
+                <td>{{ review.game.best_min_players }}{% if review.game.best_max_players != review.game.best_min_players %} - {{ review.game.best_max_players }}{% endif %}</td>
                 <td>
                   {% if review.predicted %}
                     {{ review.predicted|floatformat }}

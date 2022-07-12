@@ -1,6 +1,7 @@
 import logging
 from collections import Counter
 from datetime import timedelta, datetime
+from itertools import chain
 from operator import attrgetter
 from time import sleep
 
@@ -220,7 +221,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     queryset = Player.objects.filter(reviews_cnt__gte=3)
 
 
-class PlayerDetailView(CachedDetailViewGet):
+class PlayerDetailView(DetailView):
     model = Player
     context_object_name = 'player'
 
@@ -239,7 +240,7 @@ class PlayerDetailView(CachedDetailViewGet):
             min_est = min([f['Expected'] for f in fig_data])
             max_est = max([f['Expected'] for f in fig_data])
             df = pd.DataFrame(fig_data)
-            fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name')
+            fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name', title='Actual vs expected rating')
             fig.add_shape(type="line", x0=min_est, y0=min_est, x1=max_est, y1=max_est)
             fig.update_yaxes(dtick=1)
             fig.update_xaxes(dtick=1)
@@ -250,6 +251,25 @@ class PlayerDetailView(CachedDetailViewGet):
             reviews = list(self.object.reviews.all())
             reviews.sort(key=attrgetter('diff_combine'), reverse=True)
             data['reviews'] = reviews
+
+            # player count
+            p_data = {
+                'Very Light': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                'Light': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                'Medium': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                'Heavy': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+                'Very Heavy': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
+            }
+            for review in reviews:
+                for p in range(review.game.best_min_players, review.game.best_max_players + 1):
+                    p_data[review.game.weight_tag][p] += 1
+            # layout = {'xaxis': {'ticks': [int(x) for x in df['player_count']]}}
+            # fig = px.bar(df, x='player_count', y='count', title='Number of games per best player count')
+            h_data = [list(p.values()) for p in p_data.values()]
+            fig = px.imshow(
+                h_data, x=[1, 2, 3, 4, 5], y=['very light', 'light', 'medium', 'heavy', 'very heavy'],
+                labels={'x': 'Player count', 'y': 'Complexity'}, title='Heatmap of player games')
+            data['heat'] = fig.to_html(full_html=False)
 
         return data
 

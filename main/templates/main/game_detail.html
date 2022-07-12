@@ -75,9 +75,11 @@
           </div>
         {% endif %}
 
-        {% if game.comments.count %}
         <div class="row">
           <div class="col">
+            {% if not game.comments.count %}
+              <h4>No reviews with comments yet.</h4>
+            {% else %}
               <h4>Reviews:</h4>
               {% for review in game.comments.all %}
                   <p>
@@ -86,9 +88,9 @@
                       <br/><strong>{{ review.rating|floatformat:1 }}</strong> {{ review.comment }}
                   </p>
               {% endfor %}
-          </div>
+          {% endif %}
         </div>
-      {% endif %}
+      </div>
 
       </div>
 

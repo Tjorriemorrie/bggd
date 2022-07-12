@@ -158,9 +158,10 @@ class Command(BaseCommand):
                 # recommendations
                 predict_player(player, game_ids)
 
-                # no update game days (updated from player's reviews)
-                # as all reviews are refreshed, only needed for changed players
-                # this upkeep is to refresh the rec values of games
+                # update game days
+                # if it is not updated, then bad days with scraping errors will
+                # not get fixed, e.g. jul 2022 with very, very low rating counts.
+                update_gamedays(player)
 
                 logger.info(f'{self.prefix} upkeeped {player}')
 
