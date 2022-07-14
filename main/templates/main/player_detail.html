@@ -76,11 +76,13 @@
                           <img src="{{ rec.game.img }}" class="card-img-top"/>
                           <div class="card-body">
                             <h5 class="card-title">{{ rec.game.name }}</h5>
+                            {% if player.is_rsa %}
                             <p class="card-text">
                               <a href="{{ rec.game.best_shop.url }}" target="_blank" class="text-decoration-none">
                                   <small class="{% if rec.is_primary %}text-white{% else %}text-muted{% endif %}">R{{ rec.game.shop_price|floatformat:0|intcomma }}</small>
                               </a>
                             </p>
+                            {% endif %}
                           </div>
                           <div class="card-footer">
                             {% if rec.is_primary %}
@@ -138,6 +140,7 @@
               <th>&nbsp;</th>
               <th>Game</th>
               <th>Best Players</th>
+              <th>Weight</th>
               <th>Expected</th>
             </tr>
             </thead>
@@ -150,9 +153,12 @@
                 <td>
                   <a class="text-reset text-decoration-none" href="{% url 'game_detail' review.game.pk %}">
                     {{ review.game.name }}
-                  </a>
+                  </a>{% if review.comment %}
+                    <br/><small class="text-muted">{{ review.comment }}</small>
+                    {% endif %}
                 </td>
                 <td>{{ review.game.best_min_players }}{% if review.game.best_max_players != review.game.best_min_players %} - {{ review.game.best_max_players }}{% endif %}</td>
+                <td>{{ review.game.weight_tag }}</td>
                 <td>
                   {% if review.predicted %}
                     {{ review.predicted|floatformat }}

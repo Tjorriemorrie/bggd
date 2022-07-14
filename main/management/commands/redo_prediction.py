@@ -16,14 +16,14 @@ class Command(BaseCommand):
     help = 'Redo player prediction'
 
     def _predict_player(self, game_ids: List[int], player: Player):
-        logger.info(f'predicting for player {player}')
         predict_player(player, game_ids)
         player.redo_requested_at = None
         player.redo_completed_at = now()
         player.save()
+        logger.info(f'Predicting for player {player} done')
 
     def _load_next_player(self):
-        logger.info('Searching for player...')
+        # logger.info('Searching for player...')
         one_day_ago = now() - timedelta(days=1)
         player = Player.objects.filter(
             redo_requested_at__isnull=False
@@ -43,9 +43,8 @@ class Command(BaseCommand):
             return
 
         # first refresh ratings
-        scrape_player_ratings(player, ignore_unknown=True)
+        scrape_player_ratings(player)
 
         # then redo prediction
         game_ids = Game.objects.values_list('id', flat=True)
         self._predict_player(game_ids, player)
-        logger.info('Prediction done')

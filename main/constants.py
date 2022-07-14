@@ -17,7 +17,7 @@ PLAYERS_SIZES = (1, 2, 3, 4, 5)
 REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 
 # memory limits
-REC_MIN_CUTOFF = 8
+REC_MIN_CUTOFF = 5
 REC_PLAYER_LIMIT = 200_000
 
 STOCK_IN = 'In Stock'

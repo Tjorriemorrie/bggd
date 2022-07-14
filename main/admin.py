@@ -105,7 +105,7 @@ def scrape_games_shop_cmd(modeladmin, request, queryset):
 @admin.register(ShopGame)
 class ShopGameAdmin(admin.ModelAdmin):
     actions = (scrape_games_shop_cmd,)
-    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia', 'prices_cnt']
+    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia', 'prices_cnt', 'url_at']
     fields = ['shop', 'game', 'url', 'mia']
     search_fields = ['game__name', 'url']
     list_filter = ['shop__name', 'mia']

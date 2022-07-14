@@ -290,7 +290,7 @@ def scrape_player(player: Player):
     player.save()
 
 
-def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
+def scrape_player_ratings(player: Player):
     orphan_game_ids = list(player.reviews.values_list('game_id', flat=True))
     page = 0
     while True:
@@ -317,9 +317,8 @@ def scrape_player_ratings(player: Player, ignore_unknown: bool = False):
             try:
                 game = Game.objects.get(bgg_id=game_bgg_id)
             except Game.DoesNotExist:
-                if ignore_unknown:
-                    continue
-                raise PlayerRatingNewGameError(f'Stopping at unknown game {cells[0].text.strip()}')
+                logger.info(f'Skipping unknown game {cells[0].text.strip()}')
+                continue
             # get rating
             rating_info = list(cells[1].stripped_strings)
             if rating_info[0] == 'N/A':

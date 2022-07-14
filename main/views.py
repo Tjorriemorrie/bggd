@@ -262,7 +262,8 @@ class PlayerDetailView(DetailView):
             }
             for review in reviews:
                 for p in range(review.game.best_min_players, review.game.best_max_players + 1):
-                    p_data[review.game.weight_tag][p] += 1
+                    if p in p_data[review.game.weight_tag]:
+                        p_data[review.game.weight_tag][p] += 1
             # layout = {'xaxis': {'ticks': [int(x) for x in df['player_count']]}}
             # fig = px.bar(df, x='player_count', y='count', title='Number of games per best player count')
             h_data = [list(p.values()) for p in p_data.values()]

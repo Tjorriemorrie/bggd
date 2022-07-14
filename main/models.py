@@ -207,14 +207,9 @@ class Player(models.Model):
             geo += f' {self.area}'
         return geo or ''
 
-    def recs_by_heavy(self) -> List['Rec']:
-        return self.recs.filter(weight_tag=WEIGHT_HEAVY).order_by('best_players').all()
+    def is_rsa(self) -> bool:
+        return self.country and self.country == 'South Africa'
 
-    def recs_medium(self) -> List['Rec']:
-        return self.recs.filter(weight_tag=WEIGHT_MEDIUM).order_by('best_players').all()
-
-    def recs_light(self) -> List['Rec']:
-        return self.recs.filter(weight_tag=WEIGHT_LIGHT).order_by('best_players').all()
 
 
 class PlayerProxy(Player):
