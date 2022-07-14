@@ -173,9 +173,18 @@ class GameListView(OrderingListView, SearchListView, CachedListViewGet):
     search_by = 'name'
     queryset = Game.objects.filter(rating__isnull=False)
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        availability = self.request.GET.get('a', 1)
+        if availability:
+            queryset = queryset.filter(shop_available=True)
+        return queryset
+
     def get_context_data(self, *, object_list=None, **kwargs):
         ctx = super().get_context_data(object_list=object_list, **kwargs)
         ctx['weights_percentiles'] = WEIGHTS_CUTOFF
+        # show only available
+        ctx['available'] = int(self.request.GET.get('a', 1))
         return ctx
 
 

@@ -15,26 +15,33 @@
         <form>
           <input type="text" name="s" class="form-control" placeholder="Search for game by name..." {% if s %}value="{{ s }}"{% endif %}>
           <input type="hidden" name="o" value="{{ ordering }}">
+          <input type="hidden" name="a" value="{{ available }}">
         </form>
       </div>
-      <div class="col-4">
-
-      </div>
+        <div class="col-4">
+        </div>
     </div>
 
-    <br/>
-    <div class="row">
-      <div class="col">
-        <p>
-          {{ paginator.count|intcomma }} results
-          {% if s %}
-            <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
-          {% endif %}
-        </p>
+      <br/>
+      <div class="row">
+          <div class="col-8">
+              <p>
+                  {{ paginator.count|intcomma }} results
+                  {% if s %}
+                      <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
+                  {% endif %}
+              </p>
+          </div>
+          <div class="col-4">
+              {% if not available %}
+                  <a href="?{% add_param 'a' 1 %}">Hide non-available games</a>
+              {% else %}
+                  <a href="?{% drop_param 'a' %}">Remove availability filter</a>
+              {% endif %}
+          </div>
       </div>
-    </div>
 
-    {% if page_obj %}
+      {% if page_obj %}
       {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
       <table class="table">
         <thead>
