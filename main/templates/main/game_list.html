@@ -33,10 +33,10 @@
               </p>
           </div>
           <div class="col-4">
-              {% if not available %}
-                  <a href="?{% add_param 'a' 1 %}">Hide non-available games</a>
+              {% if available %}
+                  <a href="?{% add_param 'a' 0 %}">Remove availability filter</a>
               {% else %}
-                  <a href="?{% drop_param 'a' %}">Remove availability filter</a>
+                  <a href="?{% drop_param 'a' %}">Hide non-available games</a>
               {% endif %}
           </div>
       </div>
