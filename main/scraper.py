@@ -135,7 +135,7 @@ def scrape_game(game: Game):
     if polls['userplayers']['best']:
         game.best_min_players = polls['userplayers']['best'][0]['min']
         game.best_max_players = polls['userplayers']['best'][0]['max']
-    game.rec_min_age = polls['playerage'].rstrip('+')
+    game.rec_min_age = polls['playerage'].rstrip('+').partition('–')[0]
     game.weight_avg = polls['boardgameweight']['averageweight']
 
     # labels

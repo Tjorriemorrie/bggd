@@ -16,8 +16,7 @@ class Command(BaseCommand):
     help = 'Scrape bgg for data'
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
-    def handle(self, *args, **options):
-
+    def _main(self, *args, **options):
         days_ago = 14
         total_game_cnt = Game.objects.count()
         daily_cut = total_game_cnt // days_ago
@@ -49,3 +48,10 @@ class Command(BaseCommand):
         scrape_rankings()
 
         logger.info(''.join(['='] * 50) + ' scraping done ' + ''.join(['='] * 50))
+
+    def handle(self, *args, **options):
+        try:
+            self._main(*args, **options)
+        except Exception:
+            logger.exception('Error during scraping games!')
+            raise

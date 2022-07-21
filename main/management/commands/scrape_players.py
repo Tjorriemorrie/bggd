@@ -5,7 +5,7 @@ from typing import List
 from django.core.management import BaseCommand
 from django.db import OperationalError
 from django.db.models import Q, F, Max
-from django.db.models.functions import Greatest, Least
+from django.db.models.functions import Least
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError, \
@@ -170,7 +170,8 @@ class Command(BaseCommand):
                 oldest_date=Least('scraped_at', 'rec_at')).order_by(
                 'oldest_date').all()[:1_000]
 
-    def _loader(self):
+    @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
+    def _loader(self, *args, **options):
         game_ids = Game.objects.values_list('id', flat=True)
 
         # perform these steps
@@ -181,9 +182,11 @@ class Command(BaseCommand):
         # with remaining time
         self._upkeep(game_ids)
 
-    @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def handle(self, *args, **options):
         try:
-            self._loader()
+            self._loader(*args, **options)
         except OutOfTimeError:
             logger.info(''.join(['='] * 40) + ' outta time ' + ''.join(['='] * 40))
+        except Exception:
+            logger.exception('Error during scraping players!')
+            raise
