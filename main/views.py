@@ -16,6 +16,7 @@ from django.utils.timezone import now, make_aware
 from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
+from pytube import Search
 
 from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, WEIGHTS_CUTOFF
@@ -218,6 +219,13 @@ class GameDetailView(CachedDetailViewGet):
                 for d in day_data])
             day_fig = px.bar(day_df, x='Month', y='Ratings', title='Ratings per month')
             ctx['day_graph'] = day_fig.to_html(full_html=False)
+
+        yt_search = Search(f'board game review {self.object.name} {self.object.year}')
+        ctx['yt_results'] = [{
+            'embed_url': yt.embed_url,
+            'title': yt.title,
+            'author': yt.author,
+        } for yt in yt_search.results][:6]
 
         return ctx
 

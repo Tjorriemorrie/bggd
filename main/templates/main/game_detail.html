@@ -58,39 +58,65 @@
           </div>
         </div>
 
-        <br/>
-        <div class="row">
-          <div class="col">
-            <h6>{{ game.categories_comma }}</h6>
-            <p>{{ game.description }}</p>
-          </div>
-        </div>
+          {% if day_graph %}
+              <br/>
+              <div class="row">
+                  <div class="col">
+                      {{ day_graph|safe }}
+                  </div>
+              </div>
+          {% endif %}
 
-        {% if day_graph %}
           <br/>
           <div class="row">
-            <div class="col">
-              {{ day_graph|safe }}
-            </div>
+              <div class="col">
+                  <h4>Youtube reviews</h4>
+                  <div class="accordion" id="accordionYoutube">
+                      {% for yt in yt_results %}
+                          <div class="accordion-item">
+                              <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                                  <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                          data-bs-target="#collapse{{ forloop.counter }}"
+                                          aria-expanded="{% if forloop.counter == 1 %}true{% else %}false{% endif %}"
+                                          aria-controls="collapse{{ forloop.counter }}">
+                                      <strong>{{ yt.author }}</strong>
+                                  </button>
+                              </h2>
+                              <div id="collapse{{ forloop.counter }}"
+                                   class="accordion-collapse collapse {% if forloop.counter == 1 %}show{% endif %}"
+                                   aria-labelledby="heading{{ forloop.counter }}"
+                                   data-bs-parent="#accordionYoutube">
+                                  <div class="accordion-body">
+                                      <div class="video-container">
+                                      <iframe src="{{ yt.embed_url }}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                      </div>
+                                  </div>
+                              </div>
+                          </div>
+                      {% endfor %}
+                  </div>
+              </div>
           </div>
-        {% endif %}
 
-        <div class="row">
-          <div class="col">
-            {% if not game.comments.count %}
-              <h4>No reviews with comments yet.</h4>
-            {% else %}
-              <h4>Reviews:</h4>
-              {% for review in game.comments.all %}
-                  <p>
-                      <a href="{% url 'player_detail' review.player.id %}"><strong>{{ review.player.nick }}</strong></a>&nbsp;
-                      <small class="text-muted">[{{ review.player.reviews_scr|floatformat:1 }}]</small>:
-                      <br/><strong>{{ review.rating|floatformat:1 }}</strong> {{ review.comment }}
-                  </p>
-              {% endfor %}
-          {% endif %}
-        </div>
-      </div>
+          <br/>
+          <br/>
+
+          <div class="row">
+              <div class="col">
+                  {% if not game.comments.count %}
+                      <h4>No ratings with comments yet.</h4>
+                  {% else %}
+                      <h4>BGG ratings comments:</h4>
+                      {% for review in game.comments.all %}
+                          <p>
+                              <a href="{% url 'player_detail' review.player.id %}"><strong>{{ review.player.nick }}</strong></a>&nbsp;
+                              <small class="text-muted">[{{ review.player.reviews_scr|floatformat:1 }}]</small>:
+                              <br/><strong>{{ review.rating|floatformat:1 }}</strong> {{ review.comment }}
+                          </p>
+                      {% endfor %}
+                  {% endif %}
+              </div>
+          </div>
 
       </div>
 
@@ -111,7 +137,10 @@
           <p>{{ rating_graph|safe }}</p>
         {% endif %}
 
-        <h4>Mechanics</h4>
+          <h6>{{ game.categories_comma }}</h6>
+          <p>{{ game.description }}</p>
+
+          <h4>Mechanics</h4>
         <p>{{ game.mechanics_comma }}</p>
 
         <h4>Families</h4>
