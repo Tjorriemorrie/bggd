@@ -1,7 +1,7 @@
 import json
 import logging
 import re
-from datetime import datetime, timedelta
+from datetime import datetime
 from time import sleep
 from typing import List, Tuple
 
@@ -12,8 +12,7 @@ from django.db.models import Avg
 from django.utils.timezone import now, make_aware
 from retry import retry
 
-from main.errors import PlayerScrapeError, PlayerRatingNewGameError, \
-    PlayerRatingUsernameNotFoundError
+from main.errors import PlayerScrapeError, PlayerRatingUsernameNotFoundError
 from main.models import Game, Label, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
 
@@ -317,7 +316,8 @@ def scrape_player_ratings(player: Player):
             try:
                 game = Game.objects.get(bgg_id=game_bgg_id)
             except Game.DoesNotExist:
-                logger.info(f'Skipping unknown game {cells[0].text.strip()}')
+                unknown_game = cells[0].text.replace('\n', ' ').replace('\r', ' ')
+                logger.debug(f'Skipping unknown game {unknown_game}')
                 continue
             # get rating
             rating_info = list(cells[1].stripped_strings)
@@ -357,6 +357,9 @@ def scrape_player_ratings(player: Player):
 
     # remove orphan reviews
     for game_id in orphan_game_ids:
-        review = Review.objects.get(player=player, game_id=game_id)
+        try:
+            review = Review.objects.get(player=player, game_id=game_id)
+        except Review.DoesNotExist:
+            continue
         logger.info(f'Deleting orphan: {review}')
         review.delete()

@@ -50,6 +50,11 @@ INSTALLED_APPS = [
     'django.contrib.humanize',
 
     'main.apps.MainConfig',
+
+    'health_check',  # required
+    'health_check.db',  # stock Django health checkers
+    'health_check.contrib.migrations',
+    'health_check.contrib.psutil',  # disk and memory utilization; requires psutil
 ]
 
 MIDDLEWARE = [
@@ -160,7 +165,6 @@ LOGGING = {
     'handlers': {
         'django': {
             'level': 'DEBUG',
-            # 'class': 'logging.StreamHandler',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'django.log',
             'when': 'midnight',
@@ -170,7 +174,6 @@ LOGGING = {
         },
         'default': {
             'level': 'DEBUG',
-            # 'class': 'logging.StreamHandler',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'default.log',
             'when': 'midnight',
@@ -196,14 +199,9 @@ LOGGING = {
     },
     'loggers': {
         '': {
-            'handlers': ['console'],
+            'handlers': ['django', 'console'],
             'level': 'DEBUG',
             'propagate': True,
-        },
-        'bgg': {
-            'handlers': ['default', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
         },
         'main': {
             'handlers': ['default', 'console'],
@@ -226,3 +224,10 @@ EMAIL_HOST_USER = os.getenv('EMAIL_ADDRESS')
 DEFAULT_FROM_EMAIL = os.getenv('EMAIL_ADDRESS')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD')
 EMAIL_PORT = 587
+
+
+# Health check
+HEALTH_CHECK = {
+    'DISK_USAGE_MAX': 90,  # percent
+    'MEMORY_MIN': 100,    # in MB
+}
