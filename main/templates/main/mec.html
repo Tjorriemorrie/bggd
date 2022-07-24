@@ -31,18 +31,18 @@
         {# col3 #}
 
         <div class="col-9">
-          <div class="row">
+          <div class="row mb-1">
             {% for game in data.games %}
-              <div class="col-6">
+              <div class="col-4">
                 <p>
                   <a href="{% url 'game_detail' game.id %}" class="text-reset text-decoration-none">
-                    <img class="round" height="60px" src="{{ game.img }}"/>
+                    <img class="round float-start" height="60px" src="{{ game.img }}"/>
                     {{ game.name }}
                   </a></p>
               </div>
-              {% if forloop.counter|divisibleby:2 %}
+              {% if forloop.counter|divisibleby:3 %}
                 </div>
-                <div class="row">
+                <div class="row mb-1">
               {% endif %}
             {% endfor %}
             </div>

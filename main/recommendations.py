@@ -13,7 +13,7 @@ from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase
 
 from bgg.settings import BASE_DIR
-from main.constants import REC_PLAYER_LIMIT, REC_COMBOS, PLAYERS_SIZES, REC_MIN_CUTOFF
+from main.constants import REC_PLAYER_LIMIT, REC_COMBOS, PLAYERS_SIZES, REC_MIN_CUTOFF, N_CLUSTERS
 from main.models import Review, Player, Game, Rec, Label, LABEL_MECHANIC
 
 logger = logging.getLogger(__name__)
@@ -75,9 +75,10 @@ def train_rec_model():
 
 def train_mec_model():
     logger.info('Training mechanic model...')
+    Game.objects.update(mechanic_cluster=None)
 
     logger.info('Loading data...')
-    games = Game.objects.all()
+    games = Game.objects.filter(shop_available=True).all()
     mechanics = Label.objects.filter(type=LABEL_MECHANIC).all()
     logger.info(f'Found {len(games)} games and {len(mechanics)} mechanics')
 
@@ -88,7 +89,7 @@ def train_mec_model():
         data.append(row)
 
     logger.info('Training kmeans...')
-    km = KMeans()
+    km = KMeans(n_clusters=N_CLUSTERS)
     km.fit(data)
     y = km.predict(data)
 

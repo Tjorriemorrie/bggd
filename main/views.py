@@ -9,7 +9,7 @@ import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
 from django.db.models import Q, Count, F
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import TruncMonth, Least
 from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
 from django.utils.timezone import now, make_aware
@@ -19,7 +19,7 @@ from django.views.generic import ListView, TemplateView, DetailView
 from pytube import Search
 
 from bgg.settings import CACHE_DURATION
-from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, WEIGHTS_CUTOFF
+from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, WEIGHTS_CUTOFF, N_CLUSTERS
 from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame
 from main.recommendations import predict_player
@@ -91,12 +91,10 @@ class AboutView(CachedTemplateViewGet):
 
     def get_context_data(self, **kwargs):
         # player updated
-        last_updated_rec = Player.objects.filter(
-            Q(reviews_scr__gte=1) &
-            Q(reviews_scr__lte=10) &
-            Q(reviews_cnt__gte=3)
-        ).order_by('rec_at').first()
-        player_turnover = (now() - last_updated_rec.rec_at).days
+        oldest_player = Player.objects.annotate(
+            oldest_date=Least('scraped_at', 'rec_at')
+        ).filter(oldest_date__isnull=False).order_by('oldest_date').first()
+        player_turnover = (now() - oldest_player.oldest_date).days
 
         # game added
         one_month = now() - timedelta(days=30)
@@ -237,6 +235,17 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     search_by = 'nick'
     queryset = Player.objects.filter(reviews_cnt__gte=3)
 
+    def get_context_data(self, *args, object_list=None, **kwargs):
+        ctx = super().get_context_data(*args, object_list=object_list, **kwargs)
+        # add graph for listing only (not on search)
+        if not ctx['s']:
+            histogram = Player.objects.values('reviews_cnt')
+            df = pd.DataFrame(list(histogram))
+            fig = px.box(df, y='reviews_cnt')
+            # fig.update_yaxes(tick0=1, dtick=1)
+            ctx['graph_reviews_cnt'] = fig.to_html(full_html=False)
+        return ctx
+
 
 class PlayerDetailView(DetailView):
     model = Player
@@ -340,14 +349,14 @@ class MecView(CachedTemplateViewGet):
 
     def get_context_data(self, **kwargs):
         grouped = dict()
-        for i in range(8):
-            games = Game.objects.filter(mechanic_cluster=i).order_by('-hotness').all()
+        for i in range(N_CLUSTERS):
+            games = Game.objects.filter(mechanic_cluster=i).order_by('-hotness', '-rating').all()
             mechanics = [m.name for g in games for m in g.mechanics.all()]
             counter = Counter(mechanics)
             total = sum(counter.values())
             mecs = []
             for mec_name, mec_cnt in counter.most_common(100):
-                if sum(v for _, v in mecs) < total * 0.50:
+                if sum(v for _, v in mecs) < total * 0.33:
                     mecs.append((mec_name, mec_cnt))
             grouped[i] = {
                 'games': games,

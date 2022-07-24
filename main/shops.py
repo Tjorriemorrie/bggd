@@ -4,12 +4,27 @@ from typing import List
 
 import pandas as pd
 from bs4 import BeautifulSoup
+from pandas import DataFrame
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN
 from main.models import Shop, Price, Day, Game, ShopGame
 from main.scraper import get
 
 logger = logging.getLogger(__name__)
+
+
+def get_shopgame_stats(shopgame: ShopGame) -> DataFrame:
+    values = shopgame.prices.values_list('day__day', 'price')
+    df = pd.DataFrame(values, columns=['day', 'price'])
+    df['day'] = pd.to_datetime(df['day'])
+    df = df.set_index('day')
+    day = Day.get_today()
+    date_range = pd.date_range(
+        df.index[0],
+        datetime(day.day.year, day.day.month, day.day.day))
+    df = df.reindex(date_range)
+    df['price'] = df['price'].ffill()
+    return df
 
 
 def scrape_raru(shopgames: List[ShopGame] = None):
@@ -55,13 +70,7 @@ def scrape_raru(shopgames: List[ShopGame] = None):
         # update stats
         # will only change if there is a new price
         if not shopgame.current_price or new_price:
-            values = shopgame.prices.values_list('day__day', 'price')
-            df = pd.DataFrame(values, columns=['day', 'price'])
-            df['day'] = pd.to_datetime(df['day'])
-            df = df.set_index('day')
-            date_range = pd.date_range(df.index[0], datetime(day.day.year, day.day.month, day.day.day))
-            df = df.reindex(date_range)
-            df['price'] = df['price'].ffill()
+            df = get_shopgame_stats(shopgame)
             shopgame.mean_price = df['price'].mean()
             shopgame.min_price = df['price'].min()
             shopgame.max_price = df['price'].max()

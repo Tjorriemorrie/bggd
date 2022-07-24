@@ -24,3 +24,5 @@ STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'
 
 SHOP_RARU = 'Raru'
+
+N_CLUSTERS = 6

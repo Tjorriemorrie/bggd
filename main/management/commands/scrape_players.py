@@ -79,27 +79,6 @@ class Command(BaseCommand):
     def _predict_changed_players(self, game_ids: List[int]):
         """update player predictions who have made a new rating"""
         logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
-        players = Player.objects.annotate(
-            last_review=Max('reviews__reviewed_at')).filter(
-            Q(rec_at__isnull=False) &
-            Q(last_review__gt=F('rec_at')))
-            #.order_by('rec_at').all()[:1_000]
-        while players:
-            for player in players:
-                self._check_watch()
-                predict_player(player, game_ids)
-                logger.info(f'{self.prefix} Recommendations for changed {player}')
-                # update game days (updated from player's reviews)
-                update_gamedays(player)
-            players = Player.objects.annotate(
-                last_review=Max('reviews__reviewed_at')).filter(
-                Q(rec_at__isnull=False) &
-                Q(last_review__gt=F('rec_at')))
-                #.order_by('rec_at').all()[:1_000]
-
-    def _predict_changed_players2(self, game_ids: List[int]):
-        """update player predictions who have made a new rating"""
-        logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
         start_at = 0
         reviews = Review.objects.prefetch_related('player').order_by(
             '-updated_at').all()[0:(start_at + 1_000)]
@@ -132,6 +111,7 @@ class Command(BaseCommand):
         while players:
             for player in players:
                 self._check_watch()
+                logger.info(f'Player start with oldest date as {player.oldest_date}')
 
                 # details
                 try:
@@ -163,7 +143,7 @@ class Command(BaseCommand):
                 # not get fixed, e.g. jul 2022 with very, very low rating counts.
                 update_gamedays(player)
 
-                logger.info(f'{self.prefix} upkeeped {player}')
+                logger.info(f'{self.prefix} upkeeped {player} (scraped_at={player.scraped_at} rec_at={player.rec_at})')
 
             # renew loop
             players = Player.objects.annotate(
@@ -177,7 +157,7 @@ class Command(BaseCommand):
         # perform these steps
         self._scrape_new_players()
         self._predict_new_players(game_ids)
-        self._predict_changed_players2(game_ids)
+        self._predict_changed_players(game_ids)
 
         # with remaining time
         self._upkeep(game_ids)
