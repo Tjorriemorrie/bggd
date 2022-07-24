@@ -1,6 +1,7 @@
 import logging
 import pickle
 from copy import copy
+from random import randint
 from typing import Tuple, List, Optional
 
 import numpy as np
@@ -130,43 +131,64 @@ def predict_player(
         prediction = algo.predict(player.id, game_id)
         sc[prediction.est] = game_id
 
-    # set/overwrite top recs
     top_recs = list(reversed(sc.items()))
-    rec_combos = copy(REC_COMBOS)
-    is_primary = True
+    cnt = 0
     for val, game_id in top_recs:
         game = Game.objects.get(id=game_id)
         # skip if cannot buy (only RSA)
         if player.is_rsa() and not game.shop_available or not game.shop_price:
             continue
         if not game.best_min_players or not game.best_max_players:
-            # logger.info(f'Skipping {game} for not having best players scraped.')
+            logger.info(f'Skipping {game} for not having best players scraped.')
             continue
-        for cur_best_players in range(game.best_min_players, game.best_max_players + 1):
-            # anything not in PLAYER_SIZE is a party game, change it to 5
-            best_players = cur_best_players if cur_best_players in PLAYERS_SIZES else 5
-            game_combo = (game.weight_tag, best_players)
-            if game_combo in rec_combos:
-                break
-        else:
-            # logger.info(
-            #     f'Skipping {game} due to all combos taken: '
-            #     f'{game.weight_tag} {game.best_min_players}-{game.best_max_players}')
-            continue
-        rec, _ = Rec.objects.get_or_create(
+        rec = Rec.objects.create(
+            game=game,
             player=player,
+            predicted=val,
+            rec_at=now(),
             weight_tag=game.weight_tag,
-            best_players=best_players)
-        if rec.game != game or rec.is_primary != is_primary or rec.predicted != val:
-            rec.game = game
-            rec.is_primary = is_primary
-            rec.predicted = val
-            rec.rec_at = now()
-            rec.save()
-        is_primary = False
-        rec_combos.remove(game_combo)
-        if not rec_combos:
+            best_players=cnt)
+        cnt += 1
+        if cnt >= 10:
             break
+
+    # set/overwrite top recs
+    # top_recs = list(reversed(sc.items()))
+    # rec_combos = copy(REC_COMBOS)
+    # is_primary = True
+    # for val, game_id in top_recs:
+    #     game = Game.objects.get(id=game_id)
+    #     # skip if cannot buy (only RSA)
+    #     if player.is_rsa() and not game.shop_available or not game.shop_price:
+    #         continue
+    #     if not game.best_min_players or not game.best_max_players:
+    #         # logger.info(f'Skipping {game} for not having best players scraped.')
+    #         continue
+    #     for cur_best_players in range(game.best_min_players, game.best_max_players + 1):
+    #         # anything not in PLAYER_SIZE is a party game, change it to 5
+    #         best_players = cur_best_players if cur_best_players in PLAYERS_SIZES else PLAYERS_SIZES[-1]
+    #         game_combo = (game.weight_tag, best_players)
+    #         if game_combo in rec_combos:
+    #             break
+    #     else:
+    #         # logger.info(
+    #         #     f'Skipping {game} due to all combos taken: '
+    #         #     f'{game.weight_tag} {game.best_min_players}-{game.best_max_players}')
+    #         continue
+    #     rec, _ = Rec.objects.get_or_create(
+    #         player=player,
+    #         weight_tag=game.weight_tag,
+    #         best_players=best_players)
+    #     if rec.game != game or rec.is_primary != is_primary or rec.predicted != val:
+    #         rec.game = game
+    #         rec.is_primary = is_primary
+    #         rec.predicted = val
+    #         rec.rec_at = now()
+    #         rec.save()
+    #     is_primary = False
+    #     rec_combos.remove(game_combo)
+    #     if not rec_combos:
+    #         break
 
     # score player
     ratings = SortedList([r.rating for r in reviews])
