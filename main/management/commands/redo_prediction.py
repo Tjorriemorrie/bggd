@@ -24,11 +24,11 @@ class Command(BaseCommand):
 
     def _load_next_player(self):
         # logger.info('Searching for player...')
-        one_day_ago = now() - timedelta(days=1)
+        one_hour_ago = now() - timedelta(hours=1)
         player = Player.objects.filter(
             redo_requested_at__isnull=False
         ).exclude(
-            redo_started_at__gt=one_day_ago
+            redo_started_at__gt=one_hour_ago
         ).first()
         if player:
             player.redo_started_at = now()

@@ -211,7 +211,6 @@ class Player(models.Model):
         return self.country and self.country == 'South Africa'
 
 
-
 class PlayerProxy(Player):
     class Meta:
         proxy = True

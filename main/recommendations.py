@@ -1,7 +1,5 @@
 import logging
 import pickle
-from copy import copy
-from random import randint
 from typing import Tuple, List, Optional
 
 import numpy as np
@@ -11,15 +9,16 @@ from django.utils.timezone import now
 from retry import retry
 from sklearn.cluster import KMeans
 from sortedcontainers import SortedDict, SortedList
-from surprise import Reader, Dataset, SVD, AlgoBase
+from surprise import Reader, Dataset, SVD, AlgoBase, dump
 
 from bgg.settings import BASE_DIR
-from main.constants import REC_PLAYER_LIMIT, REC_COMBOS, PLAYERS_SIZES, REC_MIN_CUTOFF, N_CLUSTERS
+from main.constants import REC_MIN_CUTOFF, N_CLUSTERS, \
+    REC_MAX_CUTOFF
 from main.models import Review, Player, Game, Rec, Label, LABEL_MECHANIC
 
 logger = logging.getLogger(__name__)
 
-FILE_REC_MODEL = BASE_DIR / 'model.pkl'
+FILE_REC_MODEL = BASE_DIR / 'model.dmp'
 FILE_MEC_MODEL = BASE_DIR / 'model_mec.pkl'
 
 _algo = None
@@ -29,9 +28,8 @@ def get_rec_algo() -> AlgoBase:
     global _algo
     if not _algo:
         logger.info('loading rec algorithm...')
-        with open(FILE_REC_MODEL, 'r+b') as fp:
-            _algo = pickle.load(fp)
-        logger.info('loaded')
+        _algo, _ = dump.load(FILE_REC_MODEL)
+        logger.info(f'loaded {_algo}')
     return _algo
 
 
@@ -48,14 +46,16 @@ def get_mec_algo() -> AlgoBase:
 def train_rec_model():
     logger.info('Training model...')
 
-    logger.info('Loading players...')
+    logger.info(f'Loading players (min {REC_MIN_CUTOFF} to max {REC_MAX_CUTOFF} ratings per player)...')
     player_ids = Player.objects.filter(
-        reviews_cnt__gte=REC_MIN_CUTOFF).order_by(
-        '-reviews_scr').values_list('id', flat=True)[:REC_PLAYER_LIMIT]
-    logger.info(f'Found {len(player_ids)} (max {REC_PLAYER_LIMIT}) players')
-    logger.info('Loading the reviews...')
+        reviews_cnt__gte=REC_MIN_CUTOFF,
+        reviews_cnt__lte=REC_MAX_CUTOFF
+    ).values_list('id', flat=True)
+
+    logger.info(f'Loading the reviews from the {len(player_ids):,} players found.')
     values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
-    logger.info(f'Found {len(values)} ratings from those players (min {REC_MIN_CUTOFF} ratings per player)')
+    logger.info(f'Found {len(values):,} ratings from those players')
+
     df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
 
     logger.info('Creating dataset...')
@@ -70,8 +70,7 @@ def train_rec_model():
     algo.fit(train_set)
 
     logger.info(f'Saving model to {FILE_REC_MODEL}')
-    with open(FILE_REC_MODEL, 'w+b') as fp:
-        pickle.dump(algo, fp)
+    dump.dump(FILE_REC_MODEL, algo)
 
 
 def train_mec_model():
@@ -146,6 +145,7 @@ def predict_player(
             player=player,
             predicted=val,
             rec_at=now(),
+            is_primary=bool(cnt == 0),
             weight_tag=game.weight_tag,
             best_players=cnt)
         cnt += 1
