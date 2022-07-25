@@ -238,12 +238,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     def get_context_data(self, *args, object_list=None, **kwargs):
         ctx = super().get_context_data(*args, object_list=object_list, **kwargs)
         # add graph for listing only (not on search)
-        if not ctx['s']:
-            histogram = Player.objects.values('reviews_cnt')
-            df = pd.DataFrame(list(histogram))
-            fig = px.box(df, y='reviews_cnt')
-            # fig.update_yaxes(tick0=1, dtick=1)
-            ctx['graph_reviews_cnt'] = fig.to_html(full_html=False)
+        # if not ctx['s']:
         return ctx
 
 
@@ -340,6 +335,18 @@ class ReviewView(CachedTemplateViewGet):
             df, x="Date", y="Ratings", labels={'Ratings': '# of ratings'},
             title='Ratings past ~month')
         data['graph_day'] = fig_day.to_html(full_html=False)
+
+        reviews_cnts = Player.objects.filter(
+            reviews_cnt__gte=3,
+            reviews_cnt__lte=100
+        ).values_list('reviews_cnt', flat=True)
+        cntr = Counter(reviews_cnts)
+        df = pd.DataFrame(cntr.items())
+        fig = px.histogram(
+            x=df[0], y=df[1], nbins=100,
+            labels={'x': 'number of reviews', 'y': 'players'})
+        # fig.update_yaxes(tick0=1, dtick=1)
+        data['graph_reviews_cnt'] = fig.to_html(full_html=False)
 
         return data
 
