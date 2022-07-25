@@ -3,27 +3,31 @@
 {% block title %}About - {{ block.super }}{% endblock %}
 
 {% block content %}
-  <div class="container">
+    <div class="container">
 
-    {% include 'main/navbar.html' with nav='about' %}
+        {% include 'main/navbar.html' with nav='about' %}
 
-    <br/>
-    <div class="row">
-      <div class="col">
-        <h2>Hello BoardGame Geeks.</h2>
-        <p>I wanted to know what I should buy next... What would I like? So, this is
-          an analysis site of BGG to calculate recommendations of what to buy next.</p>
-        <p>Games are scraped for their ratings. This takes long and only
-          the top few games on the ranking is currently known.</p>
-        <p>The ratings were used to build a recommender system using SVD.
-          Recommendations are calculated based of each players' ratings .</p>
-        <p>Look up your username and there should be recommendations
-          on the user's page. It is updated <strong>about every {{ player_turnover }}
-            days</strong>. (You can make it update in ~3 days if you change ratings or
-          comments to the list of games.</p>
-        <p>More games will be added but it takes a long time.
-          <strong>About {{ game_added }} games</strong> are added every day.</p>
-      </div>
+        <br/>
+        <div class="row">
+            <div class="col">
+                <h2>Hello BoardGame Geeks.</h2>
+                <p>I wanted to know what I should buy next... What would I
+                    like? So, this is an analysis site of BGG to calculate
+                    recommendations of what to buy next.</p>
+                <p>Games are scraped for their ratings. This takes long and only
+                    the top few games on the ranking is currently known.</p>
+                <p>The ratings were used to build a recommender system using
+                    SVD. Recommendations are calculated based of each players'
+                    ratings .</p>
+                <p>Look up your username and there should be recommendations
+                    on the user's page. Click the Recalculate and wait a few
+                    minutes to update your recommendations. (Otherwise it is
+                    stale - the oldest updated recommendations
+                    is <strong>{{ player_turnover }} days</strong>.</p>
+                <p>More games will be added, but it takes a long time.
+                    <strong>About {{ game_added }} games</strong> are added every
+                    day.</p>
+            </div>
+        </div>
     </div>
-  </div>
 {% endblock %}
