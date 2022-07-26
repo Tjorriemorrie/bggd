@@ -291,7 +291,7 @@ class Review(models.Model):
     def diff(self) -> float:
         if not self.predicted:
             return 0
-        return self.rating - self.predicted
+        return self.predicted - self.rating
 
     @property
     def diff_combine(self) -> float:
