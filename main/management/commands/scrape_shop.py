@@ -4,9 +4,9 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
-from main.constants import SHOP_RARU
+from main.constants import SHOP_RARU, SHOP_TAKEALOT
 from main.models import Game
-from main.shops import scrape_raru, get_shopgame_stats
+from main.shops import scrape_raru, get_shopgame_stats, scrape_takealot
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,8 @@ class Command(BaseCommand):
         for shop_name in shop_names:
             if shop_name.lower() == SHOP_RARU.lower():
                 scrape_raru()
+            elif shop_name.lower() == SHOP_TAKEALOT.lower():
+                scrape_takealot()
             else:
                 raise ValueError(f'Unknown shop name {shop_name}')
         logger.info('cmd done')

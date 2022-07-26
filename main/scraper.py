@@ -40,7 +40,7 @@ last_url = None
 
 
 @retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60)
-def get(url: str) -> requests.Response:
+def get(url: str, headers: dict = None) -> requests.Response:
     global sleep_time
     global last_url
     if last_url == url:
@@ -52,7 +52,7 @@ def get(url: str) -> requests.Response:
     sleep(sleep_time)
 
     try:
-        res = requests.get(url)
+        res = requests.get(url, headers=headers)
     except Exception as exc:
         logger.warning(f'Connection error! {exc}')
         raise RequestsError() from exc

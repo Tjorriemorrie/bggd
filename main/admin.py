@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.timezone import now
 
-from main.constants import SHOP_RARU
+from main.constants import SHOP_RARU, SHOP_TAKEALOT
 from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, ShopGame, Price
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
@@ -118,8 +118,10 @@ class ShopGameAdmin(admin.ModelAdmin):
     def _response_post_save(self, request, obj):
         if obj.shop.name == SHOP_RARU:
             return redirect('/admin/main/shopgameraru/')
+        elif obj.shop.name == SHOP_TAKEALOT:
+            return redirect('/admin/main/shopgametakealot/')
         else:
-            return super().response_post_save_change(request, obj)
+            return super()._response_post_save(request, obj)
 
     def prices_cnt(self, obj: ShopGame) -> str:
         return f'{obj.prices.count()}'
@@ -155,6 +157,42 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
         return format_html(
             f'<a href="{raru_search}" target="_blank">search raru</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={obj.id}">add url</a>')
+
+    def hotness_fmt(self, obj: Game):
+        hotness = int(obj.hotness) if obj.hotness else 0
+        return format_html(f'{hotness}')
+
+
+class ShopGameTakealot(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Shop Takealot'
+        verbose_name_plural = 'Shop Takealot'
+
+
+@admin.register(ShopGameTakealot)
+class ShopGameTakealotAdmin(admin.ModelAdmin):
+    list_display = ('takealot', 'title', 'year', 'hotness_fmt')
+    ordering = ('hotness', 'year')
+
+    def get_queryset(self, request):
+        return Game.objects.exclude(shopgames__shop__name=SHOP_TAKEALOT)
+
+    def title(self, obj: Game):
+        return format_html(
+            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+
+    def takealot(self, obj: Game):
+        takealot = Shop.objects.get(name=SHOP_TAKEALOT)
+        words = re.findall('(\w+)', obj.name)
+        words.sort(key=len, reverse=True)
+        words = [w for w in words if w.lower() not in ['edition', 'board', 'game']]
+        words = [f"{w}'s" if f"{w}'s" in obj.name else w for w in words if w != 's']
+        words = [f"{w}'t" if f"{w}'t" in obj.name else w for w in words if w != 't']
+        takealot_search = 'https://www.takealot.com/toys/all?qsearch=' + '+'.join(words[:3])
+        return format_html(
+            f'<a href="{takealot_search}" target="_blank">search takealot</a><br/><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={takealot.id}&game={obj.id}">add url</a>')
 
     def hotness_fmt(self, obj: Game):
         hotness = int(obj.hotness) if obj.hotness else 0
