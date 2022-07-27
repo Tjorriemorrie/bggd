@@ -3,7 +3,7 @@ import re
 from django.contrib import admin
 from django.db.models import F
 from django.shortcuts import redirect
-from django.urls import reverse
+from django.urls import reverse, path
 from django.utils.html import format_html
 from django.utils.timezone import now
 
@@ -109,7 +109,8 @@ class ShopGameAdmin(admin.ModelAdmin):
     fields = ['shop', 'game', 'url', 'mia']
     search_fields = ['game__name', 'url']
     list_filter = ['shop__name', 'mia']
-    ordering = [F('mean_saving').desc(nulls_last=True), '-updated_at']
+    # ordering = [F('mean_saving').desc(nulls_last=True), '-updated_at']
+    ordering = ['url_at']
 
     def save_model(self, request, obj, form, change):
         obj.url_at = now()
@@ -154,9 +155,11 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
         words = [f"{w}'s" if f"{w}'s" in obj.name else w for w in words if w != 's']
         words = [f"{w}'t" if f"{w}'t" in obj.name else w for w in words if w != 't']
         raru_search = 'https://raru.co.za/boards-dice/search/' + '+'.join(words[:3])
+        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': raru.id})
         return format_html(
             f'<a href="{raru_search}" target="_blank">search raru</a><br/><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={obj.id}">add url</a>')
+            f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="{shopgame_mia_url}">mark as MIA</a>')
 
     def hotness_fmt(self, obj: Game):
         hotness = int(obj.hotness) if obj.hotness else 0
@@ -190,9 +193,12 @@ class ShopGameTakealotAdmin(admin.ModelAdmin):
         words = [f"{w}'s" if f"{w}'s" in obj.name else w for w in words if w != 's']
         words = [f"{w}'t" if f"{w}'t" in obj.name else w for w in words if w != 't']
         takealot_search = 'https://www.takealot.com/toys/all?qsearch=' + '+'.join(words[:3])
+        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': takealot.id})
         return format_html(
             f'<a href="{takealot_search}" target="_blank">search takealot</a><br/><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={takealot.id}&game={obj.id}">add url</a>')
+            f'<a href="/admin/main/shopgame/add/?shop={takealot.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
 
     def hotness_fmt(self, obj: Game):
         hotness = int(obj.hotness) if obj.hotness else 0
@@ -204,3 +210,22 @@ class PriceAdmin(admin.ModelAdmin):
     list_display = ['shopgame', 'day', 'status', 'price']
     ordering = ['-day']
     search_fields = ['shopgame__game__name']
+
+
+def mark_mia_view(request, game_id, shop_id):
+    shopgame, _ = ShopGame.objects.update_or_create(
+        game_id=game_id,
+        shop_id=shop_id,
+        defaults={
+            'url_at': now(),
+            'url': None,
+            'mia': True,
+        }
+    )
+    back_url = reverse(f'admin:main_shopgame{shopgame.shop.name.lower()}_changelist')
+    return redirect(back_url)
+
+
+admin_site_urls = admin.site.urls
+admin_site_urls[0].insert(7, path('game/<int:game_id>/shop/<int:shop_id>/mia/', mark_mia_view, name='shopgame_mia'))
+a = 1

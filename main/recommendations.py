@@ -137,9 +137,9 @@ def predict_player(
         # skip if cannot buy (only RSA)
         if player.is_rsa() and not game.shop_available or not game.shop_price:
             continue
-        if not game.best_min_players or not game.best_max_players:
-            logger.info(f'Skipping {game} for not having best players scraped.')
-            continue
+        # if not game.best_min_players or not game.best_max_players:
+        #     logger.info(f'Skipping {game} for not having best players scraped.')
+        #     continue
         rec = Rec.objects.create(
             game=game,
             player=player,
