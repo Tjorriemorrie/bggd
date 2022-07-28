@@ -187,12 +187,7 @@ class ShopGameTakealotAdmin(admin.ModelAdmin):
 
     def takealot(self, obj: Game):
         takealot = Shop.objects.get(name=SHOP_TAKEALOT)
-        words = re.findall('(\w+)', obj.name)
-        words.sort(key=len, reverse=True)
-        words = [w for w in words if w.lower() not in ['edition', 'board', 'game']]
-        words = [f"{w}'s" if f"{w}'s" in obj.name else w for w in words if w != 's']
-        words = [f"{w}'t" if f"{w}'t" in obj.name else w for w in words if w != 't']
-        takealot_search = 'https://www.takealot.com/toys/all?qsearch=' + '+'.join(words[:3])
+        takealot_search = f'https://www.takealot.com/toys/all?qsearch={obj.name}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': takealot.id})
         return format_html(
             f'<a href="{takealot_search}" target="_blank">search takealot</a><br/><br/>'

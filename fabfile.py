@@ -32,27 +32,18 @@ def get_conn() -> Connection:
 
 
 @task
-def backup_data(ctx):
-    print('Backing up data...')
-    conn = get_conn()
-    db_file = 'db.sqlite3.bck'
-    mdl_file = 'model.pkl.bck'
-    conn.run(f'cp {dir}/db.sqlite3 {dir}/{db_file}', echo=True)
-    conn.run(f'cp {dir}/model.pkl {dir}/{mdl_file}', echo=True)
-    return db_file, mdl_file
-
-
-@task
 def download_db(ctx):
     print('Retrieving db and model')
     conn = get_conn()
-    db_file, mdl_file = backup_data(ctx)
+
+    db_backup = 'db.sqlite3.bck'
+    conn.run(f'cp {dir}/db.sqlite3 {dir}/{db_backup}', echo=True)
 
     print('zipping files...')
     zip_file = 'data.tar.gz'
     cmds = [
         f'cd {dir}',
-        f'tar -czvf {zip_file} {db_file}',  # --xform s:^.*/::
+        f'tar -czvf {zip_file} {db_backup}',  # --xform s:^.*/::
     ]
     conn.run(' && '.join(cmds), echo=True)
 
@@ -63,7 +54,6 @@ def download_db(ctx):
     print('backing up local data...')
     today = datetime.utcnow().strftime('%y%m%d')
     conn.local(f'cp db.sqlite3 backups/db.sqlite3.{today}', echo=True)
-    # conn.local(f'cp model.pkl backups/model.pkl.{today}', echo=True)
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
@@ -78,13 +68,14 @@ def upload_model(ctx):
 
     print('zipping model...')
     zip_file = 'model.tar.gz'
-    mdl_file = 'model.pkl'
+    mdl_file = 'model.dmp'
+    mdl_bck = 'model.dmp.bck'
     conn.local(f'tar -czvf {zip_file} {mdl_file}', echo=True)
 
     print('Copying model file to server...')
     conn.put(f'{zip_file}', f'{dir}/')
 
-    db_file, mdl_file = backup_data(ctx)
+    conn.run(f'cp {dir}/{mdl_file} {dir}/{mdl_bck}', echo=True)
     conn.run(f'tar -xf {dir}/{zip_file} -C {dir}', echo=True)
 
     print('done')
@@ -120,7 +111,8 @@ def deploy(ctx):
     print('Copying to remote server...')
     conn.put('deploy.tar.gz', f'{dir}/')
 
-    backup_data(ctx)
+    # back up db
+    conn.run(f'cp {dir}/db.sqlite3 {dir}/db.sqlite3.bck', echo=True)
 
     conn.run(f'tar -xf {dir}/deploy.tar.gz -C {dir}', echo=True)
     conn.run(f'mkdir -p {dir}/logs', echo=True)

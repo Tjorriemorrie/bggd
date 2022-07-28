@@ -16,6 +16,7 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         parser.add_argument('shop_name', nargs='+', type=str)
+        parser.add_argument('--fail_fast', action='store_true')
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _main(self, *args, **options):
@@ -23,9 +24,9 @@ class Command(BaseCommand):
         logger.info(f'cmd scraping shops {shop_names}')
         for shop_name in shop_names:
             if shop_name.lower() == SHOP_RARU.lower():
-                scrape_raru()
+                scrape_raru(fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == SHOP_TAKEALOT.lower():
-                scrape_takealot()
+                scrape_takealot(fail_fast=options.get('fail_fast'))
             else:
                 raise ValueError(f'Unknown shop name {shop_name}')
         logger.info('cmd done')

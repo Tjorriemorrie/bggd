@@ -38,7 +38,7 @@ def aggregate_shop(game: Game):
     game.save()
 
 
-def scrape_raru(shopgames: List[ShopGame] = None):
+def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
     logger.info('Scraping Raru')
     day = Day.get_today()
     shop = Shop.objects.get(name=SHOP_RARU)
@@ -56,6 +56,8 @@ def scrape_raru(shopgames: List[ShopGame] = None):
             data = scrape_raru_game(shopgame.url)
         except Exception as exc:
             logger.exception(f'Could not scrape {shopgame.url}')
+            if fail_fast:
+                raise
             continue
         # when price is 0 it is not priced
         if not data['price']:
@@ -118,7 +120,7 @@ def scrape_raru_game(url: str) -> dict:
     }
 
 
-def scrape_takealot(shopgames: List[ShopGame] = None):
+def scrape_takealot(shopgames: List[ShopGame] = None, fail_fast: bool = False):
     logger.info('Scraping Takealot')
     day = Day.get_today()
     shop = Shop.objects.get(name=SHOP_TAKEALOT)
@@ -136,6 +138,8 @@ def scrape_takealot(shopgames: List[ShopGame] = None):
             data = scrape_takealot_game(shopgame.url)
         except Exception as exc:
             logger.exception(f'Could not scrape {shopgame.url}')
+            if fail_fast:
+                raise
             continue
         prev_price = shopgame.prices.last()
         new_price = None
@@ -182,7 +186,7 @@ def scrape_takealot_game(url: str) -> dict:
     availability = data['stock_availability']['status']
     if availability in ['fubar']:
         status = STOCK_OUT
-    elif availability in ['Ships in 5 - 7 work days']:
+    elif availability in ['In stock', 'Ships in 5 - 7 work days']:
         status = STOCK_IN
     else:
         raise NotImplementedError(f'Not sure what is: {availability}')
