@@ -1,4 +1,5 @@
 import logging
+from datetime import datetime
 from time import time
 from typing import List
 
@@ -161,6 +162,15 @@ class Command(BaseCommand):
 
         # with remaining time
         self._upkeep(game_ids)
+
+        # how many on that old timestamp left??
+        old_date = datetime(2021, 9, 18)
+        players_count = Player.objects.annotate(
+            oldest_date=Least('scraped_at', 'rec_at')
+        ).filter(
+            oldest_date__lt=old_date
+        ).count()
+        logger.info(f'Still at initial date: {players_count}')
 
     def handle(self, *args, **options):
         try:
