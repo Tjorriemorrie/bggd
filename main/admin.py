@@ -7,7 +7,7 @@ from django.urls import reverse, path
 from django.utils.html import format_html
 from django.utils.timezone import now
 
-from main.constants import SHOP_RARU, SHOP_TAKEALOT
+from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, ShopGame, Price
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
@@ -173,7 +173,7 @@ class ShopGameTakealot(Game):
         verbose_name_plural = 'Shop Takealot'
 
 
-@admin.register(ShopGameTakealot)
+# @admin.register(ShopGameTakealot)
 class ShopGameTakealotAdmin(admin.ModelAdmin):
     list_display = ('takealot', 'title', 'year', 'hotness_fmt')
     ordering = ('hotness', 'year')
@@ -192,6 +192,41 @@ class ShopGameTakealotAdmin(admin.ModelAdmin):
         return format_html(
             f'<a href="{takealot_search}" target="_blank">search takealot</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={takealot.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    def hotness_fmt(self, obj: Game):
+        hotness = int(obj.hotness) if obj.hotness else 0
+        return format_html(f'{hotness}')
+
+
+class ShopGameMav(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Shop Meeps and Veeps'
+        verbose_name_plural = 'Shop Meeps and Veeps'
+
+
+@admin.register(ShopGameMav)
+class ShopGameMavAdmin(admin.ModelAdmin):
+    list_display = ('mav', 'title', 'year', 'hotness_fmt')
+    ordering = ('hotness', 'year')
+
+    def get_queryset(self, request):
+        return Game.objects.exclude(shopgames__shop__name=SHOP_MEEPS_AND_VEEPS)
+
+    def title(self, obj: Game):
+        return format_html(
+            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+
+    def mav(self, obj: Game):
+        mav = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
+        name = obj.name.replace(':', '').replace('?', ' ').replace(',', '').replace('!', ' ')
+        mav_search = f'https://meepsandveeps.co.za/search?type=product&q={name}'
+        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': mav.id})
+        return format_html(
+            f'<a href="{mav_search}" target="_blank">search MaV</a><br/><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={obj.id}">add url</a><br/><br/>'
             f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 

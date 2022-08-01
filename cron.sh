@@ -10,7 +10,8 @@ function main() {
   source env/bin/activate
 
   ./manage.py scrape_shop raru
-#  ./manage.py scrape_shop takealot
+  ./manage.py scrape_shop mav
+  ./manage.py scrape_shop frontpage
 
   while [ $SECONDS -lt $end ];
   do

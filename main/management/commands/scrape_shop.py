@@ -4,9 +4,10 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
-from main.constants import SHOP_RARU, SHOP_TAKEALOT
+from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 from main.models import Game
-from main.shops import scrape_raru, get_shopgame_stats, scrape_takealot
+from main.shops import scrape_raru, get_shopgame_stats, scrape_takealot, \
+    scrape_meeps_and_veeps
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,10 @@ class Command(BaseCommand):
                 scrape_raru(fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == SHOP_TAKEALOT.lower():
                 scrape_takealot(fail_fast=options.get('fail_fast'))
+            elif shop_name.lower() == 'mav':
+                scrape_meeps_and_veeps(fail_fast=options.get('fail_fast'))
+            elif shop_name.lower() == 'frontpage':
+                self._update_shop_page()
             else:
                 raise ValueError(f'Unknown shop name {shop_name}')
         logger.info('cmd done')
@@ -47,7 +52,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         try:
             self._main(*args, **options)
-            self._update_shop_page(*args, **options)
         except Exception:
             logger.exception('Error during scraping shops!')
             raise

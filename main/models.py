@@ -7,7 +7,7 @@ from django.utils.timezone import now
 from jsonfield import JSONField
 
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, \
-    STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT
+    STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 
 LABEL_CATEGORY = 'category'
 LABEL_MECHANIC = 'mechanic'
@@ -349,6 +349,7 @@ class Shop(models.Model):
     SHOP_CHOICES = (
         (SHOP_RARU, SHOP_RARU),
         (SHOP_TAKEALOT, SHOP_TAKEALOT),
+        (SHOP_MEEPS_AND_VEEPS, SHOP_MEEPS_AND_VEEPS),
     )
     name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
     host = models.CharField(max_length=150, unique=True)

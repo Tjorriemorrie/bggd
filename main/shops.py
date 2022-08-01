@@ -6,7 +6,8 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from pandas import DataFrame
 
-from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT
+from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT, \
+    SHOP_MEEPS_AND_VEEPS
 from main.models import Shop, Price, Day, Game, ShopGame
 from main.scraper import get
 
@@ -191,6 +192,83 @@ def scrape_takealot_game(url: str) -> dict:
     else:
         raise NotImplementedError(f'Not sure what is: {availability}')
     price = data['data_layer']['totalPrice']
+    return {
+        'status': status,
+        'price': price,
+    }
+
+
+def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = False):
+    logger.info(f'Scraping {SHOP_MEEPS_AND_VEEPS}')
+    day = Day.get_today()
+    shop = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
+    if not shopgames:
+        shopgames = shop.shopgames.all()
+    else:
+        assert all(sg.shop.name == SHOP_MEEPS_AND_VEEPS for sg in shopgames)
+    for ix, shopgame in enumerate(shopgames):
+        logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+        if shopgame.mia:
+            continue
+
+        # update current price
+        try:
+            data = scrape_meeps_and_veeps_game(shopgame.url)
+        except Exception as exc:
+            logger.exception(f'Could not scrape {shopgame.url}')
+            if fail_fast:
+                raise
+            continue
+        prev_price = shopgame.prices.last()
+        new_price = None
+        if not prev_price \
+                or prev_price.price != data['price'] \
+                or prev_price.status != data['status']:
+            new_price, _ = Price.objects.update_or_create(
+                shopgame=shopgame,
+                day=day,
+                defaults={
+                    'status': data['status'],
+                    'price': data['price'],
+                }
+            )
+            logger.info(f'New Price! {new_price}')
+
+        # update stats
+        # will only change if there is a new price
+        if not shopgame.current_price or new_price:
+            df = get_shopgame_stats(shopgame)
+            shopgame.mean_price = df['price'].mean()
+            shopgame.min_price = df['price'].min()
+            shopgame.max_price = df['price'].max()
+            shopgame.current_price = new_price.price
+            shopgame.current_available = new_price.status == STOCK_IN
+            shopgame.mean_saving = shopgame.mean_price - shopgame.current_price
+            shopgame.save()
+
+            # then update game
+            aggregate_shop(shopgame.game)
+
+    logger.info('Finished scraping Raru')
+
+
+def scrape_meeps_and_veeps_game(url: str) -> dict:
+    clean_url = url.partition('?')[0]
+    res = get(clean_url)
+    html = BeautifulSoup(res.text, 'html.parser')
+
+    availability = html.find('div', class_='limited-stock-tag').text
+    if any(s in availability for s in ['left at this price']):
+        status = STOCK_IN
+    elif any(s in availability for s in ['Out of stock']):
+        status = STOCK_OUT
+    else:
+        raise NotImplementedError(f'Not sure what is: {availability}')
+
+    price = html.find(id='productPrice-product-template').find('span').text
+    price = price.replace('R', '').strip()
+    price = int(float(price))
+
     return {
         'status': status,
         'price': price,
