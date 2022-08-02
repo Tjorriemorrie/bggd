@@ -29,8 +29,9 @@ def get_shopgame_stats(shopgame: ShopGame) -> DataFrame:
 
 
 def aggregate_shop(game: Game):
+    """Update the game with the best shop values."""
     best_shopgame = game.best_shop()
-    if not best_shopgame or not best_shopgame.current_available:
+    if not best_shopgame:
         game.shop_available = False
     else:
         game.shop_available = True
@@ -208,7 +209,9 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
         assert all(sg.shop.name == SHOP_MEEPS_AND_VEEPS for sg in shopgames)
     for ix, shopgame in enumerate(shopgames):
         logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
-        if shopgame.mia:
+
+        # still scrape games with 0 price (do not use MIA)
+        if not shopgame.url:
             continue
 
         # update current price
@@ -218,6 +221,12 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
             logger.exception(f'Could not scrape {shopgame.url}')
             if fail_fast:
                 raise
+            continue
+        # when price is 0 it is not priced
+        if not data['price']:
+            if not shopgame.mia:
+                shopgame.mia = True
+                shopgame.save()
             continue
         prev_price = shopgame.prices.last()
         new_price = None
@@ -249,24 +258,23 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
             # then update game
             aggregate_shop(shopgame.game)
 
-    logger.info('Finished scraping Raru')
+    logger.info('Finished scraping MaV')
 
 
 def scrape_meeps_and_veeps_game(url: str) -> dict:
-    clean_url = url.partition('?')[0]
-    res = get(clean_url)
+    res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
-    availability = html.find('div', class_='limited-stock-tag').text
-    if any(s in availability for s in ['left at this price']):
-        status = STOCK_IN
-    elif any(s in availability for s in ['Out of stock']):
+    cart_text = html.find('span', id='addToCartText-product-template').text
+    if cart_text == 'Sold Out':
         status = STOCK_OUT
+    elif cart_text == 'Add to Cart':
+        status = STOCK_IN
     else:
-        raise NotImplementedError(f'Not sure what is: {availability}')
+        raise NotImplementedError(f'Not sure what cart is: {cart_text}')
 
     price = html.find(id='productPrice-product-template').find('span').text
-    price = price.replace('R', '').strip()
+    price = price.replace('R', '').replace(',', '').strip()
     price = int(float(price))
 
     return {

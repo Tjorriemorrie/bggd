@@ -113,6 +113,8 @@ class ShopGameAdmin(admin.ModelAdmin):
     ordering = ['url_at']
 
     def save_model(self, request, obj, form, change):
+        if obj.url:
+            obj.url = obj.url.partition('?')[0]
         obj.url_at = now()
         super().save_model(request, obj, form, change)
 
@@ -121,6 +123,8 @@ class ShopGameAdmin(admin.ModelAdmin):
             return redirect('/admin/main/shopgameraru/')
         elif obj.shop.name == SHOP_TAKEALOT:
             return redirect('/admin/main/shopgametakealot/')
+        elif obj.shop.name == SHOP_MEEPS_AND_VEEPS:
+            return redirect('/admin/main/shopgamemav/')
         else:
             return super()._response_post_save(request, obj)
 
@@ -210,7 +214,7 @@ class ShopGameMav(Game):
 @admin.register(ShopGameMav)
 class ShopGameMavAdmin(admin.ModelAdmin):
     list_display = ('mav', 'title', 'year', 'hotness_fmt')
-    ordering = ('hotness', 'year')
+    ordering = ('year', 'hotness')
 
     def get_queryset(self, request):
         return Game.objects.exclude(shopgames__shop__name=SHOP_MEEPS_AND_VEEPS)
@@ -221,7 +225,7 @@ class ShopGameMavAdmin(admin.ModelAdmin):
 
     def mav(self, obj: Game):
         mav = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
-        name = obj.name.replace(':', '').replace('?', ' ').replace(',', '').replace('!', ' ')
+        name = obj.name.replace(':', '').replace('?', ' ').replace(',', '').replace('!', ' ').replace('&', '')
         mav_search = f'https://meepsandveeps.co.za/search?type=product&q={name}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': mav.id})
         return format_html(
@@ -252,10 +256,12 @@ def mark_mia_view(request, game_id, shop_id):
             'mia': True,
         }
     )
-    back_url = reverse(f'admin:main_shopgame{shopgame.shop.name.lower()}_changelist')
+    shop_name = shopgame.shop.name
+    if shop_name == SHOP_MEEPS_AND_VEEPS:
+        shop_name = 'mav'
+    back_url = reverse(f'admin:main_shopgame{shop_name.lower()}_changelist')
     return redirect(back_url)
 
 
 admin_site_urls = admin.site.urls
 admin_site_urls[0].insert(7, path('game/<int:game_id>/shop/<int:shop_id>/mia/', mark_mia_view, name='shopgame_mia'))
-a = 1

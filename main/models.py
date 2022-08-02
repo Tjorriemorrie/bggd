@@ -105,7 +105,10 @@ class Game(models.Model):
         return f'https://www.boardgamegeek.com/boardgame/{self.bgg_id}'
 
     def best_shop(self) -> Optional['ShopGame']:
-        return self.shopgames.order_by('-mean_saving', 'updated_at').first()
+        """Returns best shop with available stock."""
+        return self.shopgames.filter(
+            current_available=True
+        ).order_by('-mean_saving', 'updated_at').first()
 
     def comments(self) -> List['Review']:
         return self.reviews.filter(

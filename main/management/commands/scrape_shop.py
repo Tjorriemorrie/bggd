@@ -7,7 +7,7 @@ from retry import retry
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 from main.models import Game
 from main.shops import scrape_raru, get_shopgame_stats, scrape_takealot, \
-    scrape_meeps_and_veeps
+    scrape_meeps_and_veeps, aggregate_shop
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +32,8 @@ class Command(BaseCommand):
                 scrape_meeps_and_veeps(fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'frontpage':
                 self._update_shop_page()
+            elif shop_name.lower() == 'aggregate':
+                self._update_game_aggregates()
             else:
                 raise ValueError(f'Unknown shop name {shop_name}')
         logger.info('cmd done')
@@ -48,6 +50,14 @@ class Command(BaseCommand):
             game.shop_saving = df['price'].mean() - game.shop_price
             game.save()
             logger.info(f'Updated top20 price for {game}')
+
+    @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
+    def _update_game_aggregates(self, *args, **options):
+        """Update all the games aggregates about best shops."""
+        games = Game.objects.all()
+        for game in games:
+            logger.info(f'Aggregating best shop for {game}')
+            aggregate_shop(game)
 
     def handle(self, *args, **options):
         try:
