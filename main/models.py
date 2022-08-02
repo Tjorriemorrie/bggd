@@ -384,7 +384,8 @@ class ShopGame(models.Model):
         unique_together = ('shop', 'game')
 
     def __str__(self) -> str:
-        return f'{self.shop} {self.game} {self.mia}'
+        tail = 'mia' if self.mia else 'n/a' if not self.current_available else f'R{self.current_price}'
+        return f'{self.shop} {self.game} {tail}'
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):

@@ -1,7 +1,7 @@
 import json
 import logging
 from datetime import datetime
-from typing import List, Optional
+from typing import List
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -15,22 +15,20 @@ from main.scraper import get
 logger = logging.getLogger(__name__)
 
 
-def update_shopgame_stats(shopgame: ShopGame, new_price: Price = None):
+def update_shopgame_stats(shopgame: ShopGame):
     """
     Get stats from in-stock prices.
     Update current data from a new price
     Aggregate the shop when new price or in stock.
     """
-    if shopgame.mia or not new_price:
-        return
-
     df = calc_shopgame_stats(shopgame)
     shopgame.mean_price = df['price'].mean()
     shopgame.min_price = df['price'].min()
     shopgame.max_price = df['price'].max()
 
-    shopgame.current_available = new_price.status == STOCK_IN
-    shopgame.current_price = new_price.price
+    last_price = shopgame.prices.last()
+    shopgame.current_available = last_price.status == STOCK_IN
+    shopgame.current_price = last_price.price
     shopgame.mean_saving = shopgame.mean_price - shopgame.current_price
 
     shopgame.save()
@@ -110,7 +108,7 @@ def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             logger.info(f'New Price! {new_price}')
 
         # update shopgame stats
-        update_shopgame_stats(shopgame, new_price)
+        update_shopgame_stats(shopgame)
 
     logger.info('Finished scraping Raru')
 
@@ -174,7 +172,7 @@ def scrape_takealot(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             logger.info(f'New Price! {new_price}')
 
         # update shopgame stats
-        update_shopgame_stats(shopgame, new_price)
+        update_shopgame_stats(shopgame)
 
     logger.info('Finished scraping Raru')
 
@@ -247,7 +245,7 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
             logger.info(f'New Price! {new_price}')
 
         # update shopgame stats
-        update_shopgame_stats(shopgame, new_price)
+        update_shopgame_stats(shopgame)
 
     logger.info('Finished scraping MaV')
 

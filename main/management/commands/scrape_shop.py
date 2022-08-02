@@ -7,7 +7,7 @@ from retry import retry
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 from main.models import Game
 from main.shops import scrape_raru, calc_shopgame_stats, scrape_takealot, \
-    scrape_meeps_and_veeps, aggregate_shop
+    scrape_meeps_and_veeps, aggregate_shop, update_shopgame_stats
 
 logger = logging.getLogger(__name__)
 
@@ -40,16 +40,15 @@ class Command(BaseCommand):
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _update_shop_page(self, *args, **options):
+        logger.info('Updating front shop page')
         top_20_games = Game.objects.filter(
             shop_available=True,
             shop_saving__gte=0
         ).order_by('-shop_saving', '-hotness').all()[:20]
         for game in top_20_games:
             best_shopgame = game.best_shop()
-            df = calc_shopgame_stats(best_shopgame)
-            game.shop_saving = df['price'].mean() - game.shop_price
-            game.save()
-            logger.info(f'Updated top20 price for {game}')
+            logger.info(f'Updating shop for {best_shopgame}')
+            update_shopgame_stats(best_shopgame)
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _update_game_aggregates(self, *args, **options):
