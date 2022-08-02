@@ -9,9 +9,7 @@ function main() {
   cd /home/django/bggd
   source env/bin/activate
 
-  ./manage.py scrape_shop raru
-  ./manage.py scrape_shop mav
-  ./manage.py scrape_shop frontpage
+  ./manage.py scrape_shop raru mav frontpage
 
   while [ $SECONDS -lt $end ];
   do

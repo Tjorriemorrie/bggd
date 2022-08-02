@@ -22,6 +22,36 @@
       </div>
     </div>
 
+
+    <br/>
+    <div class="row">
+      <h4>Recently added!</h4>
+      <p class="text-muted"><small>Latest games scraped this path quarter.</small></p>
+    </div>
+
+    <div class="row">
+      <div class="col">
+        <div class="card-group">
+          {% for lat in latest %}
+            <div class="card border-dark">
+              <a href="{% url 'game_detail' lat.id %}" class="text-reset text-decoration-none">
+                <img src="{{ lat.img }}" class="card-img-top card-img-top-4"/>
+                <div class="card-body">
+                  <h5 class="card-title">{{ lat.name }}</h5>
+                  <p class="card-text">
+                      {{ lat.year }}
+                      <br/><span class="card-text text-muted">{{ lat.weight_tag }} Game</span>
+                  </p>
+                  <p class="card-text">#{{ lat.rank }}</p>
+                </div>
+              </a>
+            </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+
     <br/>
     <div class="row">
       <h4>What's hot!</h4>

@@ -100,10 +100,12 @@
                     {% for size in player_sizes %}
                     <td class="text-center">
                         {% if rec.game.min_players <= size and rec.game.max_players >= size %}
-                            {% if rec.game.rec_min_players <= size and rec.game.rec_max_players >= size %}
-                            <i class="bi bi-check2-all"></i>
+                            {% if rec.game.best_min_players <= size and rec.game.best_max_players >= size %}
+                            <i class="bi bi-emoji-heart-eyes"></i>
+                            {% elif rec.game.rec_min_players <= size and rec.game.rec_max_players >= size %}
+                            <i class="bi bi-emoji-smile"></i>
                             {% else %}
-                            <i class="bi bi-check2"></i>
+                            <i class="bi bi-emoji-expressionless"></i>
                             {% endif %}
                         {% endif %}
                     </td>
@@ -179,10 +181,12 @@
                                 <small class="text-muted">{{ review.comment }}</small>
                             {% endif %}
                             </td>
-                            <td>{{ review.game.best_min_players }}
-                                    {% if review.game.best_max_players != review.game.best_min_players %}
-                                        -
-                                        {{ review.game.best_max_players }}{% endif %}</td>
+                            <td>
+                                {{ review.game.best_min_players }}
+                                {% if review.game.best_max_players != review.game.best_min_players %}
+                                    &mdash; {{ review.game.best_max_players }}
+                                {% endif %}
+                            </td>
                             <td>{{ review.game.weight_tag }}</td>
                             <td>
                                 {% if review.predicted %}

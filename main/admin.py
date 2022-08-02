@@ -105,7 +105,9 @@ def scrape_games_shop_cmd(modeladmin, request, queryset):
 @admin.register(ShopGame)
 class ShopGameAdmin(admin.ModelAdmin):
     actions = (scrape_games_shop_cmd,)
-    list_display = ['shop', 'game', 'current_price', 'mean_price', 'min_price', 'max_price', 'mean_saving',  'mia', 'prices_cnt', 'url_at']
+    list_display = [
+        'shop', 'game', 'current_available', 'current_price', 'mean_price',
+        'min_price', 'max_price', 'mean_saving',  'mia', 'prices_cnt', 'url_at']
     fields = ['shop', 'game', 'url', 'mia']
     search_fields = ['game__name', 'url']
     list_filter = ['shop__name', 'mia']
@@ -244,6 +246,7 @@ class PriceAdmin(admin.ModelAdmin):
     list_display = ['shopgame', 'day', 'status', 'price']
     ordering = ['-day']
     search_fields = ['shopgame__game__name']
+    list_filter = ['shopgame__shop__name', 'status']
 
 
 def mark_mia_view(request, game_id, shop_id):

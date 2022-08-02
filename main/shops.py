@@ -1,6 +1,7 @@
+import json
 import logging
 from datetime import datetime
-from typing import List
+from typing import List, Optional
 
 import pandas as pd
 from bs4 import BeautifulSoup
@@ -14,8 +15,34 @@ from main.scraper import get
 logger = logging.getLogger(__name__)
 
 
-def get_shopgame_stats(shopgame: ShopGame) -> DataFrame:
-    values = shopgame.prices.values_list('day__day', 'price')
+def update_shopgame_stats(shopgame: ShopGame, new_price: Price = None):
+    """
+    Get stats from in-stock prices.
+    Update current data from a new price
+    Aggregate the shop when new price or in stock.
+    """
+    if shopgame.mia or not new_price:
+        return
+
+    df = calc_shopgame_stats(shopgame)
+    shopgame.mean_price = df['price'].mean()
+    shopgame.min_price = df['price'].min()
+    shopgame.max_price = df['price'].max()
+
+    shopgame.current_available = new_price.status == STOCK_IN
+    shopgame.current_price = new_price.price
+    shopgame.mean_saving = shopgame.mean_price - shopgame.current_price
+
+    shopgame.save()
+
+    # then update game
+    aggregate_shop(shopgame.game)
+
+
+def calc_shopgame_stats(shopgame: ShopGame) -> DataFrame:
+    values = shopgame.prices.filter(status=STOCK_IN).values_list('day__day', 'price')
+    if not values:
+        values = shopgame.prices.values_list('day__day', 'price')
     df = pd.DataFrame(values, columns=['day', 'price'])
     df['day'] = pd.to_datetime(df['day'])
     df = df.set_index('day')
@@ -82,20 +109,8 @@ def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             )
             logger.info(f'New Price! {new_price}')
 
-        # update stats
-        # will only change if there is a new price
-        if not shopgame.current_price or new_price:
-            df = get_shopgame_stats(shopgame)
-            shopgame.mean_price = df['price'].mean()
-            shopgame.min_price = df['price'].min()
-            shopgame.max_price = df['price'].max()
-            shopgame.current_price = new_price.price
-            shopgame.current_available = new_price.status == STOCK_IN
-            shopgame.mean_saving = shopgame.mean_price - shopgame.current_price
-            shopgame.save()
-
-            # then update game
-            aggregate_shop(shopgame.game)
+        # update shopgame stats
+        update_shopgame_stats(shopgame, new_price)
 
     logger.info('Finished scraping Raru')
 
@@ -158,20 +173,8 @@ def scrape_takealot(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             )
             logger.info(f'New Price! {new_price}')
 
-        # update stats
-        # will only change if there is a new price
-        if not shopgame.current_price or new_price:
-            df = get_shopgame_stats(shopgame)
-            shopgame.mean_price = df['price'].mean()
-            shopgame.min_price = df['price'].min()
-            shopgame.max_price = df['price'].max()
-            shopgame.current_price = new_price.price
-            shopgame.current_available = new_price.status == STOCK_IN
-            shopgame.mean_saving = shopgame.mean_price - shopgame.current_price
-            shopgame.save()
-
-            # then update game
-            aggregate_shop(shopgame.game)
+        # update shopgame stats
+        update_shopgame_stats(shopgame, new_price)
 
     logger.info('Finished scraping Raru')
 
@@ -243,20 +246,8 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
             )
             logger.info(f'New Price! {new_price}')
 
-        # update stats
-        # will only change if there is a new price
-        if not shopgame.current_price or new_price:
-            df = get_shopgame_stats(shopgame)
-            shopgame.mean_price = df['price'].mean()
-            shopgame.min_price = df['price'].min()
-            shopgame.max_price = df['price'].max()
-            shopgame.current_price = new_price.price
-            shopgame.current_available = new_price.status == STOCK_IN
-            shopgame.mean_saving = shopgame.mean_price - shopgame.current_price
-            shopgame.save()
-
-            # then update game
-            aggregate_shop(shopgame.game)
+        # update shopgame stats
+        update_shopgame_stats(shopgame, new_price)
 
     logger.info('Finished scraping MaV')
 
@@ -265,17 +256,10 @@ def scrape_meeps_and_veeps_game(url: str) -> dict:
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
-    cart_text = html.find('span', id='addToCartText-product-template').text
-    if cart_text == 'Sold Out':
-        status = STOCK_OUT
-    elif cart_text == 'Add to Cart':
-        status = STOCK_IN
-    else:
-        raise NotImplementedError(f'Not sure what cart is: {cart_text}')
-
-    price = html.find(id='productPrice-product-template').find('span').text
-    price = price.replace('R', '').replace(',', '').strip()
-    price = int(float(price))
+    json_text = html.find('script', id='ProductJson-product-template')
+    details = json.loads(json_text.contents[0])
+    price = details['price'] // 100
+    status = STOCK_IN if details['available'] else STOCK_OUT
 
     return {
         'status': status,

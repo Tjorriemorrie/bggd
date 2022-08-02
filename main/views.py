@@ -38,6 +38,9 @@ class HomeView(CachedTemplateViewGet):
     template_name = 'main/home.html'
 
     def get_context_data(self, **kwargs):
+        days_90 = now() - timedelta(days=90)
+        latest = Game.objects.filter(
+            created_at__gt=days_90).order_by('-hotness').all()[:5]
         upcoming = Game.objects.filter(
             Q(recs_cnt__gt=0) &
             Q(hotness__gt=0)
@@ -51,6 +54,7 @@ class HomeView(CachedTemplateViewGet):
             'reviews_cnt': Review.objects.count(),
             'hotness': hotness,
             'upcoming': upcoming,
+            'latest': latest,
         }
         return ctx
 

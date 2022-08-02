@@ -6,7 +6,7 @@ from retry import retry
 
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 from main.models import Game
-from main.shops import scrape_raru, get_shopgame_stats, scrape_takealot, \
+from main.shops import scrape_raru, calc_shopgame_stats, scrape_takealot, \
     scrape_meeps_and_veeps, aggregate_shop
 
 logger = logging.getLogger(__name__)
@@ -46,7 +46,7 @@ class Command(BaseCommand):
         ).order_by('-shop_saving', '-hotness').all()[:20]
         for game in top_20_games:
             best_shopgame = game.best_shop()
-            df = get_shopgame_stats(best_shopgame)
+            df = calc_shopgame_stats(best_shopgame)
             game.shop_saving = df['price'].mean() - game.shop_price
             game.save()
             logger.info(f'Updated top20 price for {game}')
