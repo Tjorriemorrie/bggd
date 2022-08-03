@@ -8,10 +8,18 @@ from django.utils.html import format_html
 from django.utils.timezone import now
 
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
-from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, ShopGame, Price
+from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
+    ShopGame, Price, Label
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
 from main.shops import scrape_raru
+
+
+@admin.register(Label)
+class LabelAdmin(admin.ModelAdmin):
+    list_display = ['bgg_id', 'name', 'type']
+    list_filter = ['type']
+    ordering = ['type', 'name']
 
 
 @admin.action(description='Scrape games')

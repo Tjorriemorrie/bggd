@@ -93,7 +93,6 @@ def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
                 shopgame.save()
             continue
         prev_price = shopgame.prices.last()
-        new_price = None
         if not prev_price \
                 or prev_price.price != data['price'] \
                 or prev_price.status != data['status']:
@@ -157,7 +156,6 @@ def scrape_takealot(shopgames: List[ShopGame] = None, fail_fast: bool = False):
                 raise
             continue
         prev_price = shopgame.prices.last()
-        new_price = None
         if not prev_price \
                 or prev_price.price != data['price'] \
                 or prev_price.status != data['status']:
@@ -230,7 +228,6 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
                 shopgame.save()
             continue
         prev_price = shopgame.prices.last()
-        new_price = None
         if not prev_price \
                 or prev_price.price != data['price'] \
                 or prev_price.status != data['status']:

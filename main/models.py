@@ -4,7 +4,6 @@ from typing import List, Optional
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models
 from django.utils.timezone import now
-from jsonfield import JSONField
 
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, \
     STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS

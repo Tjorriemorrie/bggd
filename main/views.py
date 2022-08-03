@@ -19,9 +19,11 @@ from django.views.generic import ListView, TemplateView, DetailView
 from pytube import Search
 
 from bgg.settings import CACHE_DURATION
-from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, WEIGHTS_CUTOFF, N_CLUSTERS
-from main.models import Game, Player, Review, Day, Award, AWARD_GAME_OF_THE_YEAR, \
-    AWARD_GAME_OF_THE_MONTH, ShopGame
+from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, \
+    WEIGHTS_CUTOFF, N_CLUSTERS, SHOP_RARU, SHOP_MEEPS_AND_VEEPS
+from main.models import Game, Player, Review, Day, Award, \
+    AWARD_GAME_OF_THE_YEAR, \
+    AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
 from main.recommendations import predict_player
 
 logger = logging.getLogger(__name__)
@@ -388,7 +390,27 @@ class ShopView(CachedTemplateViewGet):
             shop_available=True,
             shop_saving__gte=0
         ).order_by('-shop_saving', '-hotness').all()[:20]
+
+        # shop sizes
+        df_data = []
+        for shop_name in [SHOP_RARU, SHOP_MEEPS_AND_VEEPS]:
+            shop = Shop.objects.get(name=shop_name)
+            for inv in ['MIA', 'Out of Stock', 'In Stock']:
+                qs = ShopGame.objects.filter(shop=shop)
+                if inv == 'MIA':
+                    qs = qs.filter(mia=True)
+                elif inv == 'In Stock':
+                    qs = qs.filter(mia=False, url__isnull=False, current_available=True)
+                elif inv == 'Out of Stock':
+                    qs = qs.filter(mia=False, url__isnull=False, current_available=False)
+                df_data.append({'shop': shop_name, 'inventory': inv, 'count': qs.count()})
+        df = pd.DataFrame(df_data)
+        fig_shop_size = px.bar(
+            df, x='shop', y='count', color='inventory',
+            title='Shop size', color_discrete_sequence=['#bfbfbf', '#f72572', '#3af725'])
+
         ctx = {
             'games': games,
+            'graph_shop_size': fig_shop_size.to_html(full_html=False),
         }
         return ctx

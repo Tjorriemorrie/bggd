@@ -18,6 +18,12 @@
         </div>
 
 
+        {# Shop sizes graph #}
+        {% if graph_shop_size %}
+            {{ graph_shop_size|safe }}
+        {% endif %}
+
+
         {# first 5 #}
         <br/>
         <div class="row">
