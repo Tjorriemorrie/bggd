@@ -10,6 +10,7 @@ from retry import retry
 from sklearn.cluster import KMeans
 from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase, dump
+from surprise.model_selection import cross_validate
 
 from bgg.settings import BASE_DIR
 from main.constants import REC_MIN_CUTOFF, N_CLUSTERS, \
@@ -44,7 +45,7 @@ def get_mec_algo() -> AlgoBase:
 
 
 def train_rec_model():
-    logger.info('Training model...')
+    logger.info('Training recommendations model...')
 
     logger.info(f'Loading players (min {REC_MIN_CUTOFF} to max {REC_MAX_CUTOFF} ratings per player)...')
     player_ids = Player.objects.filter(
@@ -56,18 +57,21 @@ def train_rec_model():
     values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
     logger.info(f'Found {len(values):,} ratings from those players')
 
-    df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
-
     logger.info('Creating dataset...')
+    df = pd.DataFrame(values, columns=('player_id', 'game_id', 'rating'))
     reader = Reader(rating_scale=(1, 10))
     dataset = Dataset.load_from_df(df, reader)
 
-    logger.info('Building training sets...')
-    train_set = dataset.build_full_trainset()
-    algo = SVD()
+    algo = SVD(verbose=True)
 
+    logger.info('Building full training set...')
+    train_set = dataset.build_full_trainset()
     logger.info(f'Fitting dataset to {algo}...')
     algo.fit(train_set)
+
+    # logger.info('cross validating dataset...')
+    # res = cross_validate(algo, dataset, n_jobs=1)
+    # logger.info(res)
 
     logger.info(f'Saving model to {FILE_REC_MODEL}')
     dump.dump(FILE_REC_MODEL, algo)

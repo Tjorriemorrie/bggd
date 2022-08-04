@@ -21,7 +21,7 @@ function main() {
 
   ./manage.py update_game_stats
 
-  ./manage.py train_models
+  ./manage.py train_models mec
 }
 
 main
