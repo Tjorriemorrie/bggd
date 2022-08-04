@@ -8,7 +8,7 @@ from time import sleep
 import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
-from django.db.models import Q, Count, F
+from django.db.models import Q, Count, F, Avg, Sum
 from django.db.models.functions import TruncMonth, Least
 from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
@@ -401,16 +401,38 @@ class ShopView(CachedTemplateViewGet):
                     qs = qs.filter(mia=True)
                 elif inv == 'In Stock':
                     qs = qs.filter(mia=False, url__isnull=False, current_available=True)
+                    df_data.append({'shop': shop_name, 'in stock': qs.count()})
                 elif inv == 'Out of Stock':
                     qs = qs.filter(mia=False, url__isnull=False, current_available=False)
-                df_data.append({'shop': shop_name, 'inventory': inv, 'count': qs.count()})
+                # df_data.append({'shop': shop_name, 'inventory': inv, 'count': qs.count()})
         df = pd.DataFrame(df_data)
+        # fig_shop_size = px.bar(
+        #     df, x='shop', y='count', color='inventory',
+        #     title='Shop size', color_discrete_sequence=['#bfbfbf', '#f72572', '#3af725'])
         fig_shop_size = px.bar(
-            df, x='shop', y='count', color='inventory',
-            title='Shop size', color_discrete_sequence=['#bfbfbf', '#f72572', '#3af725'])
+            df, x='shop', y='in stock',
+            title='Shop size')
+
+        # shop avg price
+        df_data = []
+        game_ids = Game.objects.exclude(
+            Q(shopgames__current_available=False) |
+            Q(shopgames__mia=True)
+        ).values_list('id', flat=True)
+        for shop_name in [SHOP_RARU, SHOP_MEEPS_AND_VEEPS]:
+            shop = Shop.objects.get(name=shop_name)
+            qs = ShopGame.objects.filter(
+                shop=shop, game__id__in=game_ids
+            ).all().aggregate(Sum('current_price'))
+            df_data.append({'shop': shop_name, 'cum price': qs['current_price__sum']})
+        df = pd.DataFrame(df_data)
+        fig_shop_price = px.bar(
+            df, x='shop', y='cum price',
+            title=f'Cumulative price of {len(game_ids)} comparable available games')
 
         ctx = {
             'games': games,
             'graph_shop_size': fig_shop_size.to_html(full_html=False),
+            'graph_shop_price': fig_shop_price.to_html(full_html=False),
         }
         return ctx

@@ -18,10 +18,20 @@
         </div>
 
 
-        {# Shop sizes graph #}
-        {% if graph_shop_size %}
-            {{ graph_shop_size|safe }}
-        {% endif %}
+        <div class="row">
+            <div class="col-6">
+                {# Shop sizes graph #}
+                {% if graph_shop_size %}
+                    {{ graph_shop_size|safe }}
+                {% endif %}
+            </div>
+            <div class="col-6">
+                {# Shop prices graph #}
+                {% if graph_shop_price %}
+                    {{ graph_shop_price|safe }}
+                {% endif %}
+            </div>
+        </div>
 
 
         {# first 5 #}
