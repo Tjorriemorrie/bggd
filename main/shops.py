@@ -29,12 +29,13 @@ def update_shopgame_stats(shopgame: ShopGame):
     last_price = shopgame.prices.last()
     shopgame.current_available = last_price.status == STOCK_IN
     shopgame.current_price = last_price.price
-    shopgame.mean_saving = shopgame.mean_price - shopgame.current_price
+    saving = shopgame.mean_price - shopgame.current_price
+    shopgame.mean_saving = int(round(saving / 10) * 10)
 
     shopgame.save()
 
     # then update game
-    aggregate_shop(shopgame.game)
+    aggregate_game_shops(shopgame.game)
 
 
 def calc_shopgame_stats(shopgame: ShopGame) -> DataFrame:
@@ -53,7 +54,7 @@ def calc_shopgame_stats(shopgame: ShopGame) -> DataFrame:
     return df
 
 
-def aggregate_shop(game: Game):
+def aggregate_game_shops(game: Game):
     """Update the game with the best shop values."""
     best_shopgame = game.best_shop()
     if not best_shopgame:

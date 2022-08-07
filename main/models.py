@@ -107,7 +107,7 @@ class Game(models.Model):
         """Returns best shop with available stock."""
         return self.shopgames.filter(
             current_available=True
-        ).order_by('-mean_saving', 'updated_at').first()
+        ).order_by('current_price', 'mean_saving').first()
 
     def comments(self) -> List['Review']:
         return self.reviews.filter(

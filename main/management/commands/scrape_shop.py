@@ -7,7 +7,7 @@ from retry import retry
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 from main.models import Game
 from main.shops import scrape_raru, calc_shopgame_stats, scrape_takealot, \
-    scrape_meeps_and_veeps, aggregate_shop, update_shopgame_stats
+    scrape_meeps_and_veeps, aggregate_game_shops, update_shopgame_stats
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ class Command(BaseCommand):
         games = Game.objects.all()
         for game in games:
             logger.info(f'Aggregating best shop for {game}')
-            aggregate_shop(game)
+            aggregate_game_shops(game)
 
     def handle(self, *args, **options):
         try:
