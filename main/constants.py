@@ -26,5 +26,6 @@ STOCK_OUT = 'Out of Stock'
 SHOP_RARU = 'Raru'
 SHOP_TAKEALOT = 'Takealot'
 SHOP_MEEPS_AND_VEEPS = 'Meeps and Veeps'
+SHOP_TIMELESS = 'Timeless'
 
 N_CLUSTERS = 6

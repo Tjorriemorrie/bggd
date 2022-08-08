@@ -7,7 +7,8 @@ from retry import retry
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
 from main.models import Game
 from main.shops import scrape_raru, calc_shopgame_stats, scrape_takealot, \
-    scrape_meeps_and_veeps, aggregate_game_shops, update_shopgame_stats
+    scrape_meeps_and_veeps, aggregate_game_shops, update_shopgame_stats, \
+    scrape_timeless
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,8 @@ class Command(BaseCommand):
                 scrape_takealot(fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'mav':
                 scrape_meeps_and_veeps(fail_fast=options.get('fail_fast'))
+            elif shop_name.lower() == 'timeless':
+                scrape_timeless(fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'frontpage':
                 self._update_shop_page()
             elif shop_name.lower() == 'aggregate':

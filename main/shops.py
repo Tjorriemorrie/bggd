@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from pandas import DataFrame
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT, \
-    SHOP_MEEPS_AND_VEEPS
+    SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS
 from main.models import Shop, Price, Day, Game, ShopGame
 from main.scraper import get
 
@@ -260,4 +260,70 @@ def scrape_meeps_and_veeps_game(url: str) -> dict:
     return {
         'status': status,
         'price': price,
+    }
+
+
+def scrape_timeless(shopgames: List[ShopGame] = None, fail_fast: bool = False):
+    logger.info(f'Scraping {SHOP_TIMELESS}')
+    day = Day.get_today()
+    shop = Shop.objects.get(name=SHOP_TIMELESS)
+    if not shopgames:
+        shopgames = shop.shopgames.all()
+    else:
+        assert all(sg.shop.name == SHOP_TIMELESS for sg in shopgames)
+    for ix, shopgame in enumerate(shopgames):
+        logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+
+        # still scrape games with 0 price (do not use MIA)
+        if not shopgame.url:
+            continue
+
+        # update current price
+        try:
+            data = scrape_timeless_game(shopgame.url)
+        except Exception as exc:
+            logger.exception(f'Could not scrape {shopgame.url}')
+            if fail_fast:
+                raise
+            continue
+        # when price is 0 it is not priced
+        if not data['price']:
+            if not shopgame.mia:
+                shopgame.mia = True
+                shopgame.save()
+            continue
+        prev_price = shopgame.prices.last()
+        if not prev_price \
+                or prev_price.price != data['price'] \
+                or prev_price.status != data['status']:
+            new_price, _ = Price.objects.update_or_create(
+                shopgame=shopgame,
+                day=day,
+                defaults={
+                    'status': data['status'],
+                    'price': data['price'],
+                }
+            )
+            logger.info(f'New Price! {new_price}')
+
+        # update shopgame stats
+        update_shopgame_stats(shopgame)
+
+    logger.info('Finished scraping MaV')
+
+
+def scrape_timeless_game(url: str) -> dict:
+    res = get(url)
+    html = BeautifulSoup(res.text, 'html.parser')
+
+    container = html.find('div', class_='w3-display-container')
+    price_txt = container.find_all('span', class_='w3-xxlarge')[0].text
+    price_txt = price_txt.replace('R', '').strip()
+
+    status_txt = container.find_all('div')[0].text
+    status = STOCK_IN if 'is in stock' in status_txt else STOCK_OUT
+
+    return {
+        'status': status,
+        'price': int(price_txt),
     }

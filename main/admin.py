@@ -7,7 +7,8 @@ from django.urls import reverse, path
 from django.utils.html import format_html
 from django.utils.timezone import now
 
-from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
+from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, \
+    SHOP_TIMELESS
 from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
     ShopGame, Price, Label
 from main.recommendations import predict_player
@@ -131,10 +132,10 @@ class ShopGameAdmin(admin.ModelAdmin):
     def _response_post_save(self, request, obj):
         if obj.shop.name == SHOP_RARU:
             return redirect('/admin/main/shopgameraru/')
-        elif obj.shop.name == SHOP_TAKEALOT:
-            return redirect('/admin/main/shopgametakealot/')
         elif obj.shop.name == SHOP_MEEPS_AND_VEEPS:
             return redirect('/admin/main/shopgamemav/')
+        elif obj.shop.name == SHOP_TIMELESS:
+            return redirect('/admin/main/shopgametimeless/')
         else:
             return super()._response_post_save(request, obj)
 
@@ -180,40 +181,6 @@ class ShopGameRaruAdmin(admin.ModelAdmin):
         return format_html(f'{hotness}')
 
 
-class ShopGameTakealot(Game):
-    class Meta:
-        proxy = True
-        verbose_name = 'Shop Takealot'
-        verbose_name_plural = 'Shop Takealot'
-
-
-# @admin.register(ShopGameTakealot)
-class ShopGameTakealotAdmin(admin.ModelAdmin):
-    list_display = ('takealot', 'title', 'year', 'hotness_fmt')
-    ordering = ('hotness', 'year')
-
-    def get_queryset(self, request):
-        return Game.objects.exclude(shopgames__shop__name=SHOP_TAKEALOT)
-
-    def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
-
-    def takealot(self, obj: Game):
-        takealot = Shop.objects.get(name=SHOP_TAKEALOT)
-        takealot_search = f'https://www.takealot.com/toys/all?qsearch={obj.name}'
-        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': takealot.id})
-        return format_html(
-            f'<a href="{takealot_search}" target="_blank">search takealot</a><br/><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={takealot.id}&game={obj.id}">add url</a><br/><br/>'
-            f'<a href="{shopgame_mia_url}">mark as MIA</a>'
-        )
-
-    def hotness_fmt(self, obj: Game):
-        hotness = int(obj.hotness) if obj.hotness else 0
-        return format_html(f'{hotness}')
-
-
 class ShopGameMav(Game):
     class Meta:
         proxy = True
@@ -241,6 +208,41 @@ class ShopGameMavAdmin(admin.ModelAdmin):
         return format_html(
             f'<a href="{mav_search}" target="_blank">search MaV</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    def hotness_fmt(self, obj: Game):
+        hotness = int(obj.hotness) if obj.hotness else 0
+        return format_html(f'{hotness}')
+
+
+class ShopGameTimeless(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Shop Timeless'
+        verbose_name_plural = 'Shop Timeless'
+
+
+@admin.register(ShopGameTimeless)
+class ShopGameTimelessAdmin(admin.ModelAdmin):
+    list_display = ('timeless', 'title', 'year', 'hotness_fmt')
+    ordering = ('-hotness', 'year')
+
+    def get_queryset(self, request):
+        return Game.objects.exclude(shopgames__shop__name=SHOP_TIMELESS)
+
+    def title(self, obj: Game):
+        return format_html(
+            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+
+    def timeless(self, obj: Game):
+        timeless = Shop.objects.get(name=SHOP_TIMELESS)
+        name = obj.name.replace('?', ' ').replace(',', '').replace('!', ' ').replace('&', '')
+        timeless_search = f'https://www.timelessboardgames.co.za/online-shop/?filter=&filter_product_name={name}'
+        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id})
+        return format_html(
+            f'<a href="{timeless_search}" target="_blank">search timeless</a><br/><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={timeless.id}&game={obj.id}">add url</a><br/><br/>'
             f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 

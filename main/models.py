@@ -6,7 +6,7 @@ from django.db import models
 from django.utils.timezone import now
 
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, \
-    STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS
+    STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS
 
 LABEL_CATEGORY = 'category'
 LABEL_MECHANIC = 'mechanic'
@@ -352,6 +352,7 @@ class Shop(models.Model):
         (SHOP_RARU, SHOP_RARU),
         (SHOP_TAKEALOT, SHOP_TAKEALOT),
         (SHOP_MEEPS_AND_VEEPS, SHOP_MEEPS_AND_VEEPS),
+        (SHOP_TIMELESS, SHOP_TIMELESS),
     )
     name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
     host = models.CharField(max_length=150, unique=True)
