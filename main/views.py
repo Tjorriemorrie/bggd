@@ -1,7 +1,7 @@
 import logging
 from collections import Counter
 from datetime import timedelta, datetime
-from itertools import chain
+from itertools import chain, combinations
 from operator import attrgetter
 from time import sleep
 
@@ -20,7 +20,8 @@ from pytube import Search
 
 from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, \
-    WEIGHTS_CUTOFF, N_CLUSTERS, SHOP_RARU, SHOP_MEEPS_AND_VEEPS
+    WEIGHTS_CUTOFF, N_CLUSTERS, SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
+    SHOP_NAMES
 from main.models import Game, Player, Review, Day, Award, \
     AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
@@ -393,7 +394,7 @@ class ShopView(CachedTemplateViewGet):
 
         # shop sizes
         df_data = []
-        for shop_name in [SHOP_RARU, SHOP_MEEPS_AND_VEEPS]:
+        for shop_name in [SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS]:
             shop = Shop.objects.get(name=shop_name)
             for inv in ['MIA', 'Out of Stock', 'In Stock']:
                 qs = ShopGame.objects.filter(shop=shop)
@@ -413,22 +414,33 @@ class ShopView(CachedTemplateViewGet):
             df, x='shop', y='in stock',
             title='Shop size')
 
-        # shop avg price
-        df_data = []
-        game_ids = Game.objects.exclude(
-            Q(shopgames__current_available=False) |
-            Q(shopgames__mia=True)
-        ).values_list('id', flat=True)
-        for shop_name in [SHOP_RARU, SHOP_MEEPS_AND_VEEPS]:
-            shop = Shop.objects.get(name=shop_name)
-            qs = ShopGame.objects.filter(
-                shop=shop, game__id__in=game_ids
+        # shop price heatmap
+        heat_data = {}
+        combs = combinations(SHOP_NAMES, 2)
+        for name1, name2 in combs:
+            if name1 not in heat_data:
+                heat_data[name1] = {n: 0 for n in SHOP_NAMES}
+            if name2 not in heat_data:
+                heat_data[name2] = {n: 0 for n in SHOP_NAMES}
+            game_ids = Game.objects.filter(
+                shopgames__shop__name__in=[name1, name2]
+            ).exclude(
+                Q(shopgames__current_available=False) |
+                Q(shopgames__mia=True)
+            ).values_list('id', flat=True)
+            qs1 = ShopGame.objects.filter(
+                shop__name=name1, game__id__in=game_ids
             ).all().aggregate(Sum('current_price'))
-            df_data.append({'shop': shop_name, 'cum price': qs['current_price__sum']})
-        df = pd.DataFrame(df_data)
-        fig_shop_price = px.bar(
-            df, x='shop', y='cum price',
-            title=f'Cumulative price of {len(game_ids)} comparable available games')
+            qs2 = ShopGame.objects.filter(
+                shop__name=name2, game__id__in=game_ids
+            ).all().aggregate(Sum('current_price'))
+            v = qs2['current_price__sum'] - qs1['current_price__sum']
+            heat_data[name1][name2] = v
+            heat_data[name2][name1] = -v
+        heat_raw = [list(p.values()) for p in heat_data.values()]
+        fig_shop_price = px.imshow(
+            heat_raw, x=SHOP_NAMES, y=SHOP_NAMES,
+            title='Sum of vs prices between shops (higher is cheaper)')
 
         ctx = {
             'games': games,

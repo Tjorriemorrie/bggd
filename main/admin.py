@@ -238,10 +238,10 @@ class ShopGameTimelessAdmin(admin.ModelAdmin):
 
     def timeless(self, obj: Game):
         timeless = Shop.objects.get(name=SHOP_TIMELESS)
-        # name = obj.name.replace(',', '').replace("'s", '').replace("'t", '')
+        name = obj.name.replace("'s", '').replace("'t", '').replace("'", '')
         params = urlencode({
             'filter': '',
-            'filter_product_name': obj.name,
+            'filter_product_name': name,
         })
         timeless_search = f'https://www.timelessboardgames.co.za/online-shop/?{params}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id})
