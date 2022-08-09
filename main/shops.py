@@ -55,14 +55,19 @@ def calc_shopgame_stats(shopgame: ShopGame) -> DataFrame:
 
 
 def aggregate_game_shops(game: Game):
-    """Update the game with the best shop values."""
+    """Update the game with the best shop values. The best shop is selected
+    by having the lowest current price and can be put directly on the game.
+    The mean saving needs to be calculated across all shops where it is
+    active (the current best shop should at least be selected)."""
     best_shopgame = game.best_shop()
     if not best_shopgame:
         game.shop_available = False
     else:
         game.shop_available = True
         game.shop_price = best_shopgame.current_price
-        game.shop_saving = best_shopgame.mean_saving
+        best_mean_price_shop = game.best_shop_mean_price()
+        mean_saving = best_mean_price_shop.mean_price - best_shopgame.current_price
+        game.shop_saving = mean_saving
     game.save()
 
 

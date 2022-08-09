@@ -109,6 +109,12 @@ class Game(models.Model):
             current_available=True
         ).order_by('current_price', 'mean_saving').first()
 
+    def best_shop_mean_price(self) -> Optional['ShopGame']:
+        """Returns best shop with available stock."""
+        return self.shopgames.filter(
+            current_available=True
+        ).order_by('mean_price').first()
+
     def comments(self) -> List['Review']:
         return self.reviews.filter(
             comment__isnull=False,

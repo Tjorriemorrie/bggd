@@ -5,6 +5,7 @@ from django.db.models import F
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from django.utils.html import format_html
+from django.utils.http import urlencode
 from django.utils.timezone import now
 
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, \
@@ -226,7 +227,7 @@ class ShopGameTimeless(Game):
 @admin.register(ShopGameTimeless)
 class ShopGameTimelessAdmin(admin.ModelAdmin):
     list_display = ('timeless', 'title', 'year', 'hotness_fmt')
-    ordering = ('-hotness', 'year')
+    ordering = ('hotness', 'year')
 
     def get_queryset(self, request):
         return Game.objects.exclude(shopgames__shop__name=SHOP_TIMELESS)
@@ -237,8 +238,12 @@ class ShopGameTimelessAdmin(admin.ModelAdmin):
 
     def timeless(self, obj: Game):
         timeless = Shop.objects.get(name=SHOP_TIMELESS)
-        name = obj.name.replace('?', ' ').replace(',', '').replace('!', ' ').replace('&', '')
-        timeless_search = f'https://www.timelessboardgames.co.za/online-shop/?filter=&filter_product_name={name}'
+        # name = obj.name.replace(',', '').replace("'s", '').replace("'t", '')
+        params = urlencode({
+            'filter': '',
+            'filter_product_name': obj.name,
+        })
+        timeless_search = f'https://www.timelessboardgames.co.za/online-shop/?{params}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id})
         return format_html(
             f'<a href="{timeless_search}" target="_blank">search timeless</a><br/><br/>'
