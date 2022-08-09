@@ -50,11 +50,13 @@
             <h6><a href="{{ game.bgg_link }}" target="_blank">GBB link</a></h6>
             <br/>
             <h6>Shops:</h6>
+            <p>
             {% for shopgame in game.shopgames.all %}
-              <p>{{ shopgame.shop.name }}: {{ shopgame|price|safe }}</p>
+              {{ shopgame.shop.name }}: {{ shopgame|price|safe }}<br/>
             {% empty %}
-              <p class="badge bg-warning">Not available at any shop</p>
+              <span class="badge bg-warning">Not available at any shop</span>
             {% endfor %}
+            </p>
           </div>
         </div>
 

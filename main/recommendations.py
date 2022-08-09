@@ -135,15 +135,16 @@ def predict_player(
         sc[prediction.est] = game_id
 
     top_recs = list(reversed(sc.items()))
+    ten_years_ago = now().year - 10
     cnt = 0
     for val, game_id in top_recs:
         game = Game.objects.get(id=game_id)
         # skip if cannot buy (only RSA)
         if player.is_rsa() and not game.shop_available or not game.shop_price:
             continue
-        # if not game.best_min_players or not game.best_max_players:
-        #     logger.info(f'Skipping {game} for not having best players scraped.')
-        #     continue
+        # always skip if game is more than 8 years old
+        if game.year <= ten_years_ago:
+            continue
         rec = Rec.objects.create(
             game=game,
             player=player,

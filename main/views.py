@@ -440,7 +440,7 @@ class ShopView(CachedTemplateViewGet):
         heat_raw = [list(p.values()) for p in heat_data.values()]
         fig_shop_price = px.imshow(
             heat_raw, x=SHOP_NAMES, y=SHOP_NAMES,
-            title='Sum of vs prices between shops (higher is cheaper)')
+            title='Sum of vs prices between shops where both shops have the game available (higher is cheaper)')
 
         ctx = {
             'games': games,
