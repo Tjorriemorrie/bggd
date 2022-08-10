@@ -322,6 +322,12 @@ class Award(models.Model):
     badge = models.CharField(max_length=256, null=True)
     awarded_at = models.DateTimeField(null=True)
     score = models.FloatField(null=True)
+    num_ratings = models.IntegerField(null=True)
+
+    # runner up
+    ru_game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='runnerups', null=True)
+    ru_score = models.FloatField(null=True)
+    ru_num_ratings = models.IntegerField(null=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

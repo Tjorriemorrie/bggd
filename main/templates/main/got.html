@@ -1,4 +1,5 @@
 {% extends 'main/base.html' %}
+{% load humanize %}
 
 {% block title %}Game of the - {{ block.super }}{% endblock %}
 
@@ -16,7 +17,8 @@
           release date.</p>
         <p>Basically the hotness of the month/year award. May the most and
           best rated game win.</p>
-        <p>Calculated since {{ start_at|date:'M Y' }}.</p>
+        <p>Calculated since {{ start_at|date:'M Y' }}. The runner up is in the
+            footer.</p>
       </div>
     </div>
 
@@ -37,15 +39,28 @@
               <div class="card border-dark">
                 <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
                   <img src="{{ award.game.img }}" class="card-img-top"/>
-                  <div class="card-body">
-                    <h5 class="card-title">
-                      {{ award.game.name }}
-                    </h5>
-                    <p class="card-text">
-                      {{ award.description }}
-                    </p>
-                  </div>
                 </a>
+                <div class="card-body">
+                  <h5 class="card-title">
+                    <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
+                      {{ award.game.name }}
+                    </a>
+                  </h5>
+                  <h6 class="card-text">{{ award.description }}</h6>
+                  <p class="card-text">
+                    Rank: #{{ award.game.rank }}
+                    <br/>Rating: {{ award.game.rating|floatformat:1 }}
+                    <br/><small class="text-muted">
+                      Score: {{ award.score|floatformat:0|intcomma }}
+                      <br/>Ratings: {{ award.num_ratings|floatformat:0|intcomma }}
+                    </small>
+                  </p>
+              </div>
+              <div class="card-footer">
+                <small class="text-muted">
+                  [{{ award.ru_score|floatformat:0|intcomma }}/{{ award.ru_num_ratings|floatformat:0|intcomma }}] {{ award.ru_game.name }}
+                </small>
+              </div>
               </div>
             {% endif %}
           {% endwith %}
@@ -62,15 +77,28 @@
                     <div class="card border-dark">
                       <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
                         <img src="{{ award.game.img }}" class="card-img-top"/>
-                        <div class="card-body">
-                          <h5 class="card-title">
-                            {{ award.game.name }}
-                          </h5>
-                          <p class="card-text">
-                            {{ award.description }}
-                          </p>
-                        </div>
                       </a>
+                      <div class="card-body">
+                        <h5 class="card-title">
+                          <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
+                          {{ award.game.name }}
+                          </a>
+                        </h5>
+                        <h6 class="card-text">{{ award.description }}</h6>
+                        <p class="card-text">
+                          Rank: #{{ award.game.rank }}
+                          <br/>Rating: {{ award.game.rating|floatformat:1 }}
+                          <br/><small class="text-muted">
+                            Score: {{ award.score|floatformat:0|intcomma }}
+                            <br/>Ratings: {{ award.num_ratings|floatformat:0|intcomma }}
+                          </small>
+                        </p>
+                      </div>
+                      <div class="card-footer">
+                        <small class="text-muted">
+                        [{{ award.ru_score|floatformat:0|intcomma }}/{{ award.ru_num_ratings|floatformat:0|intcomma }}] {{ award.ru_game.name }}
+                        </small>
+                      </div>
                     </div>
                   {% endfor %}
                 </div>
@@ -87,15 +115,28 @@
                     <div class="card border-dark">
                       <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
                         <img src="{{ award.game.img }}" class="card-img-top"/>
-                        <div class="card-body">
-                          <h5 class="card-title">
-                            {{ award.game.name }}
-                          </h5>
-                          <p class="card-text">
-                            {{ award.description }}
-                          </p>
-                        </div>
                       </a>
+                      <div class="card-body">
+                        <h5 class="card-title">
+                          <a href="{% url 'game_detail' award.game.id %}" class="text-reset text-decoration-none">
+                          {{ award.game.name }}
+                          </a>
+                        </h5>
+                        <h6 class="card-text">{{ award.description }}</h6>
+                        <p class="card-text">
+                          Rank: #{{ award.game.rank }}
+                          <br/>Rating: {{ award.game.rating|floatformat:1 }}
+                          <br/><small class="text-muted">
+                            Score: {{ award.score|floatformat:0|intcomma }}
+                            <br/>Ratings: {{ award.num_ratings|floatformat:0|intcomma }}
+                          </small>
+                        </p>
+                      </div>
+                      <div class="card-footer">
+                        <small class="text-muted">
+                          [{{ award.ru_score|floatformat:0|intcomma }}/{{ award.ru_num_ratings|floatformat:0|intcomma }}] {{ award.ru_game.name }}
+                        </small>
+                      </div>
                     </div>
                   {% endfor %}
                 </div>
