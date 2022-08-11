@@ -86,14 +86,14 @@
                 <tbody>
                 {% for rec in player.recs.all %}
                 <tr>
+                    <a class="text-reset text-decoration-none" href="{% url 'game_detail' rec.game.pk %}">
                     <td class="text-end">
                         <img class="round" height="60px" src="{{ rec.game.img }}"/>
                     </td>
                     <td>
-                      <a class="text-reset text-decoration-none" href="{% url 'game_detail' rec.game.pk %}">
                         <strong>{{ rec.game.name }}</strong> {{ rec.game.awards_fmt|safe }}
-                      </a>
                     </td>
+                    </a>
                     <td class="text-center">
                         {{ rec.predicted|floatformat }}
                     </td>

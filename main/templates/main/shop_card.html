@@ -3,17 +3,29 @@
 <div class="card border-dark">
     <a href="{% url 'game_detail' game.id %}" class="text-reset text-decoration-none">
         <img src="{{ game.img }}" class="card-img-top card-img-top-4"/>
-        <div class="card-body">
-            <h5 class="card-title">{{ game.name }} <small class="text-muted">[{{ game.year }}]</small></h5>
+    </a>
+    <div class="card-body">
+
+        <h5 class="card-title">
+            <a href="{% url 'game_detail' game.id %}" class="text-reset text-decoration-none">
+                {{ game.name }} <small class="text-muted">[{{ game.year }}]</small>
+            </a>
+        </h5>
+
+        <p class="card-text">
+            #{{ game.rank }} rated {{ game.rating|floatformat:1|intcomma }}
+        </p>
+
+        <p class="card-text">
             <a href="{{ game.best_shop.url }}" target="_blank" class="btn btn-primary">
                 R{{ game.shop_price|floatformat:0|intcomma }}
             </a>
-            <br/>
-            <br/>
-            <p class="card-text text-muted">
-                Below average by R{{ game.shop_saving|floatformat:0|intcomma }}
-                <br/><smaller>from {{ game.best_shop.shop.name }}</smaller>
-            </p>
-        </div>
-    </a>
+        </p>
+
+        <p class="card-text">
+            Below average by R{{ game.shop_saving|floatformat:0|intcomma }}
+            <br/><smaller>from {{ game.best_shop.shop.name }}</smaller>
+        </p>
+
+    </div>
 </div>

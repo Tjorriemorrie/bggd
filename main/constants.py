@@ -18,7 +18,9 @@ REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 
 # memory limits
 REC_MIN_CUTOFF = 10
-REC_MAX_CUTOFF = 150
+# REC_MAX_CUTOFF = 150
+# max from 100 to 150 adds 50mb
+REC_MAX_CUTOFF = 100
 
 STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'
