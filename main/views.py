@@ -278,7 +278,9 @@ class PlayerDetailView(DetailView):
 
         # reviews sorted
         if self.object.reviews.count():
-            reviews = list(self.object.reviews.all())
+            reviews = list(self.object.reviews.filter(
+                predicted__isnull=False,
+            ).all())
             reviews.sort(key=attrgetter('predicted'), reverse=True)
             reviews.sort(key=attrgetter('rating'), reverse=True)
             data['reviews'] = reviews
