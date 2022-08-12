@@ -17,10 +17,8 @@ PLAYERS_SIZES = (1, 2, 3, 4, 5, 6)
 REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 
 # memory limits
-REC_MIN_CUTOFF = 10
-# REC_MAX_CUTOFF = 150
-# max from 100 to 150 adds 50mb
-REC_MAX_CUTOFF = 100
+REC_MIN_CUTOFF = 10  # 30, even 15, is too far, gave ark nova and brass :(
+REC_MAX_CUTOFF = 200  # 300 made no diff
 
 STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'

@@ -21,7 +21,7 @@ from pytube import Search
 from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, \
     WEIGHTS_CUTOFF, N_CLUSTERS, SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
-    SHOP_NAMES
+    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF
 from main.models import Game, Player, Review, Day, Award, \
     AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
@@ -114,7 +114,9 @@ class AboutView(CachedTemplateViewGet):
 
         ctx = {
             'game_added': game_added,
-            'player_turnover': player_turnover
+            'player_turnover': player_turnover,
+            'min_used': REC_MIN_CUTOFF,
+            'max_used': REC_MAX_CUTOFF,
         }
         return ctx
 

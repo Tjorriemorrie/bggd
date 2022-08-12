@@ -18,7 +18,10 @@
                     the top few games on the ranking is currently known.</p>
                 <p>The ratings were used to build a recommender system using
                     SVD. Recommendations are calculated based of each players'
-                    ratings .</p>
+                    ratings. Only the ratings of players are used that have
+                    minimum {{ min_used }} to maximum {{ max_used }} ratings.
+                    Ironically the OGs with thousands of ratings does not
+                    help anyone else to realise what they would like.</p>
                 <p>Look up your username and there should be recommendations
                     on the user's page. Click the Recalculate and wait a few
                     minutes to update your recommendations. (Otherwise it is
