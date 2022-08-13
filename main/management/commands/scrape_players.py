@@ -7,6 +7,7 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from django.db.models import Q, F, Max
 from django.db.models.functions import Least
+from django.utils.timezone import now
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError, \
@@ -106,13 +107,12 @@ class Command(BaseCommand):
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""
         logger.info(''.join(['='] * 40) + ' upkeeping players ' + ''.join(['='] * 40))
-        players = Player.objects.annotate(
-            oldest_date=Least('scraped_at', 'rec_at')
-        ).order_by('oldest_date').all()[:1_000]
+        today = now()
+        players = Player.objects.order_by('rec_at').all()[:100]
         while players:
             for player in players:
                 self._check_watch()
-                logger.info(f'Player start with oldest date as {player.oldest_date}')
+                days_since = (today - player.rec_at).days
 
                 # details
                 try:
@@ -144,21 +144,19 @@ class Command(BaseCommand):
                 # not get fixed, e.g. jul 2022 with very, very low rating counts.
                 update_gamedays(player)
 
-                logger.info(f'{self.prefix} upkeeped {player} (scraped_at={player.scraped_at} rec_at={player.rec_at})')
+                logger.info(f'{self.prefix} upkeeped {player} again after {days_since} days')
 
             # renew loop
-            players = Player.objects.annotate(
-                oldest_date=Least('scraped_at', 'rec_at')).order_by(
-                'oldest_date').all()[:1_000]
+            players = Player.objects.order_by('rec_at').all()[:100]
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _loader(self, *args, **options):
         game_ids = Game.objects.values_list('id', flat=True)
 
         # perform these steps
-        self._scrape_new_players()
+        # self._scrape_new_players()
         self._predict_new_players(game_ids)
-        self._predict_changed_players(game_ids)
+        # self._predict_changed_players(game_ids)
 
         # with remaining time
         self._upkeep(game_ids)

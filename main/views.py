@@ -294,6 +294,8 @@ class PlayerDetailView(DetailView):
                 'Very Heavy': {1: 0, 2: 0, 3: 0, 4: 0, 5: 0},
             }
             for review in reviews:
+                if review.game.best_min_players is None or review.game.best_max_players is None:
+                    continue
                 for p in range(review.game.best_min_players, review.game.best_max_players + 1):
                     if p in p_data[review.game.weight_tag]:
                         p_data[review.game.weight_tag][p] += 1
