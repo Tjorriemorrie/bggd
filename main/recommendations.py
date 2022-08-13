@@ -135,7 +135,7 @@ def predict_player(
         sc[prediction.est] = game_id
 
     top_recs = list(reversed(sc.items()))
-    some_years_ago = now().year - 8
+    some_years_ago = now().year - 10
     cnt = 0
     for val, game_id in top_recs:
         game = Game.objects.get(id=game_id)
