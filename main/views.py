@@ -8,7 +8,7 @@ from time import sleep
 import pandas as pd
 import plotly.express as px
 from django.core.cache import cache
-from django.db.models import Q, Count, F, Avg, Sum
+from django.db.models import Q, Count, F, Avg, Sum, Max
 from django.db.models.functions import TruncMonth, Least
 from django.shortcuts import render, redirect
 from django.utils.decorators import method_decorator
@@ -246,8 +246,14 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
 
     def get_context_data(self, *args, object_list=None, **kwargs):
         ctx = super().get_context_data(*args, object_list=object_list, **kwargs)
+
         # add graph for listing only (not on search)
         # if not ctx['s']:
+        #     today = now()
+        #     days = Review.objects.values('player').annotate(
+        #         last_day=Max('reviewed_at')
+        #     ).order_by('player').values_list('last_day', flat=True)
+
         return ctx
 
 

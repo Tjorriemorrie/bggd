@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import time
 from typing import List
 
@@ -82,27 +82,32 @@ class Command(BaseCommand):
         """update player predictions who have made a new rating"""
         logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
         start_at = 0
-        reviews = Review.objects.prefetch_related('player').order_by(
-            '-updated_at').all()[0:(start_at + 1_000)]
-        end = False
         players_done = set()
-        while not end:
+        while True:
+            all_skipped = True
+            reviews = Review.objects.prefetch_related('player').order_by(
+                '-updated_at').all()[start_at:(start_at + 1_000)]
             for review in reviews:
                 if review.player.id in players_done:
                     continue
+                logger.debug(f'player recomme at {review.player.rec_at}')
+                logger.debug(f'review updated at {review.updated_at}')
+                # if review.player.rec_at > (review.updated_at - timedelta(days=1)):
                 if review.player.rec_at > review.updated_at:
-                    end = True
+                    logger.debug('skipping as player already updated')
                     break
-                self._check_watch()
+                logger.debug('updating player with newer reviews')
                 predict_player(review.player, game_ids)
                 players_done.add(review.player.id)
                 logger.info(f'{self.prefix} Recommendations for changed {review.player}')
                 # update game days (updated from player's reviews)
                 update_gamedays(review.player)
+                all_skipped = False
+                self._check_watch()
+            if all_skipped:
+                break
             # next batch
             start_at += 1_000
-            reviews = Review.objects.prefetch_related('player').order_by(
-                '-updated_at').all()[start_at:(start_at + 1_000)]
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""
@@ -154,9 +159,9 @@ class Command(BaseCommand):
         game_ids = Game.objects.values_list('id', flat=True)
 
         # perform these steps
-        # self._scrape_new_players()
+        self._scrape_new_players()
         self._predict_new_players(game_ids)
-        # self._predict_changed_players(game_ids)
+        self._predict_changed_players(game_ids)
 
         # with remaining time
         self._upkeep(game_ids)

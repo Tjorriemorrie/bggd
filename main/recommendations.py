@@ -1,5 +1,6 @@
 import logging
 import pickle
+from datetime import timedelta
 from typing import Tuple, List, Optional
 
 import numpy as np
@@ -109,6 +110,7 @@ def predict_player(
     algo = get_rec_algo()
     reviews = player.reviews.all()
     player.reviews_cnt = len(reviews)
+    player.last_review_at = max([r.reviewed_at for r in reviews]) if reviews else None
     player.rec_at = now()
     player.reviews_scr = None
 

@@ -6,15 +6,9 @@ from django.db import models
 from django.utils.timezone import now
 
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, \
-    STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS
-
-LABEL_CATEGORY = 'category'
-LABEL_MECHANIC = 'mechanic'
-LABEL_FAMILY = 'family'
-LABEL_SUBDOMAIN = 'subdomain'
-
-AWARD_GAME_OF_THE_MONTH = 'Game of the month'
-AWARD_GAME_OF_THE_YEAR = 'Game of the year'
+    STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
+    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, \
+    AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_MONTH
 
 CHOICES_WEIGHTS = (
     (WEIGHT_HEAVY, WEIGHT_HEAVY),
@@ -187,6 +181,7 @@ class Player(models.Model):
     # updated in predict (joined with scrape)
     reviews_cnt = models.IntegerField(null=True)
     reviews_scr = models.FloatField(null=True)
+    last_review_at = models.DateTimeField(null=True, blank=True)
     rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
 
     # reschedule prediction for cron pickup

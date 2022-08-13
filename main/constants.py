@@ -5,6 +5,14 @@ from django.utils.timezone import make_aware
 
 START_GAME_OF_THE = make_aware(datetime(2006, 1, 1))
 
+LABEL_CATEGORY = 'category'
+LABEL_MECHANIC = 'mechanic'
+LABEL_FAMILY = 'family'
+LABEL_SUBDOMAIN = 'subdomain'
+
+AWARD_GAME_OF_THE_MONTH = 'Game of the month'
+AWARD_GAME_OF_THE_YEAR = 'Game of the year'
+
 WEIGHT_VERY_HEAVY = 'Very Heavy'
 WEIGHT_HEAVY = 'Heavy'
 WEIGHT_MEDIUM = 'Medium'
