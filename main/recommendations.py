@@ -1,48 +1,50 @@
 import logging
 import pickle
-from datetime import timedelta
+from operator import itemgetter
 from typing import Tuple, List, Optional
 
 import numpy as np
 import pandas as pd
 from django.db import OperationalError
 from django.utils.timezone import now
+from kneed import KneeLocator
 from retry import retry
 from sklearn.cluster import KMeans
+from sklearn.metrics.pairwise import cosine_similarity
 from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase, dump
-from surprise.model_selection import cross_validate
 
 from bgg.settings import BASE_DIR
-from main.constants import REC_MIN_CUTOFF, N_CLUSTERS, \
-    REC_MAX_CUTOFF
+from main.constants import REC_MIN_CUTOFF, REC_MAX_CUTOFF, SIM_GROUP_SIZE, \
+    LABEL_CATEGORY, LABEL_FAMILY, IGNORE_FAMILIES, SOME_YEARS_AGO
 from main.models import Review, Player, Game, Rec, Label, LABEL_MECHANIC
 
 logger = logging.getLogger(__name__)
 
 FILE_REC_MODEL = BASE_DIR / 'model.dmp'
-FILE_MEC_MODEL = BASE_DIR / 'model_mec.pkl'
+FILE_SIM_MODEL = BASE_DIR / 'model_sim.dmp'
 
-_algo = None
+_rec_algo = None
+_sim_algo = None
 
 
 def get_rec_algo() -> AlgoBase:
-    global _algo
-    if not _algo:
-        logger.info('loading rec algorithm...')
-        _algo, _ = dump.load(FILE_REC_MODEL)
-        logger.info(f'loaded {_algo}')
-    return _algo
+    global _rec_algo
+    if not _rec_algo:
+        logger.info('loading recommendation algorithm...')
+        _rec_algo, _ = dump.load(FILE_REC_MODEL)
+        logger.info(f'loaded {_rec_algo}')
+    return _rec_algo
 
 
-def get_mec_algo() -> AlgoBase:
-    global _algo
-    if not _algo:
-        logger.info('loading rec algorithm...')
-        with open(FILE_MEC_MODEL, 'r+b') as fp:
-            _algo = pickle.load(fp)
+def get_sim_algo() -> AlgoBase:
+    global _sim_algo
+    if not _sim_algo:
+        logger.info('loading similarity algorithm...')
+        with open(FILE_SIM_MODEL, 'r+b') as fp:
+            _sim_algo = pickle.load(fp)
         logger.info('loaded')
-    return _algo
+    return _sim_algo
 
 
 def train_rec_model():
@@ -78,32 +80,6 @@ def train_rec_model():
     dump.dump(FILE_REC_MODEL, algo)
 
 
-def train_mec_model():
-    logger.info('Training mechanic model...')
-    Game.objects.update(mechanic_cluster=None)
-
-    logger.info('Loading data...')
-    games = Game.objects.filter(shop_available=True).all()
-    mechanics = Label.objects.filter(type=LABEL_MECHANIC).all()
-    logger.info(f'Found {len(games)} games and {len(mechanics)} mechanics')
-
-    data = []
-    for game in games:
-        game_mecs = game.mechanics.all()
-        row = [int(m in game_mecs) for m in mechanics]
-        data.append(row)
-
-    logger.info('Training kmeans...')
-    km = KMeans(n_clusters=N_CLUSTERS)
-    km.fit(data)
-    y = km.predict(data)
-
-    logger.info('Saving and updating games...')
-    for game, cluster in zip(games, y):
-        game.mechanic_cluster = cluster
-        game.save()
-
-
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def predict_player(
         player: Player, game_ids: List[id]) -> Optional[List[Tuple[float, int]]]:
@@ -137,7 +113,6 @@ def predict_player(
         sc[prediction.est] = game_id
 
     top_recs = list(reversed(sc.items()))
-    some_years_ago = now().year - 10
     cnt = 0
     for val, game_id in top_recs:
         game = Game.objects.get(id=game_id)
@@ -145,7 +120,7 @@ def predict_player(
         if player.is_rsa() and not game.shop_available or not game.shop_price:
             continue
         # always skip if game is more than 8 years old
-        if game.year <= some_years_ago:
+        if game.year <= SOME_YEARS_AGO:
             continue
         rec = Rec.objects.create(
             game=game,
@@ -159,44 +134,6 @@ def predict_player(
         if cnt >= 10:
             break
 
-    # set/overwrite top recs
-    # top_recs = list(reversed(sc.items()))
-    # rec_combos = copy(REC_COMBOS)
-    # is_primary = True
-    # for val, game_id in top_recs:
-    #     game = Game.objects.get(id=game_id)
-    #     # skip if cannot buy (only RSA)
-    #     if player.is_rsa() and not game.shop_available or not game.shop_price:
-    #         continue
-    #     if not game.best_min_players or not game.best_max_players:
-    #         # logger.info(f'Skipping {game} for not having best players scraped.')
-    #         continue
-    #     for cur_best_players in range(game.best_min_players, game.best_max_players + 1):
-    #         # anything not in PLAYER_SIZE is a party game, change it to 5
-    #         best_players = cur_best_players if cur_best_players in PLAYERS_SIZES else PLAYERS_SIZES[-1]
-    #         game_combo = (game.weight_tag, best_players)
-    #         if game_combo in rec_combos:
-    #             break
-    #     else:
-    #         # logger.info(
-    #         #     f'Skipping {game} due to all combos taken: '
-    #         #     f'{game.weight_tag} {game.best_min_players}-{game.best_max_players}')
-    #         continue
-    #     rec, _ = Rec.objects.get_or_create(
-    #         player=player,
-    #         weight_tag=game.weight_tag,
-    #         best_players=best_players)
-    #     if rec.game != game or rec.is_primary != is_primary or rec.predicted != val:
-    #         rec.game = game
-    #         rec.is_primary = is_primary
-    #         rec.predicted = val
-    #         rec.rec_at = now()
-    #         rec.save()
-    #     is_primary = False
-    #     rec_combos.remove(game_combo)
-    #     if not rec_combos:
-    #         break
-
     # score player
     ratings = SortedList([r.rating for r in reviews])
     spaces = np.linspace(1, 10, num=len(ratings))
@@ -207,6 +144,90 @@ def predict_player(
     return top_recs
 
 
+def train_sim_model():
+    logger.info('Training similarity model on value...')
+
+    # logger.info('Clearing existing groupings...')
+    # Game.objects.update(sim_cluster=None)
+
+    mechanics = Label.objects.filter(type=LABEL_MECHANIC).all()
+    logger.info(f'Loaded {len(mechanics)} mechanics')
+    categories = Label.objects.filter(type=LABEL_CATEGORY).all()
+    logger.info(f'Loaded {len(categories)} categories')
+    families = Label.objects.filter(type=LABEL_FAMILY).all()
+    families = [
+        f for f in families if not
+        any(ig in f.name for ig in IGNORE_FAMILIES)]
+    logger.info(f'Loaded {len(families)} families')
+
+    games = Game.objects.prefetch_related(
+        'mechanics', 'families', 'categories'
+    ).exclude(scraped_at__isnull=True).all()
+    logger.info(f'Loaded {len(games)} games')
+
+    logger.info('Building dataset...')
+    data = []
+    for game in games:
+        mec_flags = [int(m in game.mechanics.all()) for m in mechanics]
+        cat_flags = [int(m in game.categories.all()) for m in categories]
+        fam_flags = [int(m in game.families.all()) for m in families]
+        row = mec_flags + cat_flags + fam_flags
+        data.append(row)
+
+    # logger.info('Getting best cluster size...')
+    # sse = []
+    # cluster_range = range(1, 21)
+    # for k in cluster_range:
+    #     km = KMeans(n_clusters=k)
+    #     km.fit(data)
+    #     sse.append(km.inertia_)
+    #     logger.info(f'Cluster size {k} intertia {km.inertia_}')
+    # kl = KneeLocator(x=cluster_range, y=sse, curve='convex', direction='decreasing')
+    # best_size = kl.elbow
+    # best_size = len(games) // SIM_GROUP_SIZE
+    # logger.info(f'Best cluster size is {best_size}')
+    #
+    # km = KMeans(n_clusters=best_size)
+    # km.fit(data)
+    # logger.info(f'Lowest SSE value: {km.inertia_}')
+    # logger.info(f'Location of centroids: {km.cluster_centers_}')
+    # logger.info(f'Iterations to converge: {km.n_iter_}')
+    # logger.info('Predicting and updating games...')
+    # y = km.predict(data)
+    # today = now()
+    # for game, cluster in zip(games, y):
+    #     game.sim_cluster = cluster
+    #     game.sim_at = today
+    #     game.save()
+
+    # CONTENT_BASED RECOMMENDATION WITH COSINE SIMILARITY VECTORS
+    logger.info(f'Calculating cosine similarity on {len(data)} dataset...')
+    cos_sim_mtx = cosine_similarity(data, data)
+    avgs_at_co = [
+        sorted(list(enumerate(r)), key=itemgetter(1), reverse=True)[7][1]
+        for r in cos_sim_mtx]
+    avg_at_co = sum(avgs_at_co) / len(avgs_at_co)
+    logger.info(f'Avg score for 5 sims is {avg_at_co}')
+
+    logger.info('Updating games...')
+    today = now()
+    for ix, game in enumerate(games):
+        scores = list(enumerate(cos_sim_mtx[ix]))
+        scores_sorted = sorted(scores, key=itemgetter(1), reverse=True)
+        sim_games = []
+        for ix, score in scores_sorted:
+            if len(sim_games) >= 1 and score < avg_at_co:
+                break
+            sim_game = games[ix]
+            if sim_game == game:
+                continue
+            if sim_game.year > SOME_YEARS_AGO:
+                sim_games.append(sim_game)
+        game.similars.set(sim_games)
+        game.sim_at = today
+        game.save()
+
+
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def similar_mechanics(game: Game):
-    algo = get_mec_algo()
+    algo = get_sim_algo()

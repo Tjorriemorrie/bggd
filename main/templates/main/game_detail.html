@@ -109,7 +109,7 @@
                       <h4>No ratings with comments yet.</h4>
                   {% else %}
                       <h4>BGG ratings comments:</h4>
-                      {% for review in game.comments.all %}
+                      {% for review in game.comments.all|slice:100 %}
                           <p>
                               <a href="{% url 'player_detail' review.player.id %}"><strong>{{ review.player.nick }}</strong></a>&nbsp;
                               <small class="text-muted">[{{ review.player.reviews_scr|floatformat:1 }}]</small>:
@@ -139,10 +139,18 @@
           <p>{{ rating_graph|safe }}</p>
         {% endif %}
 
-          <h6>{{ game.categories_comma }}</h6>
-          <p>{{ game.description }}</p>
+        <h4>Description</h4>
+        <p>{{ game.description }}</p>
 
-          <h4>Mechanics</h4>
+        {% include 'main/game_sim.html' %}
+
+        <br/>
+        <br/>
+
+        <h4>Categories</h4>
+        <p>{{ game.categories_comma }}</p>
+
+        <h4>Mechanics</h4>
         <p>{{ game.mechanics_comma }}</p>
 
         <h4>Families</h4>

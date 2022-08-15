@@ -1,31 +1,27 @@
 import logging
 from collections import Counter
 from datetime import timedelta, datetime
-from itertools import chain, combinations
+from itertools import combinations
 from operator import attrgetter
-from time import sleep
 
 import pandas as pd
 import plotly.express as px
-from django.core.cache import cache
-from django.db.models import Q, Count, F, Avg, Sum, Max
+from django.db.models import Q, Count, F, Sum
 from django.db.models.functions import TruncMonth, Least
-from django.shortcuts import render, redirect
+from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.utils.timezone import now, make_aware
-from django.views import View
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
 from pytube import Search
 
 from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, \
-    WEIGHTS_CUTOFF, N_CLUSTERS, SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
-    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF
+    WEIGHTS_CUTOFF, SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
+    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF, IGNORE_FAMILIES
 from main.models import Game, Player, Review, Day, Award, \
     AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
-from main.recommendations import predict_player
 
 logger = logging.getLogger(__name__)
 
@@ -369,30 +365,6 @@ class ReviewView(CachedTemplateViewGet):
         data['graph_reviews_cnt'] = fig.to_html(full_html=False)
 
         return data
-
-
-class MecView(CachedTemplateViewGet):
-    template_name = 'main/mec.html'
-
-    def get_context_data(self, **kwargs):
-        grouped = dict()
-        for i in range(N_CLUSTERS):
-            games = Game.objects.filter(mechanic_cluster=i).order_by('-hotness', '-rating').all()
-            mechanics = [m.name for g in games for m in g.mechanics.all()]
-            counter = Counter(mechanics)
-            total = sum(counter.values())
-            mecs = []
-            for mec_name, mec_cnt in counter.most_common(100):
-                if sum(v for _, v in mecs) < total * 0.33:
-                    mecs.append((mec_name, mec_cnt))
-            grouped[i] = {
-                'games': games,
-                'mecs': mecs,
-            }
-        ctx = {
-            'grouped': grouped,
-        }
-        return ctx
 
 
 class ShopView(CachedTemplateViewGet):

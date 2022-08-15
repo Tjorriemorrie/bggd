@@ -30,7 +30,6 @@ urlpatterns = [
     path('players/<int:pk>', views.PlayerDetailView.as_view(), name='player_detail'),
     path('players/<int:pk>/predict', views.player_predict_view, name='player_predict'),
     path('reviews/', views.ReviewView.as_view(), name='reviews'),
-    path('mechanics/', views.MecView.as_view(), name='mec'),
     path('shop/', views.ShopView.as_view(), name='shop'),
     path(r'ht/', include('health_check.urls')),
 ]

@@ -1,7 +1,7 @@
 from datetime import datetime
 from itertools import product
 
-from django.utils.timezone import make_aware
+from django.utils.timezone import make_aware, now
 
 START_GAME_OF_THE = make_aware(datetime(2006, 1, 1))
 
@@ -37,4 +37,8 @@ SHOP_MEEPS_AND_VEEPS = 'Meeps and Veeps'
 SHOP_TIMELESS = 'Timeless'
 SHOP_NAMES = [SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS]
 
-N_CLUSTERS = 6
+SOME_YEARS_AGO = now().year - 10
+SIM_GROUP_SIZE = 5
+IGNORE_FAMILIES = [
+    'Digital Implementations',
+]

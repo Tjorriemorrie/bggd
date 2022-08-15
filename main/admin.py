@@ -50,7 +50,7 @@ class GameAdmin(admin.ModelAdmin):
     ordering = ('-hotness',)
     actions = (scrape_game_cmd,)
     search_fields = ('name',)
-    exclude = ('shop_available', 'shop_price', 'shop_saving', 'hotness', 'mechanic_cluster')
+    exclude = ('shop_available', 'shop_price', 'shop_saving', 'hotness', 'sim_cluster')
 
     def reviews_cnt_fmt(self, obj: Game):
         url = reverse('admin:main_review_changelist')

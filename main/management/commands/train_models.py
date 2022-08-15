@@ -3,7 +3,7 @@ from time import time
 
 from django.core.management import BaseCommand
 
-from main.recommendations import train_rec_model, train_mec_model
+from main.recommendations import train_rec_model, train_sim_model
 
 logger = logging.getLogger(__name__)
 
@@ -17,8 +17,8 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         start = time()
 
-        if options['name'] == 'mec':
-            train_mec_model()
+        if options['name'] == 'sim':
+            train_sim_model()
         elif options['name'] == 'rec':
             train_rec_model()
 

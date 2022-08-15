@@ -8,7 +8,7 @@ from django.utils.timezone import now
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, \
     STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, \
-    AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_MONTH
+    AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_MONTH, IGNORE_FAMILIES
 
 CHOICES_WEIGHTS = (
     (WEIGHT_HEAVY, WEIGHT_HEAVY),
@@ -77,7 +77,8 @@ class Game(models.Model):
     hotness = models.FloatField(null=True)  # update hotness cron
 
     # similar
-    mechanic_cluster = models.IntegerField(null=True, blank=True)
+    similars = models.ManyToManyField('Game', symmetrical=False, related_name='rev_similars')
+    sim_at = models.DateTimeField(null=True, blank=True)
 
     # shops aggregate
     shop_available = models.BooleanField(null=True, blank=True)
@@ -115,8 +116,20 @@ class Game(models.Model):
             player__reviews_scr__isnull=False
         ).order_by('-player__reviews_scr')
 
+    def similar(self) -> List['Game']:
+        """Returns similar games from kmean clustering."""
+        if not self.sim_cluster:
+            return []
+        return Game.objects.exclude(id=self.id).filter(
+            sim_cluster=self.sim_cluster).all()
+
     def mechanics_comma(self) -> str:
         return ', '.join([m.name for m in self.mechanics.all()])
+
+    def good_families(self) -> List[Label]:
+        return [
+            f for f in self.families.all() if not
+            any(ig in f.name for ig in IGNORE_FAMILIES)]
 
     def families_comma(self) -> str:
         return ', '.join([f.name for f in self.families.all()])
