@@ -168,37 +168,12 @@ def train_sim_model():
     logger.info('Building dataset...')
     data = []
     for game in games:
-        mec_flags = [int(m in game.mechanics.all()) for m in mechanics]
-        cat_flags = [int(m in game.categories.all()) for m in categories]
-        fam_flags = [int(m in game.families.all()) for m in families]
-        row = mec_flags + cat_flags + fam_flags
+        mec_flags = [m in game.mechanics.all() and 0.3 for m in mechanics]
+        cat_flags = [m in game.categories.all() and 0.7 for m in categories]
+        fam_flags = [m in game.families.all() and 0.5 for m in families]
+        weight_flags = [game.weight_avg / 5]
+        row = mec_flags + cat_flags + fam_flags + weight_flags
         data.append(row)
-
-    # logger.info('Getting best cluster size...')
-    # sse = []
-    # cluster_range = range(1, 21)
-    # for k in cluster_range:
-    #     km = KMeans(n_clusters=k)
-    #     km.fit(data)
-    #     sse.append(km.inertia_)
-    #     logger.info(f'Cluster size {k} intertia {km.inertia_}')
-    # kl = KneeLocator(x=cluster_range, y=sse, curve='convex', direction='decreasing')
-    # best_size = kl.elbow
-    # best_size = len(games) // SIM_GROUP_SIZE
-    # logger.info(f'Best cluster size is {best_size}')
-    #
-    # km = KMeans(n_clusters=best_size)
-    # km.fit(data)
-    # logger.info(f'Lowest SSE value: {km.inertia_}')
-    # logger.info(f'Location of centroids: {km.cluster_centers_}')
-    # logger.info(f'Iterations to converge: {km.n_iter_}')
-    # logger.info('Predicting and updating games...')
-    # y = km.predict(data)
-    # today = now()
-    # for game, cluster in zip(games, y):
-    #     game.sim_cluster = cluster
-    #     game.sim_at = today
-    #     game.save()
 
     # CONTENT_BASED RECOMMENDATION WITH COSINE SIMILARITY VECTORS
     logger.info(f'Calculating cosine similarity on {len(data)} dataset...')
@@ -216,7 +191,9 @@ def train_sim_model():
         scores_sorted = sorted(scores, key=itemgetter(1), reverse=True)
         sim_games = []
         for ix, score in scores_sorted:
-            if len(sim_games) >= 1 and score < avg_at_co:
+            if len(sim_games) >= 3 and score < avg_at_co:
+                break
+            if len(sim_games) >= 9:
                 break
             sim_game = games[ix]
             if sim_game == game:

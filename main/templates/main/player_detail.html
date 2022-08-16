@@ -5,204 +5,206 @@
 {% block title %}{{ player.nick }} - Players - {{ block.super }}{% endblock %}
 
 {% block content %}
-<div class="container">
+  <div class="container">
 
     {% include 'main/navbar.html' with nav='players' %}
 
     <br/>
     <div class="row">
-        <div class="col-4">
+      <div class="col-4">
 
-            <h2>
-                {% if player.avatar %}
-                    <img class="img-fluid" src="{{ player.avatar }}" alt=""/>
-                {% endif %}
-                {{ player.nick }}
-            </h2>
-            {% if player.reviews_scr %}
-                <h6>Score: {{ player.reviews_scr|floatformat }}</h6>
-            {% endif %}
-            {% if player.name %}
-                <h6>Name: {{ player.name }}</h6>
-            {% endif %}
-            {% if player.geo %}
-                <h6>Geo: {{ player.geo }}</h6>
-            {% endif %}
-            <h6>
-                <a href="https://www.boardgamegeek.com/user/{{ player.nick }}"
-                   target="_blank">
-                    BGG link
-                </a>
-            </h6>
-        </div>
+        <h2>
+          {% if player.avatar %}
+            <img class="img-fluid" src="{{ player.avatar }}" alt=""/>
+          {% endif %}
+          {{ player.nick }}
+        </h2>
+        {% if player.reviews_scr %}
+          <h6>Score: {{ player.reviews_scr|floatformat }}</h6>
+        {% endif %}
+        {% if player.name %}
+          <h6>Name: {{ player.name }}</h6>
+        {% endif %}
+        {% if player.geo %}
+          <h6>Geo: {{ player.geo }}</h6>
+        {% endif %}
+        <h6>
+          <a href="https://www.boardgamegeek.com/user/{{ player.nick }}"
+             target="_blank">
+            BGG link
+          </a>
+        </h6>
+      </div>
 
-        <div class="col-8">
-        </div>
+      <div class="col-8">
+      </div>
     </div>
 
     <div class="row">
-        <div class="col">
-            <br/>
-            <h3>Recommendations</h3>
-            <h6 class="text-muted">Last updated {{ player.rec_at }}</h6>
-            {% if not player.redo_requested_at %}
-                <p><a href="{% url 'player_predict' player.id %}">
-                    <button class="button">Recalculate</button>
-                </a></p>
-            {% else %}
-                <h6 class="text-muted">Prediction rescheduled...(takes a few
-                    min)</h6>
-            {% endif %}
-            {% if not player.recs.count %}
-                <p>No recommendations.</p>
-            {% else %}
-                <table class="table">
-                <thead>
-                <tr>
-                    <th class="text-center col-sm-1" colspan="2">Game</th>
-                    <th class="text-center col-sm-1">Predicted</th>
-                    <th class="text-center col-sm-1" colspan="6">Player count</th>
-                    <th class="text-center col-sm-1" colspan="5">Weight</th>
-                    {% if player.is_rsa %}
-                    <th class="text-center col-sm-1 text-muted">Shop</th>
+      <div class="col">
+        <br/>
+        <h3>Recommendations</h3>
+        <h6 class="text-muted">Last updated {{ player.rec_at }}</h6>
+        {% if not player.redo_requested_at %}
+          <p><a href="{% url 'player_predict' player.id %}">
+            <button class="button">Recalculate</button>
+          </a></p>
+        {% else %}
+          <h6 class="text-muted">Prediction rescheduled...(takes a few
+            min)</h6>
+        {% endif %}
+        {% if not player.recs.count %}
+          <p>No recommendations.</p>
+        {% else %}
+          <table class="table">
+            <thead>
+            <tr>
+              <th class="text-center col-sm-1" colspan="2">Game</th>
+              <th class="text-center col-sm-1">Predicted</th>
+              <th class="text-center col-sm-1" colspan="6">Player count</th>
+              <th class="text-center col-sm-1" colspan="5">Weight</th>
+              {% if player.is_rsa %}
+                <th class="text-center col-sm-1 text-muted">Shop</th>
+              {% endif %}
+            </tr>
+            <tr>
+              <th colspan="3">&nbsp;</th>
+              <th class="text-center col-sm-1">1</th>
+              <th class="text-center col-sm-1">2</th>
+              <th class="text-center col-sm-1">3</th>
+              <th class="text-center col-sm-1">4</th>
+              <th class="text-center col-sm-1">5</th>
+              <th class="text-center col-sm-1">6+</th>
+              {% for weight in weights %}
+                <th class="text-center col-sm-1">{{ weight }}</th>
+              {% endfor %}
+              {% if player.is_rsa %}
+                <th class="text-center col-sm-1">&nbsp;</th>
+              {% endif %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for rec in player.recs.all %}
+              <tr>
+                <td class="text-end">
+                  <a class="text-reset text-decoration-none" href="{% url 'game_detail' rec.game.pk %}">
+                    <img class="round" height="60px" src="{{ rec.game.img }}"/>
+                  </a>
+                </td>
+                <td>
+                  <a class="text-reset text-decoration-none" href="{% url 'game_detail' rec.game.pk %}">
+                    <strong>{{ rec.game.name }}</strong> {{ rec.game.awards_fmt|safe }}
+                  </a>
+                </td>
+                <td class="text-center">
+                  {{ rec.predicted|floatformat }}
+                </td>
+                {% for size in player_sizes %}
+                  <td class="text-center">
+                    {% if rec.game.min_players <= size and rec.game.max_players >= size %}
+                      {% if rec.game.best_min_players <= size and rec.game.best_max_players >= size %}
+                        <i class="bi bi-emoji-heart-eyes"></i>
+                      {% elif rec.game.rec_min_players <= size and rec.game.rec_max_players >= size %}
+                        <i class="bi bi-emoji-smile"></i>
+                      {% else %}
+                        <i class="bi bi-emoji-expressionless"></i>
+                      {% endif %}
                     {% endif %}
-                </tr>
-                <tr>
-                    <th colspan="3">&nbsp;</th>
-                    <th class="text-center col-sm-1">1</th>
-                    <th class="text-center col-sm-1">2</th>
-                    <th class="text-center col-sm-1">3</th>
-                    <th class="text-center col-sm-1">4</th>
-                    <th class="text-center col-sm-1">5</th>
-                    <th class="text-center col-sm-1">6+</th>
-                    {% for weight in weights %}
-                    <th class="text-center col-sm-1">{{ weight }}</th>
-                    {% endfor %}
-                    {% if player.is_rsa %}
-                    <th class="text-center col-sm-1">&nbsp;</th>
-                    {% endif %}
-                </tr>
-                </thead>
-                <tbody>
-                {% for rec in player.recs.all %}
-                <tr>
-                    <td class="text-end">
-                        <a class="text-reset text-decoration-none" href="{% url 'game_detail' rec.game.pk %}">
-                        <img class="round" height="60px" src="{{ rec.game.img }}"/>
-                        </a>
-                    </td>
-                    <td>
-                        <a class="text-reset text-decoration-none" href="{% url 'game_detail' rec.game.pk %}">
-                        <strong>{{ rec.game.name }}</strong> {{ rec.game.awards_fmt|safe }}
-                        </a>
-                    </td>
-                    <td class="text-center">
-                        {{ rec.predicted|floatformat }}
-                    </td>
-                    {% for size in player_sizes %}
-                    <td class="text-center">
-                        {% if rec.game.min_players <= size and rec.game.max_players >= size %}
-                            {% if rec.game.best_min_players <= size and rec.game.best_max_players >= size %}
-                            <i class="bi bi-emoji-heart-eyes"></i>
-                            {% elif rec.game.rec_min_players <= size and rec.game.rec_max_players >= size %}
-                            <i class="bi bi-emoji-smile"></i>
-                            {% else %}
-                            <i class="bi bi-emoji-expressionless"></i>
-                            {% endif %}
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                    {% for weight in weights %}
-                    <td class="text-center">
-                        {% if rec.game.weight_tag == weight %}
-                        <i class="bi bi-check-circle"></i>
-                        {% endif %}
-                    </td>
-                    {% endfor %}
-                    {% if player.is_rsa %}
-                    <td class="text-center">
-                        <a href="{{ rec.game.best_shop.url }}" target="_blank" class="text-decoration-none">
-                            <small class="text-muted">R{{ rec.game.shop_price|floatformat:0|intcomma }}</small>
-                        </a>
-                    </td>
-                    {% endif %}
-                </tr>
+                  </td>
                 {% endfor %}
-                </tbody>
-                </table>
-            {% endif %}
-        </div>
+                {% for weight in weights %}
+                  <td class="text-center">
+                    {% if rec.game.weight_tag == weight %}
+                      <i class="bi bi-check-circle"></i>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+                {% if player.is_rsa %}
+                  <td class="text-center">
+                    <a href="{{ rec.game.best_shop.url }}" target="_blank" class="text-decoration-none">
+                      <small class="text-muted">R{{ rec.game.shop_price|floatformat:0|intcomma }}</small>
+                    </a>
+                  </td>
+                {% endif %}
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
+      </div>
     </div>
 
     <div class="row">
-        <div class="col-8">
-            {% if graph %}
-                {{ graph|safe }}
-            {% endif %}
-        </div>
-        <div class="col-4">
-            {% if heat %}
-                {{ heat|safe }}
-            {% endif %}
-        </div>
+      <div class="col-8">
+        {% if graph %}
+          {{ graph|safe }}
+        {% endif %}
+      </div>
+      <div class="col-4">
+        {% if heat %}
+          {{ heat|safe }}
+        {% endif %}
+      </div>
     </div>
 
     <div class="row">
-        <div class="col">
-            <h4>{{ reviews|length }} boardgames rated</h4>
-            <br/>
-            {% if not reviews|length %}
-                <p>No reviews to show</p>
-            {% else %}
-                <table class="table">
-                    <thead>
-                    <tr>
-                        <th>&nbsp;</th>
-                        <th>Rating</th>
-                        <th>&nbsp;</th>
-                        <th>Game</th>
-                        <th>Best Players</th>
-                        <th>Weight</th>
-                        <th>Expected</th>
-                    </tr>
-                    </thead>
-                    <tbody>
-                    {% for review in reviews %}
-                        <tr>
-                            <td class="text-muted">{{ forloop.counter }}</td>
-                            <td>{{ review.rating|floatformat }}</td>
-                            <td class="text-end"><img height="30px"
-                                                      src="{{ review.game.img }}"/>
-                            </td>
-                            <td>
-                                <a class="text-reset text-decoration-none"
-                                   href="{% url 'game_detail' review.game.pk %}">
-                                    {{ review.game.name }}
-                                </a>{% if review.comment %}
-                                <br/>
-                                <small class="text-muted">{{ review.comment }}</small>
-                            {% endif %}
-                            </td>
-                            <td>
-                                {{ review.game.best_min_players }}
-                                {% if review.game.best_max_players != review.game.best_min_players %}
-                                    &mdash; {{ review.game.best_max_players }}
-                                {% endif %}
-                            </td>
-                            <td>{{ review.game.weight_tag }}</td>
-                            <td>
-                                {% if review.predicted %}
-                                    {{ review.predicted|floatformat }}
-                                    <small>({{ review.diff|floatformat }})</small>
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                    </tbody>
-                </table>
-            {% endif %}
+      <div class="col">
+        <h4>{{ reviews|length }} boardgames rated</h4>
+        <br/>
+        {% if not reviews|length %}
+          <p>No reviews to show</p>
+        {% else %}
+          <table class="table">
+            <thead>
+            <tr>
+              <th>&nbsp;</th>
+              <th>Rating</th>
+              <th>&nbsp;</th>
+              <th>Game</th>
+              <th>Best Players</th>
+              <th>Weight</th>
+              <th>Expected</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for review in reviews %}
+              <tr>
+                <td class="text-muted">{{ forloop.counter }}</td>
+                <td>{{ review.rating|floatformat }}</td>
+                <td class="text-end">
+                  <a class="text-reset text-decoration-none" href="{% url 'game_detail' review.game.pk %}">
+                    <img height="30px" src="{{ review.game.img }}"/>
+                  </a>
+                </td>
+                <td>
+                  <a class="text-reset text-decoration-none" href="{% url 'game_detail' review.game.pk %}">
+                    <strong>{{ review.game.name }}</strong>
+                  </a>
+                  {% if review.comment %}
+                    <br/>
+                    <small class="text-muted">{{ review.comment }}</small>
+                  {% endif %}
+                </td>
+                <td>
+                  {{ review.game.best_min_players }}
+                  {% if review.game.best_max_players != review.game.best_min_players %}
+                    &mdash; {{ review.game.best_max_players }}
+                  {% endif %}
+                </td>
+                <td>{{ review.game.weight_tag }}</td>
+                <td>
+                  {% if review.predicted %}
+                    {{ review.predicted|floatformat }}
+                    <small>({{ review.diff|floatformat }})</small>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        {% endif %}
 
-        </div>
+      </div>
     </div>
-</div>
+  </div>
 {% endblock %}

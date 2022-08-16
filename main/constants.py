@@ -41,4 +41,5 @@ SOME_YEARS_AGO = now().year - 10
 SIM_GROUP_SIZE = 5
 IGNORE_FAMILIES = [
     'Digital Implementations',
+    'Crowdfunding',
 ]

@@ -45,7 +45,7 @@
             <p>Similar Families
             {% for fam in game.good_families %}
               {% for sim_fam in sim_game.families.all %}
-                {% if fam == sim_fam and fam.name not in ignore_families %}
+                {% if fam == sim_fam %}
                   <br/><small>{{ fam.name }}</small>
                 {% endif %}
               {% endfor %}
