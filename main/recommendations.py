@@ -168,9 +168,9 @@ def train_sim_model():
     logger.info('Building dataset...')
     data = []
     for game in games:
-        mec_flags = [m in game.mechanics.all() and 0.3 for m in mechanics]
-        cat_flags = [m in game.categories.all() and 0.7 for m in categories]
-        fam_flags = [m in game.families.all() and 0.5 for m in families]
+        mec_flags = [m in game.mechanics.all() and 0.7 for m in mechanics]
+        cat_flags = [m in game.categories.all() and 0.2 for m in categories]
+        fam_flags = [m in game.families.all() and 0.4 for m in families]
         weight_flags = [game.weight_avg / 5]
         row = mec_flags + cat_flags + fam_flags + weight_flags
         data.append(row)

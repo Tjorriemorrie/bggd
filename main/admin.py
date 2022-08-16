@@ -1,15 +1,17 @@
 import re
 
 from django.contrib import admin
+from django.db import OperationalError
 from django.db.models import F
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from django.utils.html import format_html
 from django.utils.http import urlencode
 from django.utils.timezone import now
+from retry import retry
 
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, \
-    SHOP_TIMELESS
+    SHOP_TIMELESS, SHOP_GEEKHOME
 from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
     ShopGame, Price, Label
 from main.recommendations import predict_player
@@ -137,6 +139,8 @@ class ShopGameAdmin(admin.ModelAdmin):
             return redirect('/admin/main/shopgamemav/')
         elif obj.shop.name == SHOP_TIMELESS:
             return redirect('/admin/main/shopgametimeless/')
+        elif obj.shop.name == SHOP_GEEKHOME:
+            return redirect('/admin/main/shopgamegeekhome/')
         else:
             return super()._response_post_save(request, obj)
 
@@ -256,6 +260,45 @@ class ShopGameTimelessAdmin(admin.ModelAdmin):
         return format_html(f'{hotness}')
 
 
+class ShopGameGeekhome(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Shop Geekhome'
+        verbose_name_plural = 'Shop Geekhome'
+
+
+@admin.register(ShopGameGeekhome)
+class ShopGameGeekhomeAdmin(admin.ModelAdmin):
+    list_display = ('geekhome', 'title', 'year', 'hotness_fmt')
+    ordering = ('hotness', 'year')
+
+    def get_queryset(self, request):
+        return Game.objects.exclude(shopgames__shop__name=SHOP_GEEKHOME)
+
+    def title(self, obj: Game):
+        return format_html(
+            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+
+    def geekhome(self, obj: Game):
+        gh = Shop.objects.get(name=SHOP_GEEKHOME)
+        name = obj.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+        params = urlencode({
+            'post_type': 'product',
+            's': name,
+        })
+        gh_search = f'{gh.host}?{params}'
+        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gh.id})
+        return format_html(
+            f'<a href="{gh_search}" target="_blank">search geekhome</a><br/><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={gh.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    def hotness_fmt(self, obj: Game):
+        hotness = int(obj.hotness) if obj.hotness else 0
+        return format_html(f'{hotness}')
+
+
 @admin.register(Price)
 class PriceAdmin(admin.ModelAdmin):
     list_display = ['shopgame', 'day', 'status', 'price']
@@ -264,6 +307,7 @@ class PriceAdmin(admin.ModelAdmin):
     list_filter = ['shopgame__shop__name', 'status']
 
 
+@retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def mark_mia_view(request, game_id, shop_id):
     shopgame, _ = ShopGame.objects.update_or_create(
         game_id=game_id,

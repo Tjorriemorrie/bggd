@@ -8,7 +8,7 @@ from bs4 import BeautifulSoup
 from pandas import DataFrame
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT, \
-    SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS
+    SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME
 from main.models import Shop, Price, Day, Game, ShopGame
 from main.scraper import get
 
@@ -331,4 +331,74 @@ def scrape_timeless_game(url: str) -> dict:
     return {
         'status': status,
         'price': int(price_txt),
+    }
+
+
+def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
+    logger.info(f'Scraping {SHOP_GEEKHOME}')
+    day = Day.get_today()
+    shop = Shop.objects.get(name=SHOP_GEEKHOME)
+    if not shopgames:
+        shopgames = shop.shopgames.all()
+    else:
+        assert all(sg.shop.name == SHOP_GEEKHOME for sg in shopgames)
+    for ix, shopgame in enumerate(shopgames):
+        logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+
+        # still scrape games with 0 price (do not use MIA)
+        if not shopgame.url:
+            continue
+
+        # update current price
+        try:
+            data = scrape_geekhome_game(shopgame.url)
+        except Exception as exc:
+            logger.exception(f'Could not scrape {shopgame.url}')
+            if fail_fast:
+                raise
+            continue
+        # when price is 0 it is not priced
+        if not data['price']:
+            if not shopgame.mia:
+                shopgame.mia = True
+                shopgame.save()
+            continue
+        prev_price = shopgame.prices.last()
+        if not prev_price \
+                or prev_price.price != data['price'] \
+                or prev_price.status != data['status']:
+            new_price, _ = Price.objects.update_or_create(
+                shopgame=shopgame,
+                day=day,
+                defaults={
+                    'status': data['status'],
+                    'price': data['price'],
+                }
+            )
+            logger.info(f'New Price! {new_price}')
+
+        # update shopgame stats
+        update_shopgame_stats(shopgame)
+
+    logger.info('Finished scraping Geekhome')
+
+
+def scrape_geekhome_game(url: str) -> dict:
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
+    }
+    res = get(url, headers)
+    html = BeautifulSoup(res.text, 'html.parser')
+
+    container = html.find('div', class_='summary entry-summary')
+    price_box = container.find('p', class_='price')
+    price_txt = price_box.find('ins').text
+    price_txt = price_txt.replace('R', '').replace(',', '').strip()
+
+    status_txt = container.select('p[class*="stock"]')[0].text
+    status = STOCK_OUT if 'Available on Backorder' in status_txt else STOCK_IN
+
+    return {
+        'status': status,
+        'price': int(float(price_txt)),
     }
