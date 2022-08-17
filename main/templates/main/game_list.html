@@ -18,30 +18,30 @@
           <input type="hidden" name="a" value="{{ available }}">
         </form>
       </div>
-        <div class="col-4">
-        </div>
+      <div class="col-4">
+      </div>
     </div>
 
-      <br/>
-      <div class="row">
-          <div class="col-8">
-              <p>
-                  {{ paginator.count|intcomma }} results
-                  {% if s %}
-                      <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
-                  {% endif %}
-              </p>
-          </div>
-          <div class="col-4">
-              {% if available %}
-                  <a href="?{% add_param 'a' 0 %}">Remove availability filter</a>
-              {% else %}
-                  <a href="?{% drop_param 'a' %}">Hide non-available games</a>
-              {% endif %}
-          </div>
+    <br/>
+    <div class="row">
+      <div class="col-8">
+        <p>
+          {{ paginator.count|intcomma }} results
+          {% if s %}
+            <small>(<a href="?{% drop_param 's' %}">clear</a>)</small>
+          {% endif %}
+        </p>
       </div>
+      <div class="col-4">
+        {% if available %}
+          <a href="?{% add_param 'a' 0 %}">Remove availability filter</a>
+        {% else %}
+          <a href="?{% drop_param 'a' %}">Hide non-available games</a>
+        {% endif %}
+      </div>
+    </div>
 
-      {% if page_obj %}
+    {% if page_obj %}
       {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
       <table class="table">
         <thead>
@@ -110,9 +110,11 @@
           </th>
           <th>
             {% if ordering == '-recs_cnt' %}
-              <a href="?{% add_param 'o' 'recs_cnt' %}" title="Recommendations"># recs</a>
+              <a href="?{% add_param 'o' 'recs_cnt' %}" title="Recommendations">#
+                recs</a>
             {% else %}
-              <a href="?{% add_param 'o' '-recs_cnt' %}" title="Recommendations"># recs</a>
+              <a href="?{% add_param 'o' '-recs_cnt' %}" title="Recommendations">#
+                recs</a>
             {% endif %}
             {% if 'recs_cnt' in ordering %}
               <i class="bi bi-sort-{% if '-' in ordering %}down{% else %}up{% endif %} "></i>
@@ -160,9 +162,12 @@
             </td>
             <td>{{ game.year }}</td>
             <td>{% if game.weight_tag %}{{ game.weight_tag }}{% endif %}</td>
-            <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
-            <td>{% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
-            <td>{% if game.hotness %}{{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>
+            <td>{% if game.reviews_cnt %}
+              {{ game.reviews_cnt|intcomma }}{% endif %}</td>
+            <td>
+              {% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
+            <td>{% if game.hotness %}
+              {{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>
             <td><small>{{ game|price }}</small></td>
           </tr>
         {% endfor %}
@@ -171,18 +176,22 @@
       {% include 'main/pagination.html' with is_paginated=is_paginated page_obj=page_obj %}
     {% endif %}
 
+    {% if not s %}
     <br/>
     <div class="row">
       <div class="col">
         <p>The rank is the official BGG rank.</p>
-        <p>The rating is the recalculated average of the ratings that is scraped
+        <p>The rating is the recalculated average of the ratings that is
+          scraped
           from the game. It appears different to BGG ranking outcomes, so BGG
           probably omit/adjust certain ratings based on some criteria.</p>
         <p>recs = Recommendations: an indication of an estimation on how
-        many more players would like the game.</p>
+          many more players would like the game.</p>
         <p>Hotness is a score of ratings for the past 30 days.</p>
-        <p>Weights are the {{ weights_percentiles }} percentiles of the weight ratings.</p>
+        <p>Weights are the {{ weights_percentiles }} percentiles of the weight
+          ratings.</p>
       </div>
     </div>
-  </div>
+    </div>
+    {% endif %}
 {% endblock %}

@@ -236,9 +236,12 @@ class GameDetailView(CachedDetailViewGet):
 class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     model = Player
     paginate_by = 100
-    ordering = '-reviews_scr'
+    ordering = '-last_review_at'
     search_by = 'nick'
-    queryset = Player.objects.filter(reviews_cnt__gte=3)
+    queryset = Player.objects.filter(
+        reviews_cnt__gte=3,
+        last_review_at__gt=(now() - timedelta(days=365))
+    )
 
     def get_context_data(self, *args, object_list=None, **kwargs):
         ctx = super().get_context_data(*args, object_list=object_list, **kwargs)

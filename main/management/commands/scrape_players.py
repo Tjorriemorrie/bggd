@@ -1,11 +1,10 @@
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime
 from time import time
 from typing import List
 
 from django.core.management import BaseCommand
 from django.db import OperationalError
-from django.db.models import Q, F, Max
 from django.db.models.functions import Least
 from django.utils.timezone import now
 from retry import retry
