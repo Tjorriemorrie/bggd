@@ -1,8 +1,9 @@
 from django import template
 
 from django import template
+from django.utils.safestring import mark_safe
 
-from main.models import Game, ShopGame
+from main.models import Game, ShopGame, Rec
 
 register = template.Library()
 
@@ -13,13 +14,16 @@ def price(obj):
         shopgame = obj.best_shop()
     elif isinstance(obj, ShopGame):
         shopgame = obj
+    elif hasattr(obj, 'game'):
+        shopgame = obj.game.best_shop()
     else:
         raise NotImplementedError(f'Unknown object {type(obj)}')
 
-    # if no best shopgame or shopgame cannot scrape latest price
+    # if no best shopgame
+    # or shopgame cannot scrape the latest price
+    # Note best shop only returns available, thus mia shops are None here
     if not shopgame or not shopgame.current_price:
-        url = shopgame.url if shopgame else ''
-        return f'<a href="{url}" target="_blank" class="text-decoration-none text-muted">out of print</a>'
+        return mark_safe(f'<span class="text-muted">out of print</span>')
 
     if shopgame.current_price >= 1_000:
         price = round(shopgame.current_price / 100) * 100
@@ -32,4 +36,4 @@ def price(obj):
     else:
         price_txt = f'{price:,.0f}'
     deco = 'text-success' if shopgame.mean_saving > 0 else 'text-danger'
-    return f'<a href="{shopgame.url}" target="_blank" class="text-decoration-none {deco}">{price_txt}</a>'
+    return mark_safe(f'<a href="{shopgame.url}" target="_blank" class="text-decoration-none {deco}">{price_txt}</a>')

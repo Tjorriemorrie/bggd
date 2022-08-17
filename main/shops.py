@@ -392,11 +392,14 @@ def scrape_geekhome_game(url: str) -> dict:
 
     container = html.find('div', class_='summary entry-summary')
     price_box = container.find('p', class_='price')
-    price_txt = price_box.find('ins').text
+    try:
+        price_txt = price_box.find('ins').text
+    except AttributeError:
+        price_txt = price_box.find('bdi').text
     price_txt = price_txt.replace('R', '').replace(',', '').strip()
 
     status_txt = container.select('p[class*="stock"]')[0].text
-    status = STOCK_OUT if 'Available on Backorder' in status_txt else STOCK_IN
+    status = STOCK_OUT if any(t in ['Out of stock', 'Available on Backorder'] for t in status_txt) else STOCK_IN
 
     return {
         'status': status,

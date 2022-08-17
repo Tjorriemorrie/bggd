@@ -6,7 +6,7 @@ from operator import attrgetter
 
 import pandas as pd
 import plotly.express as px
-from django.db.models import Q, Count, F, Sum
+from django.db.models import Q, Count, F, Sum, Avg
 from django.db.models.functions import TruncMonth, Least
 from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
@@ -378,7 +378,7 @@ class ShopView(CachedTemplateViewGet):
 
         # shop sizes
         df_data = []
-        for shop_name in [SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS]:
+        for shop_name in SHOP_NAMES:
             shop = Shop.objects.get(name=shop_name)
             for inv in ['MIA', 'Out of Stock', 'In Stock']:
                 qs = ShopGame.objects.filter(shop=shop)
@@ -414,17 +414,17 @@ class ShopView(CachedTemplateViewGet):
             ).values_list('id', flat=True)
             qs1 = ShopGame.objects.filter(
                 shop__name=name1, game__id__in=game_ids
-            ).all().aggregate(Sum('current_price'))
+            ).all().aggregate(Avg('current_price'))
             qs2 = ShopGame.objects.filter(
                 shop__name=name2, game__id__in=game_ids
-            ).all().aggregate(Sum('current_price'))
-            v = qs2['current_price__sum'] - qs1['current_price__sum']
+            ).all().aggregate(Avg('current_price'))
+            v = qs2['current_price__avg'] - qs1['current_price__avg']
             heat_data[name1][name2] = v
             heat_data[name2][name1] = -v
         heat_raw = [list(p.values()) for p in heat_data.values()]
         fig_shop_price = px.imshow(
             heat_raw, x=SHOP_NAMES, y=SHOP_NAMES,
-            title='Sum of vs prices between shops where both shops have the game available (higher is cheaper)')
+            title='Avg price war of same games in stock<br><sup>higher is cheaper</sup>')
 
         ctx = {
             'games': games,

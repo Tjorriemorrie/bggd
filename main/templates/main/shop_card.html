@@ -16,11 +16,7 @@
             #{{ game.rank }} rated {{ game.rating|floatformat:1|intcomma }}
         </p>
 
-        <p class="card-text">
-            <a href="{{ game.best_shop.url }}" target="_blank" class="btn btn-primary">
-                R{{ game.shop_price|floatformat:0|intcomma }}
-            </a>
-        </p>
+        <p class="card-text">{{ game|price }}</p>
 
         <p class="card-text">
             Below average by R{{ game.shop_saving|floatformat:0|intcomma }}

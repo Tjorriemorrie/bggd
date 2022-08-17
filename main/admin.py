@@ -270,7 +270,7 @@ class ShopGameGeekhome(Game):
 @admin.register(ShopGameGeekhome)
 class ShopGameGeekhomeAdmin(admin.ModelAdmin):
     list_display = ('geekhome', 'title', 'year', 'hotness_fmt')
-    ordering = ('hotness', 'year')
+    ordering = ('year', 'hotness')
 
     def get_queryset(self, request):
         return Game.objects.exclude(shopgames__shop__name=SHOP_GEEKHOME)

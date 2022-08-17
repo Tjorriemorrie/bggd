@@ -118,8 +118,8 @@ def predict_player(
         game = Game.objects.get(id=game_id)
         # skip if cannot buy (only RSA)
         if player.is_rsa() and not game.shop_available or not game.shop_price:
-            continue
-        # always skip if game is more than 8 years old
+                continue
+        # always skip if game is more than some years old
         if game.year <= SOME_YEARS_AGO:
             continue
         rec = Rec.objects.create(

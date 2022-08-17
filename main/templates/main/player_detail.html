@@ -1,6 +1,7 @@
 {% extends 'main/base.html' %}
 {% load humanize %}
 {% load params %}
+{% load shops %}
 
 {% block title %}{{ player.nick }} - Players - {{ block.super }}{% endblock %}
 
@@ -120,11 +121,7 @@
                   </td>
                 {% endfor %}
                 {% if player.is_rsa %}
-                  <td class="text-center">
-                    <a href="{{ rec.game.best_shop.url }}" target="_blank" class="text-decoration-none">
-                      <small class="text-muted">R{{ rec.game.shop_price|floatformat:0|intcomma }}</small>
-                    </a>
-                  </td>
+                  <td><small>{{ rec|price }}</small></td>
                 {% endif %}
               </tr>
             {% endfor %}

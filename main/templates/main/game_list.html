@@ -163,7 +163,7 @@
             <td>{% if game.reviews_cnt %}{{ game.reviews_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.recs_cnt %}{{ game.recs_cnt|intcomma }}{% endif %}</td>
             <td>{% if game.hotness %}{{ game.hotness|floatformat:0|intcomma }}{% endif %}</td>
-            <td><small>{{ game|price|safe }}</small></td>
+            <td><small>{{ game|price }}</small></td>
           </tr>
         {% endfor %}
         </tbody>
