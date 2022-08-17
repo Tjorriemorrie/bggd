@@ -7,16 +7,14 @@ import numpy as np
 import pandas as pd
 from django.db import OperationalError
 from django.utils.timezone import now
-from kneed import KneeLocator
 from retry import retry
-from sklearn.cluster import KMeans
 from sklearn.metrics.pairwise import cosine_similarity
 from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase, dump
 
 from bgg.settings import BASE_DIR
-from main.constants import REC_MIN_CUTOFF, REC_MAX_CUTOFF, SIM_GROUP_SIZE, \
-    LABEL_CATEGORY, LABEL_FAMILY, IGNORE_FAMILIES, SOME_YEARS_AGO
+from main.constants import REC_MIN_CUTOFF, REC_MAX_CUTOFF, LABEL_CATEGORY, \
+    LABEL_FAMILY, IGNORE_FAMILIES, SOME_YEARS_AGO
 from main.models import Review, Player, Game, Rec, Label, LABEL_MECHANIC
 
 logger = logging.getLogger(__name__)
@@ -118,11 +116,11 @@ def predict_player(
         game = Game.objects.get(id=game_id)
         # skip if cannot buy (only RSA)
         if player.is_rsa() and not game.shop_available or not game.shop_price:
-                continue
+            continue
         # always skip if game is more than some years old
         if game.year <= SOME_YEARS_AGO:
             continue
-        rec = Rec.objects.create(
+        Rec.objects.create(
             game=game,
             player=player,
             predicted=val,
@@ -186,16 +184,16 @@ def train_sim_model():
 
     logger.info('Updating games...')
     today = now()
-    for ix, game in enumerate(games):
-        scores = list(enumerate(cos_sim_mtx[ix]))
+    for game_ix, game in enumerate(games):
+        scores = list(enumerate(cos_sim_mtx[game_ix]))
         scores_sorted = sorted(scores, key=itemgetter(1), reverse=True)
         sim_games = []
-        for ix, score in scores_sorted:
+        for score_ix, score in scores_sorted:
             if len(sim_games) >= 3 and score < avg_at_co:
                 break
             if len(sim_games) >= 9:
                 break
-            sim_game = games[ix]
+            sim_game = games[score_ix]
             if sim_game == game:
                 continue
             if sim_game.year > SOME_YEARS_AGO:
@@ -203,8 +201,3 @@ def train_sim_model():
         game.similars.set(sim_games)
         game.sim_at = today
         game.save()
-
-
-@retry(OperationalError, delay=3, jitter=3, max_delay=30)
-def similar_mechanics(game: Game):
-    algo = get_sim_algo()
