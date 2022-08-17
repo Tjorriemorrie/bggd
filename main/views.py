@@ -18,7 +18,7 @@ from pytube import Search
 from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, \
     WEIGHTS_CUTOFF, SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
-    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF, IGNORE_FAMILIES
+    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF, IGNORE_FAMILIES, SOME_YEARS_AGO
 from main.models import Game, Player, Review, Day, Award, \
     AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
@@ -240,8 +240,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     search_by = 'nick'
     queryset = Player.objects.filter(
         reviews_cnt__gte=3,
-        last_review_at__gt=(now() - timedelta(days=365))
-    )
+        last_review_at__year__gt=SOME_YEARS_AGO)
 
     def get_context_data(self, *args, object_list=None, **kwargs):
         ctx = super().get_context_data(*args, object_list=object_list, **kwargs)
@@ -253,6 +252,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
         #         last_day=Max('reviewed_at')
         #     ).order_by('player').values_list('last_day', flat=True)
 
+        ctx['some_years_ago'] = SOME_YEARS_AGO
         return ctx
 
 

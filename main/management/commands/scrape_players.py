@@ -104,6 +104,7 @@ class Command(BaseCommand):
                 all_skipped = False
                 self._check_watch()
             if all_skipped:
+                logger.info('All skipped! No more recent updates on reviews.')
                 break
             # next batch
             start_at += 1_000
