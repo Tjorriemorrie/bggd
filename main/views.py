@@ -6,7 +6,7 @@ from operator import attrgetter
 
 import pandas as pd
 import plotly.express as px
-from django.db.models import Q, Count, F, Sum, Avg
+from django.db.models import Q, Count, F, Sum, Avg, QuerySet
 from django.db.models.functions import TruncMonth, Least
 from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
@@ -237,10 +237,15 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     model = Player
     paginate_by = 100
     ordering = '-last_review_at'
+    queryset = Player.objects.filter(reviews_cnt__gte=3)
     search_by = 'nick'
-    queryset = Player.objects.filter(
-        reviews_cnt__gte=3,
-        last_review_at__year__gt=SOME_YEARS_AGO)
+
+    def get_queryset(self) -> QuerySet:
+        qs = super().get_queryset()
+        search = self.request.GET.get('s')
+        if not search:
+            qs = qs.filter(last_review_at__year__gt=SOME_YEARS_AGO)
+        return qs
 
     def get_context_data(self, *args, object_list=None, **kwargs):
         ctx = super().get_context_data(*args, object_list=object_list, **kwargs)
@@ -251,6 +256,8 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
         #     days = Review.objects.values('player').annotate(
         #         last_day=Max('reviewed_at')
         #     ).order_by('player').values_list('last_day', flat=True)
+
+        ctx['os'] = Player.objects.filter(last_review_at__isnull=True).count()
 
         ctx['some_years_ago'] = SOME_YEARS_AGO
         return ctx
