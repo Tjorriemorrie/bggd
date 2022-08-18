@@ -167,7 +167,13 @@ def run_command(ctx, cmd):
 @task
 def tail_log(ctx):
     conn = get_conn()
-    conn.run(f'tail -1000f {dir}/logs/default.log')
+    conn.run(f'tail -100f {dir}/logs/default.log')
+
+
+@task
+def cat_log(ctx, cmd):
+    conn = get_conn()
+    conn.run(f'cat {dir}/logs/default.log | tail -n{cmd}', echo=True)
 
 
 @task

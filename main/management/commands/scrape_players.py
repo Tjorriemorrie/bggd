@@ -1,5 +1,5 @@
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import time
 from typing import List
 
@@ -89,12 +89,15 @@ class Command(BaseCommand):
             for review in reviews:
                 if review.player.id in players_done:
                     continue
+                # allow 1 day for rating to be changed again
+                # review always updates after player prediction is done
+                # thus keep the 1 day buffer to prevent duplication
+                if review.player.rec_at > (review.updated_at - timedelta(days=1)):
+                # if review.player.rec_at > review.updated_at:
+                    logger.debug('skipping as player already updated')
+                    continue
                 logger.debug(f'player recomme at {review.player.rec_at}')
                 logger.debug(f'review updated at {review.updated_at}')
-                # if review.player.rec_at > (review.updated_at - timedelta(days=1)):
-                if review.player.rec_at > review.updated_at:
-                    logger.debug('skipping as player already updated')
-                    break
                 logger.debug('updating player with newer reviews')
                 predict_player(review.player, game_ids)
                 players_done.add(review.player.id)

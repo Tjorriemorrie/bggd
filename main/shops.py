@@ -80,7 +80,7 @@ def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
     else:
         assert all(sg.shop.name == SHOP_RARU for sg in shopgames)
     for ix, shopgame in enumerate(shopgames):
-        logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+        # logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
         if shopgame.mia:
             continue
 
@@ -110,7 +110,7 @@ def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
                     'price': data['price'],
                 }
             )
-            logger.info(f'New Price! {new_price}')
+            logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
         # update shopgame stats
         update_shopgame_stats(shopgame)
@@ -213,7 +213,7 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
     else:
         assert all(sg.shop.name == SHOP_MEEPS_AND_VEEPS for sg in shopgames)
     for ix, shopgame in enumerate(shopgames):
-        logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+        # logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
 
         # still scrape games with 0 price (do not use MIA)
         if not shopgame.url:
@@ -245,7 +245,7 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
                     'price': data['price'],
                 }
             )
-            logger.info(f'New Price! {new_price}')
+            logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
         # update shopgame stats
         update_shopgame_stats(shopgame)
@@ -277,7 +277,7 @@ def scrape_timeless(shopgames: List[ShopGame] = None, fail_fast: bool = False):
     else:
         assert all(sg.shop.name == SHOP_TIMELESS for sg in shopgames)
     for ix, shopgame in enumerate(shopgames):
-        logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+        # logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
 
         # still scrape games with 0 price (do not use MIA)
         if not shopgame.url:
@@ -309,7 +309,7 @@ def scrape_timeless(shopgames: List[ShopGame] = None, fail_fast: bool = False):
                     'price': data['price'],
                 }
             )
-            logger.info(f'New Price! {new_price}')
+            logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
         # update shopgame stats
         update_shopgame_stats(shopgame)
@@ -343,7 +343,7 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
     else:
         assert all(sg.shop.name == SHOP_GEEKHOME for sg in shopgames)
     for ix, shopgame in enumerate(shopgames):
-        logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+        # logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
 
         # still scrape games with 0 price (do not use MIA)
         if not shopgame.url:
@@ -375,7 +375,7 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
                     'price': data['price'],
                 }
             )
-            logger.info(f'New Price! {new_price}')
+            logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
         # update shopgame stats
         update_shopgame_stats(shopgame)
