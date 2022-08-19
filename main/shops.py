@@ -125,7 +125,7 @@ def scrape_raru_game(url: str) -> dict:
     availability = html.find('div', class_='avail').text
     if availability in ['Out of Stock'] or availability.startswith('Unreleased'):
         status = STOCK_OUT
-    elif availability in ['In Stock', 'Dispatched in 30 to 45 working days', 'Dispatched in 25 to 30 working days', 'Dispatched in 20 to 30 working days', 'Dispatched in 10 to 15 working days', 'Dispatched in 10 to 20 working days', 'Dispatched in 7 to 10 working days', 'Dispatched in 5 to 7 working days']:
+    elif availability in ['In Stock', 'Dispatched in 30 to 45 working days', 'Dispatched in 25 to 30 working days', 'Dispatched in 20 to 30 working days', 'Dispatched in 15 to 20 working days', 'Dispatched in 10 to 15 working days', 'Dispatched in 10 to 20 working days', 'Dispatched in 7 to 10 working days', 'Dispatched in 5 to 7 working days']:
         status = STOCK_IN
     else:
         raise NotImplementedError(f'Not sure what is: {availability}')
