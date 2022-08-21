@@ -5,7 +5,9 @@ from typing import List
 
 import pandas as pd
 from bs4 import BeautifulSoup
+from django.utils.timezone import now
 from pandas import DataFrame
+from requests import HTTPError
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT, \
     SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME
@@ -353,6 +355,13 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
         try:
             data = scrape_geekhome_game(shopgame.url)
         except Exception as exc:
+            if str(exc).startswith('404'):
+                logger.info(f'Game removed from store: {shopgame}')
+                shopgame.url = None
+                shopgame.url_at = now()
+                shopgame.mia = True
+                shopgame.save()
+                continue
             logger.exception(f'Could not scrape {shopgame.url}')
             if fail_fast:
                 raise
