@@ -25,8 +25,14 @@ PLAYERS_SIZES = (1, 2, 3, 4, 5, 6)
 REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 
 # memory limits
-REC_MIN_CUTOFF = 10  # 30, even 15, is too far, gave ark nova and brass :(
-REC_MAX_CUTOFF = 200  # 300 made no diff
+# 10/200 gives 1-cloudspire 2-paxren
+# 11/180 1-nemesis 2-bloodborne 9-cloudspire
+# 9/220 1-onmars 2-trickerion 4-bloodborne
+# 12/240 1-cloudspire 2-paxren 7-onmars
+# 10/190 1-imperiumclassics 2-swarmada 9-trickerion
+# 11/250 1-root 2-TI4 4-paxren
+REC_MIN_CUTOFF = 11  # 30, even 15, is too far, gave ark nova and brass :(
+REC_MAX_CUTOFF = 210  # 300 made no diff
 
 STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'

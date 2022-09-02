@@ -257,8 +257,6 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
         #         last_day=Max('reviewed_at')
         #     ).order_by('player').values_list('last_day', flat=True)
 
-        ctx['os'] = Player.objects.filter(last_review_at__isnull=True).count()
-
         ctx['some_years_ago'] = SOME_YEARS_AGO
         return ctx
 

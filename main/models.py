@@ -150,24 +150,6 @@ class Game(models.Model):
             elif self.min_players <= cnt <= self.max_players:
                 cnts.append(f'<small class="text-muted">{cnt}</small>')
         return mark_safe('&nbsp;'.join(cnts))
-        # if self.rec_min_players:
-        #     rec = f'{self.rec_min_players}'
-        #     if self.rec_max_players > self.rec_min_players:
-        #         rec += f' - {self.rec_max_players}'
-        # elif self.min_players:
-        #     rec = f'{self.min_players}'
-        #     if self.max_players > self.min_players:
-        #         rec += f' - {self.max_players}'
-        # else:
-        #     rec = ''
-        # if self.best_min_players:
-        #     best = f'{self.best_min_players}'
-        #     if self.best_max_players > self.best_min_players:
-        #         best += f' - {self.best_max_players}'
-        #     best = f' (best {best})'
-        # else:
-        #     best = ''
-        # return rec + best
 
     def age_fmt(self) -> str:
         if self.rec_min_age:
@@ -206,7 +188,7 @@ class Player(models.Model):
     # updated in predict (joined with scrape)
     reviews_cnt = models.IntegerField(null=True)
     reviews_scr = models.FloatField(null=True)
-    last_review_at = models.DateTimeField(null=True, blank=True)
+    last_review_at = models.DateTimeField(db_index=True, null=True, blank=True)
     rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
 
     # reschedule prediction for cron pickup

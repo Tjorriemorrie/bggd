@@ -7,7 +7,6 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from django.utils.timezone import now
 from pandas import DataFrame
-from requests import HTTPError
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT, \
     SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME
@@ -74,7 +73,7 @@ def aggregate_game_shops(game: Game):
 
 
 def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
-    logger.info('Scraping Raru')
+    logger.info(f'Scraping {SHOP_RARU}')
     day = Day.get_today()
     shop = Shop.objects.get(name=SHOP_RARU)
     if not shopgames:
@@ -117,7 +116,7 @@ def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
         # update shopgame stats
         update_shopgame_stats(shopgame)
 
-    logger.info('Finished scraping Raru')
+    logger.info(f'Finished scraping {SHOP_RARU}')
 
 
 def scrape_raru_game(url: str) -> dict:
@@ -125,7 +124,7 @@ def scrape_raru_game(url: str) -> dict:
     html = BeautifulSoup(res.text, 'html.parser')
 
     availability = html.find('div', class_='avail').text
-    if availability in ['Out of Stock'] or availability.startswith('Unreleased'):
+    if availability in ['Out of Stock', 'Not available'] or availability.startswith('Unreleased'):
         status = STOCK_OUT
     elif availability in ['In Stock', 'Dispatched in 30 to 45 working days', 'Dispatched in 25 to 30 working days', 'Dispatched in 20 to 30 working days', 'Dispatched in 15 to 20 working days', 'Dispatched in 10 to 15 working days', 'Dispatched in 10 to 20 working days', 'Dispatched in 7 to 10 working days', 'Dispatched in 5 to 7 working days']:
         status = STOCK_IN
@@ -143,7 +142,7 @@ def scrape_raru_game(url: str) -> dict:
 
 
 def scrape_takealot(shopgames: List[ShopGame] = None, fail_fast: bool = False):
-    logger.info('Scraping Takealot')
+    logger.info(f'Scraping {SHOP_TAKEALOT}')
     day = Day.get_today()
     shop = Shop.objects.get(name=SHOP_TAKEALOT)
     if not shopgames:
@@ -180,7 +179,7 @@ def scrape_takealot(shopgames: List[ShopGame] = None, fail_fast: bool = False):
         # update shopgame stats
         update_shopgame_stats(shopgame)
 
-    logger.info('Finished scraping Raru')
+    logger.info(f'Finished scraping {SHOP_TAKEALOT}')
 
 
 def scrape_takealot_game(url: str) -> dict:
@@ -252,7 +251,7 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
         # update shopgame stats
         update_shopgame_stats(shopgame)
 
-    logger.info('Finished scraping MaV')
+    logger.info(f'Finished scraping {SHOP_MEEPS_AND_VEEPS}')
 
 
 def scrape_meeps_and_veeps_game(url: str) -> dict:
@@ -316,7 +315,7 @@ def scrape_timeless(shopgames: List[ShopGame] = None, fail_fast: bool = False):
         # update shopgame stats
         update_shopgame_stats(shopgame)
 
-    logger.info('Finished scraping MaV')
+    logger.info(f'Finished scraping {SHOP_TIMELESS}')
 
 
 def scrape_timeless_game(url: str) -> dict:
@@ -389,7 +388,7 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
         # update shopgame stats
         update_shopgame_stats(shopgame)
 
-    logger.info('Finished scraping Geekhome')
+    logger.info(f'Finished scraping {SHOP_GEEKHOME}')
 
 
 def scrape_geekhome_game(url: str) -> dict:
