@@ -24,15 +24,25 @@ WEIGHTS_CUTOFF = [15, 38, 62, 85]
 PLAYERS_SIZES = (1, 2, 3, 4, 5, 6)
 REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 
-# memory limits
+# aug 2022
 # 10/200 gives 1-cloudspire 2-paxren
 # 11/180 1-nemesis 2-bloodborne 9-cloudspire
 # 9/220 1-onmars 2-trickerion 4-bloodborne
 # 12/240 1-cloudspire 2-paxren 7-onmars
 # 10/190 1-imperiumclassics 2-swarmada 9-trickerion
 # 11/250 1-root 2-TI4 4-paxren
-REC_MIN_CUTOFF = 11  # 30, even 15, is too far, gave ark nova and brass :(
-REC_MAX_CUTOFF = 210  # 300 made no diff
+
+# sep 2022
+# 11/210: 1-impstr 2-nemlck 3-ankh 4-unmatched
+# 10/200: 1-nemlck 2-trckrn 3-neme 4-swarmd (no ankh - no unmatched)
+# 10/210: 1-ti4 2-impstrg 3-pan0 4-nemesis 9-nemlck
+# 10/220: 1-swr 2-nemlck 3-pax 4-clnkleg 6-ti4 9-nem 10-unmat
+# 12/200: 1-trckrn 2-impstrg 3-ankh 4-ti4 5-nemesis 6-root 7-cldspr
+# 12/220: 1-kmtbs 2-ti4 3-gallerist 4-nmslck 6-cldspr 10-ankh
+
+# memory limits
+REC_MIN_CUTOFF = 10
+REC_MAX_CUTOFF = 220
 
 STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'

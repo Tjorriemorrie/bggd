@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Scrape bgg player data'
-    timeout = 60 * 60 * 1
+    timeout = 60 * 60 * 2
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -39,7 +39,7 @@ class Command(BaseCommand):
         self.prefix = f'[{self.count}/{int(exp)}]'
 
     def _scrape_new_players(self):
-        """scrape brand new players details"""
+        """scrape brand-new players details"""
         logger.info(''.join(['='] * 40) + ' scraping new players ' + ''.join(['='] * 40))
         players = Player.objects.filter(
             scraped_at__isnull=True).order_by(

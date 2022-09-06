@@ -17,16 +17,18 @@ class Command(BaseCommand):
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _main(self, *args, **options):
+        one_day_ago = now() - timedelta(hours=30)
         days_ago = 7
         total_game_cnt = Game.objects.count()
         daily_cut = total_game_cnt // days_ago
 
-        logger.info(''.join(['='] * 99))
-        logger.info('Updating top 10 hotness for home page...')
-        games = Game.objects.order_by('-hotness').all()[:10]
-        for ix, game in enumerate(games):
-            logger.info(f'Progress {ix}/{len(games)}')
-            scrape_game(game)
+        # logger.info(''.join(['='] * 99))
+        # logger.info('Updating top 10 hotness for home page...')
+        # games = Game.objects.order_by('-hotness').all()[:10]
+        # for ix, game in enumerate(games):
+        #     logger.info(f'Progress {ix}/{len(games)}')
+        #     if game.updated_at < one_day_ago:
+        #         scrape_game(game)
 
         logger.info(''.join(['='] * 99))
         logger.info('Updating already scraped games...')
