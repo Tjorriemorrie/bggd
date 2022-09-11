@@ -82,6 +82,7 @@ class Command(BaseCommand):
         logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
         start_at = 0
         players_done = set()
+        skipped_pages = 0
         while True:
             all_skipped = True
             reviews = Review.objects.prefetch_related('player').order_by(
@@ -107,6 +108,8 @@ class Command(BaseCommand):
                 all_skipped = False
                 self._check_watch()
             if all_skipped:
+                skipped_pages += 1
+            if skipped_pages >= 10:
                 logger.info('All skipped! No more recent updates on reviews.')
                 break
             # next batch
@@ -168,15 +171,6 @@ class Command(BaseCommand):
 
         # with remaining time
         self._upkeep(game_ids)
-
-        # how many on that old timestamp left??
-        old_date = datetime(2021, 9, 18)
-        players_count = Player.objects.annotate(
-            oldest_date=Least('scraped_at', 'rec_at')
-        ).filter(
-            oldest_date__lt=old_date
-        ).count()
-        logger.info(f'Still at initial date: {players_count}')
 
     def handle(self, *args, **options):
         try:

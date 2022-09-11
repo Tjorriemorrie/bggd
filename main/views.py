@@ -350,14 +350,14 @@ class ReviewView(CachedTemplateViewGet):
         data['graph_rating'] = fig_rating.to_html(full_html=False)
 
         # graph of daily ratings
-        days = Day.objects.order_by('-day').all()[:30]
+        days = Day.objects.order_by('-day').all()[:90]
         data_day = [
             {'Date': d.day, 'Ratings': d.reviews_cnt}
             for d in days]
         df = pd.DataFrame(data_day)
         fig_day = px.bar(
             df, x="Date", y="Ratings", labels={'Ratings': '# of ratings'},
-            title='Ratings past ~month')
+            title='Ratings past quarter')
         data['graph_day'] = fig_day.to_html(full_html=False)
 
         reviews_cnts = Player.objects.filter(
