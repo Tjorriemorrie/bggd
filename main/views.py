@@ -6,7 +6,7 @@ from operator import attrgetter
 
 import pandas as pd
 import plotly.express as px
-from django.db.models import Q, Count, F, Sum, Avg, QuerySet
+from django.db.models import Q, Count, F, Sum, Avg, QuerySet, Min
 from django.db.models.functions import TruncMonth, Least
 from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
@@ -94,10 +94,10 @@ class AboutView(CachedTemplateViewGet):
 
     def get_context_data(self, **kwargs):
         # player updated
-        oldest_player = Player.objects.annotate(
-            oldest_date=Least('scraped_at', 'rec_at')
-        ).filter(oldest_date__isnull=False).order_by('oldest_date').first()
-        player_turnover = (now() - oldest_player.oldest_date).days
+        oldest_rec = Player.objects.aggregate(
+            Min('rec_at')
+        )['rec_at__min']
+        player_turnover = (now() - oldest_rec).days
 
         # game added
         one_month = now() - timedelta(days=30)

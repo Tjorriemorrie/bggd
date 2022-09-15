@@ -109,6 +109,7 @@ class Command(BaseCommand):
                 self._check_watch()
             if all_skipped:
                 skipped_pages += 1
+                logger.info(f'Skipped {skipped_pages}/10')
             if skipped_pages >= 10:
                 logger.info('All skipped! No more recent updates on reviews.')
                 break

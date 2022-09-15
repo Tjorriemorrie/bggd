@@ -56,7 +56,7 @@ def get(url: str, headers: dict = None) -> requests.Response:
     except Exception as exc:
         logger.warning(f'Connection error! {exc}')
         raise RequestsError() from exc
-    if res.status_code == 429:
+    if res.status_code in [429, 430]:
         logger.warning(f'Too many requests! {url}')
         raise TooManyRequestsError()
     elif res.status_code >= 500:
@@ -87,13 +87,19 @@ def scrape_rankings() -> List[Game]:
             id_matches = id_pattern.search(url)
             name_year = tds[2].find_all('div')[1].text.strip()
             name_matches = name_pattern.search(name_year)
+            try:
+                name = name_matches.group(1)
+                year = int(name_matches.group(2))
+            except AttributeError:
+                logger.error(f'Could not scrape: {name_year}')
+                continue
             game, created = Game.objects.update_or_create(
                 bgg_id=id_matches.group(1),
                 defaults={
                     'rank': int(rank),
                     'url': url,
-                    'name': name_matches.group(1),
-                    'year': int(name_matches.group(2)),
+                    'name': name,
+                    'year': year,
                 })
             logger.info(f'{created and "Created" or "Updated"} {game}')
             games.append(game)
