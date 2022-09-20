@@ -87,34 +87,32 @@ class Command(BaseCommand):
             all_skipped = True
             reviews = Review.objects.prefetch_related('player').order_by(
                 '-updated_at').all()[start_at:(start_at + 1_000)]
-            for review in reviews:
+            for ix, review in enumerate(reviews):
                 if review.player.id in players_done:
+                    logger.info(f'{self.prefix} {ix}/1000: already scraped player {review.player}')
                     continue
                 # allow 1 day for rating to be changed again
                 # review always updates after player prediction is done
-                # thus keep the 1 day buffer to prevent duplication
+                # thus keep the 1-day buffer to prevent reprocessing
                 if review.player.rec_at > (review.updated_at - timedelta(days=1)):
-                # if review.player.rec_at > review.updated_at:
-                    logger.debug('skipping as player already updated')
+                    logger.info(f'{self.prefix} {ix}/1000: recently scraped player {review.player} rec at {review.player.rec_at:%y-%m-%d} after review at {review.updated_at:%y-%m-%d}')
+                    players_done.add(review.player.id)
                     continue
-                logger.debug(f'player recomme at {review.player.rec_at}')
-                logger.debug(f'review updated at {review.updated_at}')
-                logger.debug('updating player with newer reviews')
                 predict_player(review.player, game_ids)
                 players_done.add(review.player.id)
-                logger.info(f'{self.prefix} Recommendations for changed {review.player}')
+                logger.info(f'{self.prefix} {ix}/1000: Recommendations for changed {review.player}')
                 # update game days (updated from player's reviews)
                 update_gamedays(review.player)
                 all_skipped = False
                 self._check_watch()
             if all_skipped:
                 skipped_pages += 1
-                logger.info(f'Skipped {skipped_pages}/10')
             if skipped_pages >= 10:
                 logger.info('All skipped! No more recent updates on reviews.')
                 break
             # next batch
             start_at += 1_000
+            logger.info(f'Start_at {start_at} Skipped {skipped_pages}/10')
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""
