@@ -190,6 +190,7 @@ class Player(models.Model):
     reviews_scr = models.FloatField(null=True)
     last_review_at = models.DateTimeField(db_index=True, null=True, blank=True)
     rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
+    is_outdated = models.BooleanField(db_index=True, default=False)
 
     # reschedule prediction for cron pickup
     redo_requested_at = models.DateTimeField(null=True, blank=True)
@@ -353,9 +354,6 @@ class Rec(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        unique_together = ('player', 'weight_tag', 'best_players')
 
     def __str__(self) -> str:
         return f'<Rec {self.weight_tag} {self.best_players} {self.game.name} -> {self.player.nick}>'

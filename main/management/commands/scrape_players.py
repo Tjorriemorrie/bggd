@@ -1,17 +1,16 @@
 import logging
-from datetime import datetime, timedelta
 from time import time
 from typing import List
 
 from django.core.management import BaseCommand
 from django.db import OperationalError
-from django.db.models.functions import Least
+from django.db.models import Max, F, Q
 from django.utils.timezone import now
 from retry import retry
 
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError, \
     PlayerRatingUsernameNotFoundError
-from main.models import Player, Game, Review
+from main.models import Player, Game
 from main.recommendations import predict_player
 from main.scraper import scrape_player, scrape_player_ratings
 from main.stats import update_gamedays
@@ -80,39 +79,17 @@ class Command(BaseCommand):
     def _predict_changed_players(self, game_ids: List[int]):
         """update player predictions who have made a new rating"""
         logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
-        start_at = 0
-        players_done = set()
-        skipped_pages = 0
-        while True:
-            all_skipped = True
-            reviews = Review.objects.prefetch_related('player').order_by(
-                '-updated_at').all()[start_at:(start_at + 1_000)]
-            for ix, review in enumerate(reviews):
-                if review.player.id in players_done:
-                    logger.info(f'{self.prefix} {ix}/1000: already scraped player {review.player}')
-                    continue
-                # allow 1 day for rating to be changed again
-                # review always updates after player prediction is done
-                # thus keep the 1-day buffer to prevent reprocessing
-                if review.player.rec_at > (review.updated_at - timedelta(days=1)):
-                    logger.info(f'{self.prefix} {ix}/1000: recently scraped player {review.player} rec at {review.player.rec_at:%y-%m-%d} after review at {review.updated_at:%y-%m-%d}')
-                    players_done.add(review.player.id)
-                    continue
-                predict_player(review.player, game_ids)
-                players_done.add(review.player.id)
-                logger.info(f'{self.prefix} {ix}/1000: Recommendations for changed {review.player}')
-                # update game days (updated from player's reviews)
-                update_gamedays(review.player)
-                all_skipped = False
+        players = Player.objects.prefetch_related('reviews').filter(
+            is_outdated=True).all()[:1_000]
+        while players:
+            for player in players:
                 self._check_watch()
-            if all_skipped:
-                skipped_pages += 1
-            if skipped_pages >= 10:
-                logger.info('All skipped! No more recent updates on reviews.')
-                break
-            # next batch
-            start_at += 1_000
-            logger.info(f'Start_at {start_at} Skipped {skipped_pages}/10')
+                predict_player(player, game_ids)
+                logger.info(f'{self.prefix} Recommendations for changed {player}')
+                # update game days (updated from player's reviews)
+                update_gamedays(player)
+                players = Player.objects.prefetch_related('reviews').filter(
+                    is_outdated=True).all()[:1_000]
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""

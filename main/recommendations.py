@@ -87,6 +87,7 @@ def predict_player(
     player.last_review_at = max([r.reviewed_at for r in reviews]) if reviews else None
     player.rec_at = now()
     player.reviews_scr = None
+    player.is_outdated = False
 
     # clear player recs, to remove games out of stock in spots not getting replaced.
     Rec.objects.filter(player=player).delete()

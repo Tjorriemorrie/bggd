@@ -268,6 +268,10 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
         created = True
         review.save()
 
+    if created and not player.is_outdated:
+        player.is_outdated = True
+        player.save()
+
     return review, created
 
 
