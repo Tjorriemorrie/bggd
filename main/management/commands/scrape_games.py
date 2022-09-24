@@ -18,7 +18,7 @@ class Command(BaseCommand):
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _main(self, *args, **options):
         one_day_ago = now() - timedelta(hours=30)
-        days_ago = 10
+        days_ago = 12
         total_game_cnt = Game.objects.count()
         daily_cut = total_game_cnt // days_ago
 
