@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Scrape bgg player data'
-    timeout = 60 * 60 * 2
+    timeout = 60 * 60 * 3
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,7 +80,7 @@ class Command(BaseCommand):
         """update player predictions who have made a new rating"""
         logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
         players = Player.objects.prefetch_related('reviews').filter(
-            is_outdated=True).all()[:1_000]
+            is_outdated=True).order_by('rec_at').all()[:1_000]
         while players:
             for player in players:
                 self._check_watch()
@@ -89,7 +89,7 @@ class Command(BaseCommand):
                 # update game days (updated from player's reviews)
                 update_gamedays(player)
                 players = Player.objects.prefetch_related('reviews').filter(
-                    is_outdated=True).all()[:1_000]
+                    is_outdated=True).order_by('rec_at').all()[:1_000]
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""

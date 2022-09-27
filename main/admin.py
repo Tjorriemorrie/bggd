@@ -78,7 +78,9 @@ class ReviewAdmin(admin.ModelAdmin):
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nick', 'reviews_cnt', 'name', 'scraped_at', 'rec_at')
+    list_display = ('id', 'nick', 'reviews_cnt', 'name', 'scraped_at', 'rec_at', 'is_outdated')
+    list_filter = ['is_outdated']
+    ordering = ['rec_at']
     search_fields = ('nick',)
     exclude = ('reviews_cnt', 'reviews_scr')
     actions = (scrape_player_cmd, predict_player_cmd)
@@ -158,7 +160,7 @@ class ShopGameRaru(Game):
 @admin.register(ShopGameRaru)
 class ShopGameRaruAdmin(admin.ModelAdmin):
     list_display = ('raru', 'title', 'year', 'hotness_fmt')
-    ordering = ('hotness', 'year')
+    ordering = ('year', 'hotness')
 
     def get_queryset(self, request):
         return Game.objects.exclude(shopgames__shop__name=SHOP_RARU)
@@ -231,7 +233,7 @@ class ShopGameTimeless(Game):
 @admin.register(ShopGameTimeless)
 class ShopGameTimelessAdmin(admin.ModelAdmin):
     list_display = ('timeless', 'title', 'year', 'hotness_fmt')
-    ordering = ('hotness', 'year')
+    ordering = ('year', 'hotness')
 
     def get_queryset(self, request):
         return Game.objects.exclude(shopgames__shop__name=SHOP_TIMELESS)
