@@ -78,8 +78,7 @@ class ReviewAdmin(admin.ModelAdmin):
 
 @admin.register(Player)
 class PlayerAdmin(admin.ModelAdmin):
-    list_display = ('id', 'nick', 'reviews_cnt', 'name', 'scraped_at', 'rec_at', 'is_outdated')
-    list_filter = ['is_outdated']
+    list_display = ('id', 'nick', 'reviews_cnt', 'name', 'scraped_at', 'rec_at', 'last_review_at')
     ordering = ['rec_at']
     search_fields = ('nick',)
     exclude = ('reviews_cnt', 'reviews_scr')

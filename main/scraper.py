@@ -260,6 +260,10 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
         Review.objects.filter(game=game, player=player).delete()
         return parse_game_review(game, item)
 
+    if created and not player.is_outdated:
+        player.is_outdated = True
+        player.save()
+
     # update existing review if different review tstamp or rating
     if review.reviewed_at != reviewed_at or review.rating != item['rating']:
         logger.info(f'{review} rating changed from {review.rating} to {item["rating"]}')
@@ -267,10 +271,6 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
         review.rating = item['rating']
         created = True
         review.save()
-
-    if created and not player.is_outdated:
-        player.is_outdated = True
-        player.save()
 
     return review, created
 
