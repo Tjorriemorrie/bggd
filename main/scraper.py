@@ -15,6 +15,7 @@ from retry import retry
 from main.errors import PlayerScrapeError, PlayerRatingUsernameNotFoundError
 from main.models import Game, Label, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
+from main.stats import outdate_gameday_by_review
 
 logger = logging.getLogger(__name__)
 
@@ -260,9 +261,14 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
         Review.objects.filter(game=game, player=player).delete()
         return parse_game_review(game, item)
 
-    if created and not player.is_outdated:
+    # mark player as changed only for new reviews, not changes (as below)
+    # allows changed players to pick this up
+    if created:
+        player.last_review_at = now()
         player.is_outdated = True
         player.save()
+        # outdate gameday
+        outdate_gameday_by_review(review)
 
     # update existing review if different review tstamp or rating
     if review.reviewed_at != reviewed_at or review.rating != item['rating']:

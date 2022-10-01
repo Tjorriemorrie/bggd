@@ -234,7 +234,8 @@ class Day(models.Model):
     reviews_cnt = models.IntegerField()
     reviews_avg = models.FloatField()
     last_review_id = models.IntegerField()
-    last_review_update = models.DateTimeField()
+    last_review_at = models.DateTimeField()
+    is_outdated = models.BooleanField(db_index=True, default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -251,7 +252,7 @@ class Day(models.Model):
                 'reviews_cnt': 0,
                 'reviews_avg': 0,
                 'last_review_id': 0,
-                'last_review_update': now(),
+                'last_review_at': now(),
             }
         )
         return day
@@ -263,6 +264,7 @@ class GameDay(models.Model):
 
     reviews_cnt = models.IntegerField(db_index=True)
     reviews_avg = models.FloatField(db_index=True)
+    is_outdated = models.BooleanField(db_index=True, default=False)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

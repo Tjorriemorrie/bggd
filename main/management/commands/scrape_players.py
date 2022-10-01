@@ -13,7 +13,6 @@ from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeEr
 from main.models import Player, Game
 from main.recommendations import predict_player
 from main.scraper import scrape_player, scrape_player_ratings
-from main.stats import update_gamedays
 
 logger = logging.getLogger(__name__)
 
@@ -70,7 +69,7 @@ class Command(BaseCommand):
                 predict_player(player, game_ids)
                 logger.info(f'{self.prefix} Recommendations for new {player}')
                 # update game days (updated from player's reviews)
-                update_gamedays(player)
+                # update_gamedays(player)
             # renew while
             players = Player.objects.filter(
                 rec_at__isnull=True).order_by(
@@ -85,12 +84,15 @@ class Command(BaseCommand):
         while players:
             for player in players:
                 self._check_watch()
+                logger.info(f'{self.prefix} rev_at {player.last_review_at:%y-%m-%d %H:%M}')
+                logger.info(f'{self.prefix} rec_at {player.rec_at:%y-%m-%d %H:%M}')
                 predict_player(player, game_ids)
                 logger.info(f'{self.prefix} Recommendations for changed {player}')
                 # update game days (updated from player's reviews)
-                update_gamedays(player)
+                # update_gamedays(player)
                 players = Player.objects.prefetch_related('reviews').filter(
-                    is_outdated=True).order_by('rec_at').all()[:1_000]
+                    last_review_at__gt=F('rec_at')
+                ).order_by('rec_at').all()[:1_000]
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""
@@ -130,7 +132,7 @@ class Command(BaseCommand):
                 # update game days
                 # if it is not updated, then bad days with scraping errors will
                 # not get fixed, e.g. jul 2022 with very, very low rating counts.
-                update_gamedays(player)
+                # update_gamedays(player)
 
                 logger.info(f'{self.prefix} upkeeped {player} again after {days_since} days')
 

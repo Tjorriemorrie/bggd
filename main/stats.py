@@ -9,12 +9,63 @@ from django.utils.timezone import now
 from main.constants import START_GAME_OF_THE, WEIGHT_LIGHT, WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_VERY_LIGHT, \
     WEIGHT_VERY_HEAVY, WEIGHTS_CUTOFF
 from main.models import Player, GameDay, Day, Game, Award, AWARD_GAME_OF_THE_MONTH, \
-    AWARD_GAME_OF_THE_YEAR
+    AWARD_GAME_OF_THE_YEAR, Review
 
 logger = logging.getLogger(__name__)
 
 
-def update_gamedays(player: Player):
+def outdate_gameday_by_review(review: Review):
+    """Set gameday as outdated to aggregate later in bulk."""
+    if not review.gameday:
+        day, day_created = Day.objects.get_or_create(
+            day=review.day,
+            defaults={
+                'reviews_cnt': 1,
+                'reviews_avg': review.rating,
+                'last_review_id': review.pk,
+                'last_review_at': review.updated_at})
+        gameday, gameday_created = GameDay.objects.get_or_create(
+            game=review.game,
+            day=day,
+            defaults={
+                'reviews_cnt': 1,
+                'reviews_avg': review.rating})
+        review.gameday = gameday
+        review.save()
+    review.gameday.is_outdated = True
+    review.gameday.save()
+
+
+def update_gamedays():
+    """Update outdated gamedays and mark days as outdated."""
+    logger.info('Updating gamedays...')
+    gamedays = GameDay.objects.filter(is_outdated=True).all()
+    for gameday in gamedays:
+        gameday.reviews_cnt = gameday.reviews.count()
+        gameday.reviews_avg = gameday.reviews.aggregate(
+            avg_rating=Avg('rating'))['avg_rating']
+        gameday.is_outdated = False
+        gameday.save()
+        # mark day as outdated
+        gameday.day.is_outdated = True
+        gameday.day.save()
+        logger.info(f'Updated {gameday}')
+
+
+def update_days():
+    """Update outdated days."""
+    logger.info('Updating days...')
+    days = Day.objects.filter(is_outdated=True).all()
+    for day in days:
+        day.reviews_cnt = day.gamedays.aggregate(Sum('reviews_cnt'))['reviews_cnt__sum']
+        day.reviews_avg = day.gamedays.aggregate(Avg('reviews_avg'))['reviews_avg__avg']
+        day.is_outdated = False
+        day.save()
+        logger.info(f'Updated {day}')
+
+
+# DEPRECATED
+def update_gamedays_dep(player: Player):
     if player.reviews_scr is None:
         return
 
@@ -29,7 +80,7 @@ def update_gamedays(player: Player):
                 'reviews_cnt': 1,
                 'reviews_avg': review.rating,
                 'last_review_id': review.id,
-                'last_review_update': review.updated_at})
+                'last_review_at': review.updated_at})
         gameday, gameday_created = GameDay.objects.get_or_create(
             game=review.game,
             day=day,
@@ -44,7 +95,7 @@ def update_gamedays(player: Player):
             outdated_gamedays.add(gameday)
         if not day_created:
             day.last_review_id = review.id
-            day.last_review_update = review.updated_at
+            day.last_review_at = review.updated_at
             outdated_days.add(day)
 
     # update outdated game days
