@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Scrape bgg player data'
-    timeout = 60 * 60 * 3
+    timeout = 60 * 60 * 1
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -80,7 +80,7 @@ class Command(BaseCommand):
         logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
         players = Player.objects.prefetch_related('reviews').filter(
             last_review_at__gt=F('rec_at')
-        ).order_by('rec_at').all()[:1_000]
+        ).order_by('last_review_at').all()[:1_000]
         while players:
             for player in players:
                 self._check_watch()
