@@ -68,8 +68,6 @@ class Command(BaseCommand):
                 self._check_watch()
                 predict_player(player, game_ids)
                 logger.info(f'{self.prefix} Recommendations for new {player}')
-                # update game days (updated from player's reviews)
-                # update_gamedays(player)
             # renew while
             players = Player.objects.filter(
                 rec_at__isnull=True).order_by(
@@ -78,21 +76,21 @@ class Command(BaseCommand):
     def _predict_changed_players(self, game_ids: List[int]):
         """update player predictions who have made a new rating"""
         logger.info(''.join(['='] * 40) + ' predicting changed players ' + ''.join(['='] * 40))
+        count = Player.objects.filter(last_review_at__gt=F('rec_at')).count()
         players = Player.objects.prefetch_related('reviews').filter(
             last_review_at__gt=F('rec_at')
         ).order_by('last_review_at').all()[:1_000]
         while players:
             for player in players:
                 self._check_watch()
-                logger.info(f'{self.prefix} rev_at {player.last_review_at:%y-%m-%d %H:%M}')
-                logger.info(f'{self.prefix} rec_at {player.rec_at:%y-%m-%d %H:%M}')
+                logger.info(f'{count} rev_at {player.last_review_at:%y-%m-%d %H:%M}')
+                logger.info(f'{count} rec_at {player.rec_at:%y-%m-%d %H:%M}')
                 predict_player(player, game_ids)
                 logger.info(f'{self.prefix} Recommendations for changed {player}')
-                # update game days (updated from player's reviews)
-                # update_gamedays(player)
-                players = Player.objects.prefetch_related('reviews').filter(
-                    last_review_at__gt=F('rec_at')
-                ).order_by('rec_at').all()[:1_000]
+                count -= 1
+            players = Player.objects.prefetch_related('reviews').filter(
+                last_review_at__gt=F('rec_at')
+            ).order_by('rec_at').all()[:1_000]
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""
