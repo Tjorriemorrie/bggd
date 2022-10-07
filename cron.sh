@@ -11,11 +11,10 @@ function main() {
 
   ./manage.py update_game_stats
 
-  ./manage.py scrape_players
+  ./manage.py scrape_games
 
   while [ $SECONDS -lt $end ];
   do
-    ./manage.py scrape_games
     ./manage.py scrape_players
   done
 
