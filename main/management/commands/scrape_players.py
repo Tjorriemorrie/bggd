@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = 'Scrape bgg player data'
-    timeout = 60 * 60 * 1
+    timeout = 60 * 60 * 4
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -48,7 +48,7 @@ class Command(BaseCommand):
                 # update details
                 try:
                     scrape_player(player)
-                    logger.info(f'{self.prefix} Scraped details of {player}')
+                    logger.info(f'Scraped details of {player}')
                 except PlayerScrapeError:
                     player.delete()
                     logger.info(f'Deleted bad user {player}')
@@ -67,7 +67,7 @@ class Command(BaseCommand):
             for player in players:
                 self._check_watch()
                 predict_player(player, game_ids)
-                logger.info(f'{self.prefix} Recommendations for new {player}')
+                logger.info(f'Recommendations for new {player}')
             # renew while
             players = Player.objects.filter(
                 rec_at__isnull=True).order_by(
@@ -82,15 +82,14 @@ class Command(BaseCommand):
         ).order_by('last_review_at').all()[:1_000]
         while players:
             for player in players:
-                self._check_watch()
-                logger.info(f'{count} rev_at {player.last_review_at:%y-%m-%d %H:%M}')
-                logger.info(f'{count} rec_at {player.rec_at:%y-%m-%d %H:%M}')
+                logger.info(f'{count} rev_at {player.last_review_at:%y-%m-%d %H:%M:%S}')
+                logger.info(f'{count} rec_at {player.rec_at:%y-%m-%d %H:%M:%S}')
                 predict_player(player, game_ids)
-                logger.info(f'{self.prefix} Recommendations for changed {player}')
+                logger.info(f'{count} Recommendations for changed {player}')
                 count -= 1
             players = Player.objects.prefetch_related('reviews').filter(
                 last_review_at__gt=F('rec_at')
-            ).order_by('rec_at').all()[:1_000]
+            ).order_by('last_review_at').all()[:1_000]
 
     def _upkeep(self, game_ids: List[int]):
         """upkeep players for remaining time"""

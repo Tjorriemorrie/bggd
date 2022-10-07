@@ -3,6 +3,7 @@ from copy import copy
 from datetime import timedelta, datetime
 
 import numpy as np
+from django.db import IntegrityError
 from django.db.models import Sum, Avg, F, Q
 from django.utils.timezone import now
 
@@ -23,7 +24,7 @@ def outdate_gameday_by_review(review: Review):
                 'reviews_cnt': 1,
                 'reviews_avg': review.rating,
                 'last_review_id': review.pk,
-                'last_review_at': review.updated_at})
+                'last_review_at': review.reviewed_at})
         gameday, gameday_created = GameDay.objects.get_or_create(
             game=review.game,
             day=day,
@@ -45,7 +46,12 @@ def update_gamedays():
         gameday.reviews_avg = gameday.reviews.aggregate(
             avg_rating=Avg('rating'))['avg_rating']
         gameday.is_outdated = False
-        gameday.save()
+        try:
+            gameday.save()
+        except IntegrityError as exc:
+            logger.error(f'Deleting bad gameday {gameday.game} {gameday.day}: {exc}')
+            gameday.delete()
+            continue
         # mark day as outdated
         gameday.day.is_outdated = True
         gameday.day.save()
@@ -80,7 +86,7 @@ def update_gamedays_dep(player: Player):
                 'reviews_cnt': 1,
                 'reviews_avg': review.rating,
                 'last_review_id': review.id,
-                'last_review_at': review.updated_at})
+                'last_review_at': review.reviewed_at})
         gameday, gameday_created = GameDay.objects.get_or_create(
             game=review.game,
             day=day,
@@ -95,7 +101,7 @@ def update_gamedays_dep(player: Player):
             outdated_gamedays.add(gameday)
         if not day_created:
             day.last_review_id = review.id
-            day.last_review_at = review.updated_at
+            day.last_review_at = review.reviewed_at
             outdated_days.add(day)
 
     # update outdated game days
