@@ -8,6 +8,7 @@ import pandas as pd
 from django.db import OperationalError
 from django.utils.timezone import now
 from retry import retry
+from scipy import stats
 from sklearn.metrics.pairwise import cosine_similarity
 from sortedcontainers import SortedDict, SortedList
 from surprise import Reader, Dataset, SVD, AlgoBase, dump
@@ -135,8 +136,9 @@ def predict_player(
     # score player
     ratings = SortedList([r.rating for r in reviews])
     spaces = np.linspace(1, 10, num=len(ratings))
-    diffs = [9 - abs(r - s) for r, s in zip(ratings, spaces)]
-    player.reviews_scr = (sum(diffs) / (len(ratings) * 9)) * 10
+    slope, intercept, r_value, p_value, std_err = stats.linregress(spaces, ratings)
+    player.reviews_scr = slope * 10
+    logger.info(f'{player} reviews score: {player.reviews_scr}')
 
     player.save()
     return top_recs

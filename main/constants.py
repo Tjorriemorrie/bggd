@@ -41,8 +41,11 @@ REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 # 12/220: 1-kmtbs 2-ti4 3-gallerist 4-nmslck 6-cldspr 10-ankh
 
 # memory limits
-REC_MIN_CUTOFF = 10
+REC_MIN_CUTOFF = 11
 REC_MAX_CUTOFF = 220
+# 10 220
+# 10 200
+# 10 240
 
 STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'
