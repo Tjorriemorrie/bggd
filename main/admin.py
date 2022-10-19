@@ -1,13 +1,16 @@
+import logging
 import re
 from collections import defaultdict
 
 from django.contrib import admin
+from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db import OperationalError
-from django.db.models import F
+from django.db.models import F, QuerySet, Min
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from django.utils.html import format_html
 from django.utils.http import urlencode
+from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 from retry import retry
 
@@ -18,6 +21,9 @@ from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
 from main.shops import scrape_raru, scrape_timeless, scrape_meeps_and_veeps, scrape_geekhome
+
+
+logger = logging.getLogger(__name__)
 
 
 @admin.register(Label)
@@ -113,8 +119,9 @@ class ShopAdmin(admin.ModelAdmin):
 
 @admin.action(description='Scrape games shop')
 def scrape_games_shop_cmd(modeladmin, request, queryset):
+    logger.info('Admin cmd: scraping games shop')
     shops = defaultdict(list)
-    for shopgame in queryset.all():
+    for shopgame in queryset:
         shops[shopgame.shop.name].append(shopgame)
     for name, shopgames in shops.items():
         if name == SHOP_RARU:
@@ -161,6 +168,165 @@ class ShopGameAdmin(admin.ModelAdmin):
 
     def prices_cnt(self, obj: ShopGame) -> str:
         return f'{obj.prices.count()}'
+
+
+@admin.action(description='Mark shop games as updated')
+def shopgames_updated_at_cmd(modeladmin, request, queryset):
+    logger.info('Marking shopgames as updated')
+    games = set(g for g in queryset)
+    for game in games:
+        for shopgame in game.shopgames.all():
+            shopgame.updated_at = now()
+            shopgame.save()
+
+
+class ShopGameRenew(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Shop Renew'
+        verbose_name_plural = 'Shop Renews'
+
+
+@admin.register(ShopGameRenew)
+class ShopGameRenewAdmin(admin.ModelAdmin):
+    list_display = ['name', 'priority', 'mav_shop', 'raru_shop', 'tl_shop', 'gh_shop', 'oldest_updated_at']
+    actions = [shopgames_updated_at_cmd]
+
+    @admin.display(ordering=F('priority').asc(nulls_last=False))
+    def priority(self, game: Game) -> str:
+        return game.priority.days
+
+    @admin.display(ordering=F('oldest_updated_at').asc(nulls_last=False))
+    def oldest_updated_at(self, game: Game) -> str:
+        return f'{game.oldest_updated_at:%Y-%m-%d %H:%I}'
+
+    def get_queryset(self, request) -> QuerySet:
+        qs = self.model._default_manager.get_queryset()
+        qs = qs.filter(scraped_at__isnull=False)
+        qs = qs.annotate(oldest_updated_at=Min('shopgames__updated_at'))
+        qs = qs.annotate(priority=(now() - F('shopgames__updated_at')))
+        ordering = self.get_ordering(request)
+        if ordering:
+            qs = qs.order_by(*ordering)
+        return qs
+
+    @admin.display()
+    def mav_shop(self, game: Game) -> str:
+        mav = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
+
+        # search
+        name = game.name.replace(':', '').replace('?', ' ').replace(',', '').replace('!', ' ').replace('&', '')
+        mav_search = f'https://meepsandveeps.co.za/search?type=product&q={name}'
+        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': mav.id})
+
+        shopgame = ShopGame.objects.filter(game=game, shop=mav).first()
+        if not shopgame:
+            status = 'no shop'
+        elif shopgame.mia:
+            status = '<img src="/static/admin/img/icon-no.svg" alt="False">'
+        elif not shopgame.current_price:
+            status = 'no price'
+        else:
+            status = f'R{shopgame.current_price}'
+
+        return format_html(
+            f'<a href="{mav_search}" target="_blank">search</a><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={game.id}">add url</a><br/>'
+            f'{status}'
+            # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    @admin.display()
+    def raru_shop(self, game: Game) -> str:
+        raru = Shop.objects.get(name=SHOP_RARU)
+
+        # search
+        words = re.findall('(\w+)', game.name)
+        words.sort(key=len, reverse=True)
+        words = [w for w in words if w.lower() not in ['edition', 'board', 'game']]
+        words = [f"{w}'s" if f"{w}'s" in game.name else w for w in words if w != 's']
+        words = [f"{w}'t" if f"{w}'t" in game.name else w for w in words if w != 't']
+        raru_search = 'https://raru.co.za/boards-dice/search/' + '+'.join(words[:3])
+        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': game.id, 'shop_id': raru.id})
+
+        shopgame = ShopGame.objects.filter(game=game, shop=raru).first()
+        if not shopgame:
+            status = 'no shop'
+        elif shopgame.mia:
+            status = '<img src="/static/admin/img/icon-no.svg" alt="False">'
+        elif not shopgame.current_price:
+            status = 'no price'
+        else:
+            status = f'R{shopgame.current_price}'
+
+        return format_html(
+            f'<a href="{raru_search}" target="_blank">search</a><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={game.id}">add url</a><br/>'
+            f'{status}'
+            # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    @admin.display()
+    def tl_shop(self, game: Game) -> str:
+        tl = Shop.objects.get(name=SHOP_TIMELESS)
+
+        # search
+        name = game.name.replace("'s", '').replace("'t", '').replace("'", '')
+        params = urlencode({
+            'filter': '',
+            'filter_product_name': name,
+        })
+        timeless_search = f'https://www.timelessboardgames.co.za/online-shop/?{params}'
+        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id})
+
+        # status
+        shopgame = ShopGame.objects.filter(game=game, shop=tl).first()
+        if not shopgame:
+            status = 'no shop'
+        elif shopgame.mia:
+            status = '<img src="/static/admin/img/icon-no.svg" alt="False">'
+        elif not shopgame.current_price:
+            status = 'no price'
+        else:
+            status = f'R{shopgame.current_price}'
+
+        return format_html(
+            f'<a href="{timeless_search}" target="_blank">search</a><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={tl.id}&game={game.id}">add url</a><br/>'
+            f'{status}'
+            # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    @admin.display()
+    def gh_shop(self, game: Game) -> str:
+        gh = Shop.objects.get(name=SHOP_GEEKHOME)
+
+        # search
+        name = game.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+        params = urlencode({
+            'post_type': 'product',
+            's': name,
+        })
+        gh_search = f'{gh.host}?{params}'
+        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': game.id, 'shop_id': gh.id})
+
+        # status
+        shopgame = ShopGame.objects.filter(game=game, shop=gh).first()
+        if not shopgame:
+            status = 'no shop'
+        elif shopgame.mia:
+            status = '<img src="/static/admin/img/icon-no.svg" alt="False">'
+        elif not shopgame.current_price:
+            status = 'no price'
+        else:
+            status = f'R{shopgame.current_price}'
+
+        return format_html(
+            f'<a href="{gh_search}" target="_blank">search</a><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={gh.id}&game={game.id}">add url</a><br/>'
+            f'{status}'
+            # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
 
 
 class ShopGameRaru(Game):
