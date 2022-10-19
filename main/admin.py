@@ -1,4 +1,5 @@
 import re
+from collections import defaultdict
 
 from django.contrib import admin
 from django.db import OperationalError
@@ -16,7 +17,7 @@ from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
     ShopGame, Price, Label
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
-from main.shops import scrape_raru
+from main.shops import scrape_raru, scrape_timeless, scrape_meeps_and_veeps, scrape_geekhome
 
 
 @admin.register(Label)
@@ -112,7 +113,20 @@ class ShopAdmin(admin.ModelAdmin):
 
 @admin.action(description='Scrape games shop')
 def scrape_games_shop_cmd(modeladmin, request, queryset):
-    scrape_raru(queryset)
+    shops = defaultdict(list)
+    for shopgame in queryset.all():
+        shops[shopgame.shop.name].append(shopgame)
+    for name, shopgames in shops.items():
+        if name == SHOP_RARU:
+            scrape_raru(shopgames)
+        elif name == SHOP_MEEPS_AND_VEEPS:
+            scrape_meeps_and_veeps(shopgames)
+        elif name == SHOP_TIMELESS:
+            scrape_timeless(shopgames)
+        elif name == SHOP_GEEKHOME:
+            scrape_geekhome(shopgames)
+        else:
+            raise ValueError(f'Unexpected shop: {name}')
 
 
 @admin.register(ShopGame)
