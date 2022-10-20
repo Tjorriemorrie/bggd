@@ -35,5 +35,6 @@ def price(obj):
         price_txt = f'<del>{price:,.0f}</del>'
     else:
         price_txt = f'{price:,.0f}'
-    deco = 'text-success' if shopgame.mean_saving > 0 else 'text-danger'
+    is_bargain = shopgame.current_price <= shopgame.game.shop_price and shopgame.game.shop_saving > 0
+    deco = 'text-success' if is_bargain else 'text-danger'
     return mark_safe(f'<a href="{shopgame.url}" target="_blank" class="text-decoration-none {deco}">{price_txt}</a>')

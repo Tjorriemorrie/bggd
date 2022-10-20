@@ -6,158 +6,162 @@
 {% block title %}{{ game.name }} - Games - {{ block.super }}{% endblock %}
 
 {% block content %}
-  <div class="container">
+<div class="container">
 
     {% include 'main/navbar.html' with nav='games' %}
 
     <div class="row">
-      <div class="col-6">
-        {% if prev %}
-          <p><a href="{% url 'game_detail' prev.pk %}">
-            <i class="bi bi-chevron-double-left"></i> {{ prev.rating|floatformat }} {{ prev.name }}
-          </a></p>
-        {% endif %}
-      </div>
-      <div class="col-6 text-end">
-        {% if next %}
-          <p><a href="{% url 'game_detail' next.pk %}">
-            {{ next.rating|floatformat }} {{ next.name }}
-            <i class="bi bi-chevron-double-right"></i>
-          </a></p>
-        {% endif %}
-      </div>
+        <div class="col-6">
+            {% if prev %}
+            <p><a href="{% url 'game_detail' prev.pk %}">
+                <i class="bi bi-chevron-double-left"></i> {{ prev.rating|floatformat }} {{ prev.name }}
+            </a></p>
+            {% endif %}
+        </div>
+        <div class="col-6 text-end">
+            {% if next %}
+            <p><a href="{% url 'game_detail' next.pk %}">
+                {{ next.rating|floatformat }} {{ next.name }}
+                <i class="bi bi-chevron-double-right"></i>
+            </a></p>
+            {% endif %}
+        </div>
     </div>
 
     <br/>
     <div class="row">
 
-      <div class="col-8">
+        <div class="col-8">
 
-        <div class="row">
-          <div class="col-4">
-            <p>
-              <img width="100%" src="{{ game.img }}" alt="{{ game.name }} poster"/>
-            </p>
-          </div>
-          <div class="col-8">
-            <h2>{{ game.name }}</h2>
-            <h6>Year: {{ game.year }}</h6>
-            <h6>Players: {{ game.players_fmt }}</h6>
-            <h6>Play time: {{ game.min_play_time }}
-              {% if game.min_play_time < game.max_play_time %}&mdash;
-                {{ game.max_play_time }}{% endif %}</h6>
-            <h6>Age: {{ game.age_fmt }}</h6>
-            <h6><a href="{{ game.bgg_link }}" target="_blank">GBB link</a></h6>
+            <div class="row">
+                <div class="col-4">
+                    <p>
+                        <img width="100%" src="{{ game.img }}" alt="{{ game.name }} poster"/>
+                    </p>
+                </div>
+                <div class="col-8">
+                    <h2>{{ game.name }}</h2>
+                    <h6>Year: {{ game.year }}</h6>
+                    <h6>Players: {{ game.players_fmt }}</h6>
+                    <h6>Play time: {{ game.min_play_time }}
+                        {% if game.min_play_time < game.max_play_time %}&mdash;
+                        {{ game.max_play_time }}{% endif %}</h6>
+                    <h6>Age: {{ game.age_fmt }}</h6>
+                    <h6><a href="{{ game.bgg_link }}" target="_blank">GBB link</a></h6>
+
+                    <br/>
+                    <h6>
+                        Shops:
+                        {% if game.shop_mean %}<br/><sup>Avg price: {{ game.shop_mean|intcomma }}</sup>{% endif %}
+                    </h6>
+                    <p>
+                        {% for shopgame in game.shopgames.all %}
+                        {{ shopgame.shop.name }}: {{ shopgame|price }}<br/>
+                        {% empty %}
+                        <span class="badge bg-warning">Not available at any shop</span>
+                        {% endfor %}
+                    </p>
+                </div>
+            </div>
+
+            {% if day_graph %}
             <br/>
-            <h6>Shops:</h6>
-            <p>
-            {% for shopgame in game.shopgames.all %}
-              {{ shopgame.shop.name }}: {{ shopgame|price|safe }}<br/>
-            {% empty %}
-              <span class="badge bg-warning">Not available at any shop</span>
-            {% endfor %}
-            </p>
-          </div>
+            <div class="row">
+                <div class="col">
+                    {{ day_graph|safe }}
+                </div>
+            </div>
+            {% endif %}
+
+            <br/>
+            <div class="row">
+                <div class="col">
+                    <h4>Youtube reviews</h4>
+                    <div class="accordion" id="accordionYoutube">
+                        {% for yt in yt_results %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#collapse{{ forloop.counter }}"
+                                        aria-expanded="{% if forloop.counter == 1 %}true{% else %}false{% endif %}"
+                                        aria-controls="collapse{{ forloop.counter }}">
+                                    <strong>{{ yt.author }}</strong>
+                                </button>
+                            </h2>
+                            <div id="collapse{{ forloop.counter }}"
+                                 class="accordion-collapse collapse {% if forloop.counter == 1 %}show{% endif %}"
+                                 aria-labelledby="heading{{ forloop.counter }}"
+                                 data-bs-parent="#accordionYoutube">
+                                <div class="accordion-body">
+                                    <div class="video-container">
+                                        <iframe src="{{ yt.embed_url }}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+            <br/>
+            <br/>
+
+            <div class="row">
+                <div class="col">
+                    {% if not game.comments.count %}
+                    <h4>No ratings with comments yet.</h4>
+                    {% else %}
+                    <h4>BGG ratings comments:</h4>
+                    {% for review in game.comments.all|slice:100 %}
+                    <p>
+                        <a href="{% url 'player_detail' review.player.id %}"><strong>{{ review.player.nick }}</strong></a>&nbsp;
+                        <small class="text-muted">[{{ review.player.reviews_scr|floatformat:1 }}]</small>:
+                        <br/><strong>{{ review.rating|floatformat:1 }}</strong> {{ review.comment }}
+                    </p>
+                    {% endfor %}
+                    {% endif %}
+                </div>
+            </div>
+
         </div>
 
-          {% if day_graph %}
-              <br/>
-              <div class="row">
-                  <div class="col">
-                      {{ day_graph|safe }}
-                  </div>
-              </div>
-          {% endif %}
+        <div class="col-4 text-center">
+            <h2>#{{ game.rank }}</h2>
+            {% if game.awards.count %}
+            <h6>{{ game.awards_fmt|safe }}</h6>
+            {% endif %}
+            <br/>
+            <h3>{{ game.rating|floatformat }}</h3>
+            {% if game.reviews_cnt %}
+            <p>{{ game.reviews_cnt|intcomma }} reviews</p>
+            {% endif %}
+            {% if game.weight_avg %}
+            <h5>Weight: {{ game.weight_tag }}</h5>
+            {% endif %}
+            {% if rating_graph %}
+            <p>{{ rating_graph|safe }}</p>
+            {% endif %}
 
-          <br/>
-          <div class="row">
-              <div class="col">
-                  <h4>Youtube reviews</h4>
-                  <div class="accordion" id="accordionYoutube">
-                      {% for yt in yt_results %}
-                          <div class="accordion-item">
-                              <h2 class="accordion-header" id="heading{{ forloop.counter }}">
-                                  <button class="accordion-button" type="button" data-bs-toggle="collapse"
-                                          data-bs-target="#collapse{{ forloop.counter }}"
-                                          aria-expanded="{% if forloop.counter == 1 %}true{% else %}false{% endif %}"
-                                          aria-controls="collapse{{ forloop.counter }}">
-                                      <strong>{{ yt.author }}</strong>
-                                  </button>
-                              </h2>
-                              <div id="collapse{{ forloop.counter }}"
-                                   class="accordion-collapse collapse {% if forloop.counter == 1 %}show{% endif %}"
-                                   aria-labelledby="heading{{ forloop.counter }}"
-                                   data-bs-parent="#accordionYoutube">
-                                  <div class="accordion-body">
-                                      <div class="video-container">
-                                      <iframe src="{{ yt.embed_url }}" frameborder="0" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-                                      </div>
-                                  </div>
-                              </div>
-                          </div>
-                      {% endfor %}
-                  </div>
-              </div>
-          </div>
+            <h4>Description</h4>
+            <p>{{ game.description }}</p>
 
-          <br/>
-          <br/>
+            {% include 'main/game_sim.html' %}
 
-          <div class="row">
-              <div class="col">
-                  {% if not game.comments.count %}
-                      <h4>No ratings with comments yet.</h4>
-                  {% else %}
-                      <h4>BGG ratings comments:</h4>
-                      {% for review in game.comments.all|slice:100 %}
-                          <p>
-                              <a href="{% url 'player_detail' review.player.id %}"><strong>{{ review.player.nick }}</strong></a>&nbsp;
-                              <small class="text-muted">[{{ review.player.reviews_scr|floatformat:1 }}]</small>:
-                              <br/><strong>{{ review.rating|floatformat:1 }}</strong> {{ review.comment }}
-                          </p>
-                      {% endfor %}
-                  {% endif %}
-              </div>
-          </div>
+            <br/>
+            <br/>
 
-      </div>
+            <h4>Categories</h4>
+            <p>{{ game.categories_comma }}</p>
 
-      <div class="col-4 text-center">
-        <h2>#{{ game.rank }}</h2>
-        {% if game.awards.count %}
-          <h6>{{ game.awards_fmt|safe }}</h6>
-        {% endif %}
-        <br/>
-        <h3>{{ game.rating|floatformat }}</h3>
-        {% if game.reviews_cnt %}
-          <p>{{ game.reviews_cnt|intcomma }} reviews</p>
-        {% endif %}
-        {% if game.weight_avg %}
-          <h5>Weight: {{ game.weight_tag }}</h5>
-        {% endif %}
-        {% if rating_graph %}
-          <p>{{ rating_graph|safe }}</p>
-        {% endif %}
+            <h4>Mechanics</h4>
+            <p>{{ game.mechanics_comma }}</p>
 
-        <h4>Description</h4>
-        <p>{{ game.description }}</p>
-
-        {% include 'main/game_sim.html' %}
-
-        <br/>
-        <br/>
-
-        <h4>Categories</h4>
-        <p>{{ game.categories_comma }}</p>
-
-        <h4>Mechanics</h4>
-        <p>{{ game.mechanics_comma }}</p>
-
-        <h4>Families</h4>
-        <p>{{ game.families_comma }}</p>
-      </div>
+            <h4>Families</h4>
+            <p>{{ game.families_comma }}</p>
+        </div>
 
     </div>
 
-  </div>
+</div>
 {% endblock %}

@@ -20,7 +20,7 @@ function main() {
 
   ./manage.py train_models sim
 
-  ./manage.py scrape_shop raru mav timeless geekhome frontpage
+  ./manage.py scrape_shop raru mav timeless geekhome
 }
 
 main

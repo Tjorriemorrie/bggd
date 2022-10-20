@@ -20,8 +20,7 @@ from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
     ShopGame, Price, Label
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
-from main.shops import scrape_raru, scrape_timeless, scrape_meeps_and_veeps, scrape_geekhome
-
+from main.shops import scrape_raru, scrape_timeless, scrape_meeps_and_veeps, scrape_geekhome, update_game_shop_prices
 
 logger = logging.getLogger(__name__)
 
@@ -52,12 +51,19 @@ def predict_player_cmd(modeladmin, request, queryset):
         predict_player(obj, game_ids)
 
 
+@admin.action(description='Update shop game prices')
+def update_game_shop_prices_cmd(modeladmin, request, queryset):
+    games = set([g for g in queryset])
+    for game in games:
+        update_game_shop_prices(game)
+
+
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('id', 'hotness', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id', 'shop_price')
+    list_display = ('id', 'hotness', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id', 'shop_price', 'shop_updated_at')
     # list_filter = ('shop_available',)
     ordering = ('-hotness',)
-    actions = (scrape_game_cmd,)
+    actions = (scrape_game_cmd, update_game_shop_prices_cmd)
     search_fields = ('name',)
     exclude = ('shop_available', 'shop_price', 'shop_saving', 'hotness', 'sim_cluster')
 
@@ -140,8 +146,7 @@ def scrape_games_shop_cmd(modeladmin, request, queryset):
 class ShopGameAdmin(admin.ModelAdmin):
     actions = (scrape_games_shop_cmd,)
     list_display = [
-        'shop', 'game', 'current_available', 'current_price', 'mean_price',
-        'min_price', 'max_price', 'mean_saving',  'mia', 'prices_cnt', 'url_at']
+        'shop', 'game', 'mia', 'prices_cnt', 'url_at']
     fields = ['shop', 'game', 'url', 'mia']
     search_fields = ['game__name', 'url']
     list_filter = ['shop__name', 'mia']
@@ -189,12 +194,8 @@ class ShopGameRenew(Game):
 
 @admin.register(ShopGameRenew)
 class ShopGameRenewAdmin(admin.ModelAdmin):
-    list_display = ['name', 'priority', 'mav_shop', 'raru_shop', 'tl_shop', 'gh_shop', 'oldest_updated_at']
+    list_display = ['name', 'mav_shop', 'raru_shop', 'tl_shop', 'gh_shop', 'oldest_updated_at']
     actions = [shopgames_updated_at_cmd]
-
-    @admin.display(ordering=F('priority').asc(nulls_last=False))
-    def priority(self, game: Game) -> str:
-        return game.priority.days
 
     @admin.display(ordering=F('oldest_updated_at').asc(nulls_last=False))
     def oldest_updated_at(self, game: Game) -> str:
@@ -204,7 +205,6 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(scraped_at__isnull=False)
         qs = qs.annotate(oldest_updated_at=Min('shopgames__updated_at'))
-        qs = qs.annotate(priority=(now() - F('shopgames__updated_at')))
         ordering = self.get_ordering(request)
         if ordering:
             qs = qs.order_by(*ordering)

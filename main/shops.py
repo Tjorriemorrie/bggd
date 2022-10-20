@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from typing import List
 
+import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 from django.utils.timezone import now
@@ -11,66 +12,120 @@ from requests import exceptions
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT, \
     SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME
-from main.models import Shop, Price, Day, Game, ShopGame
+from main.models import Shop, Price, Day, Game, ShopGame, GameDay
 from main.scraper import get
 
 logger = logging.getLogger(__name__)
 
 
-def update_shopgame_stats(shopgame: ShopGame):
+def update_game_shop_prices(game: Game):
     """
-    Get stats from in-stock prices.
-    Update current data from a new price
-    Aggregate the shop when new price or in stock.
+    Update the GameDay with the prices of the best shop.
+    Then set the final current value on the game.
     """
-    df = calc_shopgame_stats(shopgame)
-    shopgame.mean_price = df['price'].mean()
-    shopgame.min_price = df['price'].min()
-    shopgame.max_price = df['price'].max()
+    logger.info(f'updating game shop prices for {game}')
+    # retrieve all shop prices
+    name_shopgames = {}
+    dfs = {}
+    for shopgame in game.shopgames.all():
+        name = shopgame.shop.name.replace(' ', '').lower()
+        values = shopgame.prices.filter(status=STOCK_IN).values_list('day__day', 'price')
+        if not values:
+            continue
+        df = pd.DataFrame(values, columns=['day', f'{name}_price'])
+        df['day'] = pd.to_datetime(df['day'])
+        df = df.set_index('day')
+        dfs[name] = df
+        name_shopgames[name] = shopgame
 
-    last_price = shopgame.prices.last()
-    shopgame.current_available = last_price.status == STOCK_IN
-    shopgame.current_price = last_price.price
-    saving = shopgame.mean_price - shopgame.current_price
-    shopgame.mean_saving = int(round(saving / 10) * 10)
+    if not dfs:
+        game.shop_available = False
+        game.shop_price = None
+        game.shop_mean = None
+        game.shop_saving = None
+        game.shop_outdated = False
+        game.shop_updated_at = now()
+        game.save()
+        logger.info(f'No shop {game.name}: ava={game.shop_available}')
+        return
 
-    shopgame.save()
-
-    # then update game
-    aggregate_game_shops(shopgame.game)
-
-
-def calc_shopgame_stats(shopgame: ShopGame) -> DataFrame:
-    values = shopgame.prices.filter(status=STOCK_IN).values_list('day__day', 'price')
-    if not values:
-        values = shopgame.prices.values_list('day__day', 'price')
-    df = pd.DataFrame(values, columns=['day', 'price'])
-    df['day'] = pd.to_datetime(df['day'])
-    df = df.set_index('day')
+    # build best shop price per day
+    # df = pd.concat(dfs.values())
+    df = None
+    for name, df_shop in dfs.items():
+        if df is None:
+            df = df_shop
+        else:
+            # df = df.join(df_shop)
+            df = pd.merge(df, df_shop, how='outer', left_index=True, right_index=True)
     day = Day.get_today()
     date_range = pd.date_range(
         df.index[0],
         datetime(day.day.year, day.day.month, day.day.day))
     df = df.reindex(date_range)
-    df['price'] = df['price'].ffill()
-    return df
+    for name in dfs:
+        df[f'{name}_price'] = df[f'{name}_price'].ffill()
+        shopgame = name_shopgames[name]
+        last_price = shopgame.prices.last()
+        if last_price.status != STOCK_IN:
+            oos_day = datetime(last_price.day.day.year, last_price.day.day.month, last_price.day.day.day)
+            df.loc[df.index >= oos_day, f'{name}_price'] = np.nan
 
+    df.dropna(axis=0, how='all', inplace=True)
+    df['best'] = df.min(axis=1)
+    df['mean'] = df['best'].rolling(window=365, min_periods=1).mean()
+    df['saving'] = df['mean'] - df['best']
 
-def aggregate_game_shops(game: Game):
-    """Update the game with the best shop values. The best shop is selected
-    by having the lowest current price and can be put directly on the game.
-    The mean saving needs to be calculated across all shops where it is
-    active (the current best shop should at least be selected)."""
-    best_shopgame = game.best_shop()
-    if not best_shopgame:
-        game.shop_available = False
-    else:
-        game.shop_available = True
-        game.shop_price = best_shopgame.current_price
-        best_mean_price_shop = game.best_shop_mean_price()
-        mean_saving = best_mean_price_shop.mean_price - best_shopgame.current_price
-        game.shop_saving = mean_saving
+    # clear all game days price values
+    GameDay.objects.filter(game=game).update(
+        shop_best=None, shop_mean=None, shop_saving=None)
+
+    # update all days for the game
+    for index, row in df.iterrows():
+        try:
+            day = Day.objects.get(day=index)
+        except Day.DoesNotExist:
+            logger.warning(f'No day found for {index}')
+            continue
+        try:
+            gameday = GameDay.objects.get(game=game, day=day)
+        except GameDay.DoesNotExist:
+            logger.warning(f'No game day found for {day}')
+            continue
+        gameday.shop_best = row['best']
+        gameday.shop_mean = row['mean']
+        gameday.shop_saving = int(round(row['saving'] / 10) * 10)
+        gameday.save()
+
+    # finally update game
+    try:
+        latest_gameday = GameDay.objects.filter(game=game).latest('day__day')
+    except GameDay.DoesNotExist:
+        latest_gameday = None
+    game.shop_price = latest_gameday.shop_best if latest_gameday else None
+    game.shop_mean = latest_gameday.shop_best if latest_gameday else None
+    game.shop_saving = latest_gameday.shop_saving if latest_gameday else None
+    best_shop = game.best_shop()
+    game.shop_available = best_shop.current_available if best_shop else False
+    game.shop_outdated = False
+    game.shop_updated_at = now()
     game.save()
+    logger.info(f'Updated shop {game.name}: ava={game.shop_available} best={game.shop_price} mean={game.shop_mean} saving={game.shop_saving}')
+
+
+def validate_shopgames():
+    """Ensure shopgames have the correct current availability and price"""
+    logger.info('Validating all shopgames...')
+    shopgames = ShopGame.objects.prefetch_related('prices').all()
+    for shopgame in shopgames:
+        try:
+            last_price = shopgame.prices.latest('day__day')
+        except Price.DoesNotExist:
+            last_price = None
+        shopgame.current_price = last_price.price if last_price else None
+        shopgame.current_available = last_price.status == STOCK_IN if last_price else None
+        shopgame.save()
+        logger.info(f'Updated {shopgame}')
 
 
 def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
@@ -114,8 +169,12 @@ def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             )
             logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
-        # update shopgame stats
-        update_shopgame_stats(shopgame)
+            shopgame.current_price = data['price']
+            shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.save()
+
+            shopgame.game.shop_outdated = True
+            shopgame.game.save()
 
     logger.info(f'Finished scraping {SHOP_RARU}')
 
@@ -177,8 +236,12 @@ def scrape_takealot(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             )
             logger.info(f'New Price! {new_price}')
 
-        # update shopgame stats
-        update_shopgame_stats(shopgame)
+            shopgame.current_price = data['price']
+            shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.save()
+
+            shopgame.game.shop_outdated = True
+            shopgame.game.save()
 
     logger.info(f'Finished scraping {SHOP_TAKEALOT}')
 
@@ -256,8 +319,12 @@ def scrape_meeps_and_veeps(shopgames: List[ShopGame] = None, fail_fast: bool = F
             )
             logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
-        # update shopgame stats
-        update_shopgame_stats(shopgame)
+            shopgame.current_price = data['price']
+            shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.save()
+
+            shopgame.game.shop_outdated = True
+            shopgame.game.save()
 
     logger.info(f'Finished scraping {SHOP_MEEPS_AND_VEEPS}')
 
@@ -320,8 +387,12 @@ def scrape_timeless(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             )
             logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
-        # update shopgame stats
-        update_shopgame_stats(shopgame)
+            shopgame.current_price = data['price']
+            shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.save()
+
+            shopgame.game.shop_outdated = True
+            shopgame.game.save()
 
     logger.info(f'Finished scraping {SHOP_TIMELESS}')
 
@@ -393,8 +464,12 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             )
             logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
-        # update shopgame stats
-        update_shopgame_stats(shopgame)
+            shopgame.current_price = data['price']
+            shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.save()
+
+            shopgame.game.shop_outdated = True
+            shopgame.game.save()
 
     logger.info(f'Finished scraping {SHOP_GEEKHOME}')
 

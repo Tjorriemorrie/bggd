@@ -85,7 +85,10 @@ class Game(models.Model):
     # shops aggregate
     shop_available = models.BooleanField(null=True, blank=True)
     shop_price = models.IntegerField(null=True, blank=True)
+    shop_mean = models.IntegerField(null=True, blank=True)
     shop_saving = models.FloatField(null=True, blank=True)
+    shop_outdated = models.BooleanField(default=False)
+    shop_updated_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -104,13 +107,7 @@ class Game(models.Model):
         """Returns best shop with available stock."""
         return self.shopgames.filter(
             current_available=True
-        ).order_by('current_price', 'mean_saving').first()
-
-    def best_shop_mean_price(self) -> Optional['ShopGame']:
-        """Returns best shop with available stock."""
-        return self.shopgames.filter(
-            current_available=True
-        ).order_by('mean_price').first()
+        ).order_by('current_price').first()
 
     def comments(self) -> List['Review']:
         return self.reviews.filter(
@@ -262,9 +259,15 @@ class GameDay(models.Model):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='gamedays')
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='gamedays')
 
+    # reviews per day aggregation
     reviews_cnt = models.IntegerField(db_index=True)
     reviews_avg = models.FloatField(db_index=True)
     is_outdated = models.BooleanField(db_index=True, default=False)
+
+    # best and mean price aggregation
+    shop_best = models.FloatField(null=True, blank=True)
+    shop_mean = models.FloatField(null=True, blank=True)
+    shop_saving = models.FloatField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -386,11 +389,7 @@ class ShopGame(models.Model):
     mia = models.BooleanField(default=False, blank=True)
 
     current_available = models.BooleanField(null=True, blank=True)
-    current_price = models.FloatField(null=True, blank=True)
-    mean_price = models.FloatField(null=True, blank=True)
-    min_price = models.FloatField(null=True, blank=True)
-    max_price = models.FloatField(null=True, blank=True)
-    mean_saving = models.FloatField(null=True, blank=True)
+    current_price = models.IntegerField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
