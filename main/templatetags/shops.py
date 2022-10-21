@@ -23,7 +23,7 @@ def price(obj):
     # or shopgame cannot scrape the latest price
     # Note best shop only returns available, thus mia shops are None here
     if not shopgame or not shopgame.current_price:
-        return mark_safe(f'<span class="text-muted">out of print</span>')
+        return mark_safe(f'<span class="text-muted">not in retail</span>')
 
     if shopgame.current_price >= 1_000:
         price = round(shopgame.current_price / 100) * 100
@@ -35,6 +35,12 @@ def price(obj):
         price_txt = f'<del>{price:,.0f}</del>'
     else:
         price_txt = f'{price:,.0f}'
-    is_bargain = shopgame.current_price <= shopgame.game.shop_price and shopgame.game.shop_saving > 0
-    deco = 'text-success' if is_bargain else 'text-danger'
+
+    if not shopgame.game.shop_mean:
+        deco = 'text-warning'
+    elif shopgame.current_price < shopgame.game.shop_mean:
+        deco = 'text-success'
+    else:
+        deco = 'text-danger'
+
     return mark_safe(f'<a href="{shopgame.url}" target="_blank" class="text-decoration-none {deco}">{price_txt}</a>')

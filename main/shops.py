@@ -103,7 +103,7 @@ def update_game_shop_prices(game: Game):
     except GameDay.DoesNotExist:
         latest_gameday = None
     game.shop_price = latest_gameday.shop_best if latest_gameday else None
-    game.shop_mean = latest_gameday.shop_best if latest_gameday else None
+    game.shop_mean = latest_gameday.shop_mean if latest_gameday else None
     game.shop_saving = latest_gameday.shop_saving if latest_gameday else None
     best_shop = game.best_shop()
     game.shop_available = best_shop.current_available if best_shop else False
