@@ -18,6 +18,14 @@ from main.scraper import get
 logger = logging.getLogger(__name__)
 
 
+def update_outdated_game_shop_prices():
+    """Update outdated shop prices on games"""
+    games = Game.objects.filter(shop_outdated=True).all()
+    logger.info(f'Updating {len(games)} outdated shop prices on games')
+    for game in games:
+        update_game_shop_prices(game)
+
+
 def update_game_shop_prices(game: Game):
     """
     Update the GameDay with the prices of the best shop.
@@ -82,26 +90,30 @@ def update_game_shop_prices(game: Game):
 
     # update all days for the game
     for index, row in df.iterrows():
-        try:
-            day = Day.objects.get(day=index)
-        except Day.DoesNotExist:
-            logger.warning(f'No day found for {index}')
-            continue
-        try:
-            gameday = GameDay.objects.get(game=game, day=day)
-        except GameDay.DoesNotExist:
-            logger.warning(f'No game day found for {day}')
-            continue
+        day, day_created = Day.objects.get_or_create(
+            day=index,
+            defaults={
+                'reviews_cnt': 0,
+                'reviews_avg': 0,
+                'last_review_id': 0,
+                'last_review_at': now()})
+        if day_created:
+            logger.info(f'Created day! {day}')
+        gameday, gameday_created = GameDay.objects.get_or_create(
+            game=game,
+            day=day,
+            defaults={
+                'reviews_cnt': 0,
+                'reviews_avg': 0})
+        if gameday_created:
+            logger.info(f'Created gameday! {gameday}')
         gameday.shop_best = row['best']
         gameday.shop_mean = row['mean']
         gameday.shop_saving = int(round(row['saving'] / 10) * 10)
         gameday.save()
 
     # finally update game
-    try:
-        latest_gameday = GameDay.objects.filter(game=game).latest('day__day')
-    except GameDay.DoesNotExist:
-        latest_gameday = None
+    latest_gameday = GameDay.objects.filter(game=game).latest('day__day')
     game.shop_price = latest_gameday.shop_best if latest_gameday else None
     game.shop_mean = latest_gameday.shop_mean if latest_gameday else None
     game.shop_saving = latest_gameday.shop_saving if latest_gameday else None

@@ -6,7 +6,7 @@ from retry import retry
 
 from main.constants import SHOP_RARU, SHOP_TAKEALOT
 from main.shops import scrape_raru, scrape_takealot, \
-    scrape_meeps_and_veeps, scrape_timeless, scrape_geekhome, validate_shopgames
+    scrape_meeps_and_veeps, scrape_timeless, scrape_geekhome, validate_shopgames, update_outdated_game_shop_prices
 
 logger = logging.getLogger(__name__)
 
@@ -36,6 +36,9 @@ class Command(BaseCommand):
 
             elif shop_name.lower() == 'validate':
                 validate_shopgames()
+
+            elif shop_name.lower() == 'outdated':
+                update_outdated_game_shop_prices()
 
 
             else:

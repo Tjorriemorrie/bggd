@@ -4,8 +4,8 @@ from collections import defaultdict
 
 from django.contrib import admin
 from django.contrib.humanize.templatetags.humanize import intcomma
-from django.db import OperationalError
-from django.db.models import F, QuerySet, Min
+from django.db import OperationalError, models
+from django.db.models import F, QuerySet, Min, ExpressionWrapper
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from django.utils.html import format_html
@@ -194,17 +194,25 @@ class ShopGameRenew(Game):
 
 @admin.register(ShopGameRenew)
 class ShopGameRenewAdmin(admin.ModelAdmin):
-    list_display = ['name', 'mav_shop', 'raru_shop', 'tl_shop', 'gh_shop', 'oldest_updated_at']
+    list_display = ['name', 'year', 'mav_shop', 'raru_shop', 'tl_shop', 'gh_shop', 'priority', 'oldest_updated_at']
     actions = [shopgames_updated_at_cmd]
+
+    @admin.display(ordering=F('priority').desc(nulls_last=False))
+    def priority(self, game: Game) -> str:
+        return f'{int(game.priority * 1000)}'
 
     @admin.display(ordering=F('oldest_updated_at').asc(nulls_last=False))
     def oldest_updated_at(self, game: Game) -> str:
-        return f'{game.oldest_updated_at:%Y-%m-%d %H:%I}'
+        old = f'{game.oldest_updated_at:%Y-%m-%d %H:%I}' if game.oldest_updated_at else ''
+        return f'{old}'
 
     def get_queryset(self, request) -> QuerySet:
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(scraped_at__isnull=False)
         qs = qs.annotate(oldest_updated_at=Min('shopgames__updated_at'))
+        qs = qs.annotate(now_till_up=ExpressionWrapper(now() - F('oldest_updated_at'), models.FloatField()))
+        qs = qs.annotate(up_till_cr=ExpressionWrapper(F('oldest_updated_at') - F('created_at'), models.FloatField()))
+        qs = qs.annotate(priority=ExpressionWrapper((F('now_till_up') * 1.0) / (F('up_till_cr') * 1.0), models.FloatField()))
         ordering = self.get_ordering(request)
         if ordering:
             qs = qs.order_by(*ordering)
