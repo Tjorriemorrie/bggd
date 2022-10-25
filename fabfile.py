@@ -187,3 +187,14 @@ def run_cron(ctx):
     conn.run(' && '.join(cmds), echo=True)
 
 
+@task
+def upgrade_pip(ctx):
+    conn = get_conn()
+    cmds = [
+        f'cd {dir}',
+        'source env/bin/activate',
+        f'pip install -U pip',
+    ]
+    conn.run(' && '.join(cmds), echo=True)
+
+

@@ -113,12 +113,18 @@ def update_game_shop_prices(game: Game):
         gameday.save()
 
     # finally update game
-    latest_gameday = GameDay.objects.filter(game=game).latest('day__day')
-    game.shop_price = latest_gameday.shop_best if latest_gameday else None
-    game.shop_mean = latest_gameday.shop_mean if latest_gameday else None
-    game.shop_saving = latest_gameday.shop_saving if latest_gameday else None
     best_shop = game.best_shop()
-    game.shop_available = best_shop.current_available if best_shop else False
+    if best_shop:
+        game.shop_available = True
+        game.shop_price = best_shop.current_price
+        latest_gameday = GameDay.objects.filter(game=game).latest('day__day')
+        game.shop_mean = latest_gameday.shop_mean
+        game.shop_saving = latest_gameday.shop_saving
+    else:
+        game.shop_available = False
+        game.shop_price = None
+        game.shop_mean = None
+        game.shop_saving = None
     game.shop_outdated = False
     game.shop_updated_at = now()
     game.save()

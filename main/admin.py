@@ -1,6 +1,7 @@
 import logging
 import re
 from collections import defaultdict
+from datetime import timedelta
 
 from django.contrib import admin
 from django.contrib.humanize.templatetags.humanize import intcomma
@@ -194,7 +195,8 @@ class ShopGameRenew(Game):
 
 @admin.register(ShopGameRenew)
 class ShopGameRenewAdmin(admin.ModelAdmin):
-    list_display = ['name', 'year', 'mav_shop', 'raru_shop', 'tl_shop', 'gh_shop', 'priority', 'oldest_updated_at']
+    list_display = ['name', 'year', 'mav_shop', 'raru_shop', 'tl_shop', 'gh_shop', 'priority', 'oldest_updated_at', 'created_at']
+    search_fields = ('name',)
     actions = [shopgames_updated_at_cmd]
 
     @admin.display(ordering=F('priority').desc(nulls_last=False))
@@ -209,6 +211,8 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
     def get_queryset(self, request) -> QuerySet:
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(scraped_at__isnull=False)
+        one_month = now() - timedelta(days=30)
+        qs = qs.filter(created_at__lt=one_month)
         qs = qs.annotate(oldest_updated_at=Min('shopgames__updated_at'))
         qs = qs.annotate(now_till_up=ExpressionWrapper(now() - F('oldest_updated_at'), models.FloatField()))
         qs = qs.annotate(up_till_cr=ExpressionWrapper(F('oldest_updated_at') - F('created_at'), models.FloatField()))
@@ -237,9 +241,14 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         else:
             status = f'R{shopgame.current_price}'
 
+        if shopgame:
+            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+        else:
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={game.id}" target="_blank">add url</a>'
+
         return format_html(
             f'<a href="{mav_search}" target="_blank">search</a><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={game.id}">add url</a><br/>'
+            f'{shopgame_url}<br/>'
             f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
@@ -267,9 +276,14 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         else:
             status = f'R{shopgame.current_price}'
 
+        if shopgame:
+            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+        else:
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={game.id}" target="_blank">add url</a>'
+
         return format_html(
             f'<a href="{raru_search}" target="_blank">search</a><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={raru.id}&game={game.id}">add url</a><br/>'
+            f'{shopgame_url}<br/>'
             f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
@@ -298,9 +312,14 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         else:
             status = f'R{shopgame.current_price}'
 
+        if shopgame:
+            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+        else:
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={tl.id}&game={game.id}" target="_blank">add url</a>'
+
         return format_html(
             f'<a href="{timeless_search}" target="_blank">search</a><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={tl.id}&game={game.id}">add url</a><br/>'
+            f'{shopgame_url}<br/>'
             f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
@@ -329,9 +348,14 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         else:
             status = f'R{shopgame.current_price}'
 
+        if shopgame:
+            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+        else:
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gh.id}&game={game.id}" target="_blank">add url</a>'
+
         return format_html(
             f'<a href="{gh_search}" target="_blank">search</a><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={gh.id}&game={game.id}">add url</a><br/>'
+            f'{shopgame_url}<br/>'
             f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
