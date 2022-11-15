@@ -40,6 +40,13 @@ REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 # 12/200: 1-trckrn 2-impstrg 3-ankh 4-ti4 5-nemesis 6-root 7-cldspr
 # 12/220: 1-kmtbs 2-ti4 3-gallerist 4-nmslck 6-cldspr 10-ankh
 
+# oct 2022
+# 11/220: 1.nemesis 2.kemet 6.TI4 9.Dimperium
+# 10/200: 1.TI4 2.nemesis 3.sun
+# 12/240: 1.nemesis 2.dune 3.kemet 4.TI4 5.eclipse
+# 11/220: 1.TI4 2.nemesis 3.inis 4.cloud 5.dimperium 7.eclipse
+
+
 # memory limits
 REC_MIN_CUTOFF = 11
 REC_MAX_CUTOFF = 220
@@ -55,7 +62,8 @@ SHOP_TAKEALOT = 'Takealot'
 SHOP_MEEPS_AND_VEEPS = 'Meeps and Veeps'
 SHOP_TIMELESS = 'Timeless'
 SHOP_GEEKHOME = 'GeekHome'
-SHOP_NAMES = [SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME]
+SHOP_THD = 'The Hidden Den'
+SHOP_NAMES = [SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME]
 
 SOME_YEARS_AGO = now().year - 8
 SIM_GROUP_SIZE = 5

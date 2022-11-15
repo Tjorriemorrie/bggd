@@ -4,9 +4,11 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
-from main.constants import SHOP_RARU, SHOP_TAKEALOT
+from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_THD
+from main.models import Shop
 from main.shops import scrape_raru, scrape_takealot, \
-    scrape_meeps_and_veeps, scrape_timeless, scrape_geekhome, validate_shopgames, update_outdated_game_shop_prices
+    scrape_meeps_and_veeps, scrape_timeless, scrape_geekhome, validate_shopgames, update_outdated_game_shop_prices, \
+    scrape_site
 
 logger = logging.getLogger(__name__)
 
@@ -33,13 +35,15 @@ class Command(BaseCommand):
                 scrape_timeless(fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'geekhome':
                 scrape_geekhome(fail_fast=options.get('fail_fast'))
+            elif shop_name.lower() == 'thd':
+                shop = Shop.objects.get(name=SHOP_THD)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
 
             elif shop_name.lower() == 'validate':
                 validate_shopgames()
 
             elif shop_name.lower() == 'outdated':
                 update_outdated_game_shop_prices()
-
 
             else:
                 raise ValueError(f'Unknown shop name {shop_name}')

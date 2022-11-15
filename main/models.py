@@ -10,7 +10,7 @@ from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, 
     STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, \
     AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_MONTH, IGNORE_FAMILIES, \
-    SHOP_GEEKHOME
+    SHOP_GEEKHOME, SHOP_THD
 
 CHOICES_WEIGHTS = (
     (WEIGHT_HEAVY, WEIGHT_HEAVY),
@@ -371,6 +371,7 @@ class Shop(models.Model):
         (SHOP_MEEPS_AND_VEEPS, SHOP_MEEPS_AND_VEEPS),
         (SHOP_TIMELESS, SHOP_TIMELESS),
         (SHOP_GEEKHOME, SHOP_GEEKHOME),
+        (SHOP_THD, SHOP_THD),
     )
     name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
     host = models.CharField(max_length=150, unique=True)
@@ -399,7 +400,7 @@ class ShopGame(models.Model):
 
     def __str__(self) -> str:
         tail = 'mia' if self.mia else 'n/a' if not self.current_available else f'R{self.current_price}'
-        return f'{self.shop} {self.game} {tail}'
+        return f'<{self.shop} + {self.game} = {tail}>'
 
     def save(self, force_insert=False, force_update=False, using=None,
              update_fields=None):

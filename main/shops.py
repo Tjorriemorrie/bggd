@@ -11,7 +11,7 @@ from pandas import DataFrame
 from requests import exceptions
 
 from main.constants import SHOP_RARU, STOCK_OUT, STOCK_IN, SHOP_TAKEALOT, \
-    SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME
+    SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, SHOP_GEEKHOME, SHOP_NAMES, SHOP_THD
 from main.models import Shop, Price, Day, Game, ShopGame, GameDay
 from main.scraper import get
 
@@ -134,16 +134,22 @@ def update_game_shop_prices(game: Game):
 def validate_shopgames():
     """Ensure shopgames have the correct current availability and price"""
     logger.info('Validating all shopgames...')
-    shopgames = ShopGame.objects.prefetch_related('prices').all()
-    for shopgame in shopgames:
-        try:
-            last_price = shopgame.prices.latest('day__day')
-        except Price.DoesNotExist:
-            last_price = None
-        shopgame.current_price = last_price.price if last_price else None
-        shopgame.current_available = last_price.status == STOCK_IN if last_price else None
-        shopgame.save()
-        logger.info(f'Updated {shopgame}')
+    for shop_name in SHOP_NAMES:
+        shop = Shop.objects.get(name=shop_name)
+        logger.info(f'Validating {shop}')
+        shopgames = ShopGame.objects.prefetch_related('prices').filter(shop=shop).all()
+        for shopgame in shopgames:
+            try:
+                last_price = shopgame.prices.latest('day__day')
+            except Price.DoesNotExist:
+                last_price = None
+            shopgame.current_price = last_price.price if last_price else None
+            shopgame.current_available = last_price.status == STOCK_IN if last_price else None
+            shopgame.save()
+            logger.info(f'Updated {shopgame}')
+
+
+######################################################################################
 
 
 def scrape_raru(shopgames: List[ShopGame] = None, fail_fast: bool = False):
@@ -407,6 +413,7 @@ def scrape_timeless(shopgames: List[ShopGame] = None, fail_fast: bool = False):
 
             shopgame.current_price = data['price']
             shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.mia = False
             shopgame.save()
 
             shopgame.game.shop_outdated = True
@@ -434,6 +441,13 @@ def scrape_timeless_game(url: str) -> dict:
 
 def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
     logger.info(f'Scraping {SHOP_GEEKHOME}')
+    stats = {
+        'no url': 0,
+        '404': 0,
+        'no price': 0,
+        'new': 0,
+        'no change': 0,
+    }
     day = Day.get_today()
     shop = Shop.objects.get(name=SHOP_GEEKHOME)
     if not shopgames:
@@ -445,6 +459,7 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
 
         # still scrape games with 0 price (do not use MIA)
         if not shopgame.url:
+            stats['no url'] += 1
             continue
 
         # update current price
@@ -457,6 +472,7 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
                 shopgame.url_at = now()
                 shopgame.mia = True
                 shopgame.save()
+                stats['404'] += 1
                 continue
             logger.exception(f'Could not scrape {shopgame.url}')
             if fail_fast:
@@ -467,8 +483,10 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
             if not shopgame.mia:
                 shopgame.mia = True
                 shopgame.save()
+            stats['no price'] += 1
             continue
         prev_price = shopgame.prices.last()
+        stats['no change'] += 1
         if not prev_price \
                 or prev_price.price != data['price'] \
                 or prev_price.status != data['status']:
@@ -484,12 +502,15 @@ def scrape_geekhome(shopgames: List[ShopGame] = None, fail_fast: bool = False):
 
             shopgame.current_price = data['price']
             shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.mia = False
             shopgame.save()
+            stats['no change'] -= 1
+            stats['new'] += 1
 
             shopgame.game.shop_outdated = True
             shopgame.game.save()
 
-    logger.info(f'Finished scraping {SHOP_GEEKHOME}')
+    logger.info(f'Finished scraping {SHOP_GEEKHOME}: {stats}')
 
 
 def scrape_geekhome_game(url: str) -> dict:
@@ -513,4 +534,103 @@ def scrape_geekhome_game(url: str) -> dict:
     return {
         'status': status,
         'price': int(float(price_txt)),
+    }
+
+
+def scrape_site(shop: Shop, shopgames: List[ShopGame] = None, fail_fast: bool = False):
+    logger.info(f'Scraping {shop}')
+    stats = {
+        'no url': 0,
+        '404': 0,
+        'no price': 0,
+        'new': 0,
+        'no change': 0,
+        'errors': 0,
+    }
+    day = Day.get_today()
+    if not shopgames:
+        shopgames = shop.shopgames.all()
+    else:
+        assert all(sg.shop == shop for sg in shopgames)
+    for ix, shopgame in enumerate(shopgames):
+        # logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
+
+        # still scrape games with 0 price (do not use MIA)
+        if not shopgame.url:
+            stats['no url'] += 1
+            continue
+
+        # update current price
+        try:
+            name = shop.name.lower().replace(' ', '_')
+            func = globals()[f'scrape_{name}_game']
+            data = func(shopgame.url)
+        except Exception as exc:
+            if str(exc).startswith('404'):
+                logger.info(f'Game removed from store: {shopgame}')
+                shopgame.url = None
+                shopgame.url_at = now()
+                shopgame.mia = True
+                shopgame.save()
+                stats['404'] += 1
+                continue
+            logger.exception(f'Could not scrape {shopgame.url}')
+            if fail_fast:
+                raise
+            stats['errors'] += 1
+            continue
+
+        # when price is 0 it is not priced
+        if not data['price']:
+            if not shopgame.mia:
+                shopgame.mia = True
+                shopgame.save()
+            stats['no price'] += 1
+            continue
+
+        prev_price = shopgame.prices.last()
+        if not prev_price \
+                or prev_price.price != data['price'] \
+                or prev_price.status != data['status']:
+            new_price, _ = Price.objects.update_or_create(
+                shopgame=shopgame,
+                day=day,
+                defaults={
+                    'status': data['status'],
+                    'price': data['price'],
+                }
+            )
+            logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
+
+            shopgame.current_price = data['price']
+            shopgame.current_available = data['status'] == STOCK_IN
+            shopgame.save()
+            stats['new'] += 1
+
+            shopgame.game.shop_outdated = True
+            shopgame.game.save()
+        else:
+            stats['no change'] += 1
+
+    logger.info(f'Finished scraping {shop}: {stats}')
+
+
+def scrape_the_hidden_den_game(url: str) -> dict:
+    res = get(url)
+    html = BeautifulSoup(res.text, 'html.parser')
+
+    scripts = html.find_all('script')
+    scripts = [s for s in scripts if s.get('type', '') == 'application/ld+json']
+    details = json.loads(scripts[-1].contents[0])
+    price = int(details['@graph'][-1]['offers'][-1]['price'])
+    if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
+        status = STOCK_IN
+    elif 'OutOfStock' in details['@graph'][-1]['offers'][-1]['availability']:
+        status = STOCK_OUT
+    else:
+        raise ValueError(f'Unknown availability: {details["@graph"][-1]["offers"]}')
+
+    return {
+        'status': status,
+        'price': price,
     }

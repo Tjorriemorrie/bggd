@@ -408,7 +408,7 @@ class ShopView(CachedTemplateViewGet):
 
         # shop price heatmap
         heat_data = {}
-        combs = combinations(SHOP_NAMES, 2)
+        combs = list(combinations(SHOP_NAMES, 2))
         for name1, name2 in combs:
             if name1 not in heat_data:
                 heat_data[name1] = {n: 0 for n in SHOP_NAMES}
@@ -420,6 +420,11 @@ class ShopView(CachedTemplateViewGet):
                 Q(shopgames__current_available=False) |
                 Q(shopgames__mia=True)
             ).values_list('id', flat=True)
+            # if no games in common
+            if not game_ids:
+                heat_data[name1][name2] = 0
+                heat_data[name2][name1] = 0
+                continue
             qs1 = ShopGame.objects.filter(
                 shop__name=name1, game__id__in=game_ids
             ).all().aggregate(Avg('current_price'))
