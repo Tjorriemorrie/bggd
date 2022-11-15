@@ -634,3 +634,19 @@ def scrape_the_hidden_den_game(url: str) -> dict:
         'status': status,
         'price': price,
     }
+
+
+def scrape_tabletop_guru_game(url: str) -> dict:
+    res = get(url)
+    html = BeautifulSoup(res.text, 'html.parser')
+
+    script = html.find('script', id='ProductJson-product-template')
+    details = json.loads(script.contents[0])
+
+    price = details['price'] // 100
+    status = STOCK_IN if details['available'] else STOCK_OUT
+
+    return {
+        'status': status,
+        'price': price,
+    }

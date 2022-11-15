@@ -4,7 +4,7 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
-from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_THD
+from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_THD, SHOP_TTG
 from main.models import Shop
 from main.shops import scrape_raru, scrape_takealot, \
     scrape_meeps_and_veeps, scrape_timeless, scrape_geekhome, validate_shopgames, update_outdated_game_shop_prices, \
@@ -37,6 +37,9 @@ class Command(BaseCommand):
                 scrape_geekhome(fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'thd':
                 shop = Shop.objects.get(name=SHOP_THD)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
+            elif shop_name.lower() == 'ttg':
+                shop = Shop.objects.get(name=SHOP_TTG)
                 scrape_site(shop, fail_fast=options.get('fail_fast'))
 
             elif shop_name.lower() == 'validate':
