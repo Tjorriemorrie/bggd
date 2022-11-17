@@ -1,18 +1,14 @@
 import logging
-import re
 from collections import defaultdict
 from datetime import timedelta
-from functools import partial
 
 from django.contrib import admin
-from django.contrib.humanize.templatetags.humanize import intcomma
 from django.db import OperationalError, models
 from django.db.models import F, QuerySet, Min, ExpressionWrapper
 from django.shortcuts import redirect
 from django.urls import reverse, path
 from django.utils.html import format_html
 from django.utils.http import urlencode
-from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 from retry import retry
 
@@ -22,8 +18,7 @@ from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
     ShopGame, Price, Label
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
-from main.shops import scrape_raru, scrape_timeless, scrape_meeps_and_veeps, scrape_geekhome, update_game_shop_prices, \
-    scrape_site
+from main.shops import scrape_site, update_game_shop_prices
 
 logger = logging.getLogger(__name__)
 
@@ -133,18 +128,7 @@ def scrape_games_shop_cmd(modeladmin, request, queryset):
     for shopgame in queryset:
         shops[shopgame.shop.name].append(shopgame)
     for name, shopgames in shops.items():
-        if name == SHOP_RARU:
-            scrape_raru(shopgames)
-        elif name == SHOP_MEEPS_AND_VEEPS:
-            scrape_meeps_and_veeps(shopgames)
-        elif name == SHOP_TIMELESS:
-            scrape_timeless(shopgames)
-        elif name == SHOP_GEEKHOME:
-            scrape_geekhome(shopgames)
-        elif name == SHOP_THD:
-            scrape_site(shopgames[0].shop, shopgames=shopgames)
-        else:
-            raise ValueError(f'Unexpected shop: {name}')
+        scrape_site(shopgames[0].shop, shopgames=shopgames)
 
 
 @admin.register(ShopGame)
@@ -203,7 +187,8 @@ class ShopGameRenew(Game):
 
 @admin.register(ShopGameRenew)
 class ShopGameRenewAdmin(admin.ModelAdmin):
-    list_display = ['name', 'year', 'mav_shop', 'tl_shop', 'gh_shop', 'thd_shop', 'priority', 'oldest_updated_at', 'created_at']
+    list_display = ['name', 'year', 'mav_shop', 'thd_shop', 'ttg_shop', 'tl_shop', 'gh_shop',
+                    'priority', 'oldest_updated_at', 'created_at']
     search_fields = ('name',)
     actions = [shopgames_updated_at_cmd]
 
@@ -394,6 +379,41 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
         else:
             shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={thd.id}&game={game.id}" target="_blank">add url</a>'
+
+        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
+        return format_html(
+            f'{search}<br/>'
+            f'{shopgame_url}<br/>'
+            f'{status}'
+            # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    def ttg_shop(self, game: Game):
+        ttg = Shop.objects.get(name=SHOP_TTG)
+        name = game.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+
+        # search
+        params = urlencode({
+            'post_type': 'product',
+            'q': name,
+        })
+        search = f'<a href="{ttg.host}/search?{params}" target="_blank">search</a>'
+
+        # status
+        shopgame = ShopGame.objects.filter(game=game, shop=ttg).first()
+        if not shopgame:
+            status = 'no shop'
+        elif shopgame.mia:
+            status = '<img src="/static/admin/img/icon-no.svg" alt="False">'
+        elif not shopgame.current_price:
+            status = 'no price'
+        else:
+            status = f'R{shopgame.current_price}'
+
+        if shopgame:
+            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+        else:
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={ttg.id}&game={game.id}" target="_blank">add url</a>'
 
         # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
         return format_html(

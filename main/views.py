@@ -414,26 +414,35 @@ class ShopView(CachedTemplateViewGet):
                 heat_data[name1] = {n: 0 for n in SHOP_NAMES}
             if name2 not in heat_data:
                 heat_data[name2] = {n: 0 for n in SHOP_NAMES}
-            game_ids = Game.objects.filter(
-                shopgames__shop__name__in=[name1, name2]
+
+            shopgames_1 = ShopGame.objects.filter(
+                shop__name=name1
             ).exclude(
-                Q(shopgames__current_available=False) |
-                Q(shopgames__mia=True)
-            ).values_list('id', flat=True)
-            # if no games in common
-            if not game_ids:
+                Q(current_available=False) | Q(mia=True)
+            ).values_list('game', flat=True)
+            shopgames_2 = ShopGame.objects.filter(
+                shop__name=name2
+            ).exclude(
+                Q(current_available=False) | Q(mia=True)
+            ).values_list('game', flat=True)
+            game_ids = set(shopgames_1) & set(shopgames_2)
+            logger.info(f'Found {len(game_ids)} between {name1} and {name2}')
+
+            price_1 = ShopGame.objects.filter(
+                shop__name=name1, game__id__in=game_ids
+            ).all().aggregate(Avg('current_price'))['current_price__avg']
+            price_2 = ShopGame.objects.filter(
+                shop__name=name2, game__id__in=game_ids
+            ).all().aggregate(Avg('current_price'))['current_price__avg']
+            if price_1 is None or price_2 is None:
                 heat_data[name1][name2] = 0
                 heat_data[name2][name1] = 0
+                logger.info(f'No avg price for {name1} {price_1} or {name2} {price_2}')
                 continue
-            qs1 = ShopGame.objects.filter(
-                shop__name=name1, game__id__in=game_ids
-            ).all().aggregate(Avg('current_price'))
-            qs2 = ShopGame.objects.filter(
-                shop__name=name2, game__id__in=game_ids
-            ).all().aggregate(Avg('current_price'))
-            v = qs2['current_price__avg'] - qs1['current_price__avg']
-            heat_data[name1][name2] = v
-            heat_data[name2][name1] = -v
+            diff = price_2 - price_1
+            heat_data[name1][name2] = diff
+            heat_data[name2][name1] = -diff
+
         heat_raw = [list(p.values()) for p in heat_data.values()]
         fig_shop_price = px.imshow(
             heat_raw, x=SHOP_NAMES, y=SHOP_NAMES,

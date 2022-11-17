@@ -4,10 +4,10 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
-from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_THD, SHOP_TTG
+from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_THD, SHOP_TTG, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
+    SHOP_GEEKHOME
 from main.models import Shop
-from main.shops import scrape_raru, scrape_takealot, \
-    scrape_meeps_and_veeps, scrape_timeless, scrape_geekhome, validate_shopgames, update_outdated_game_shop_prices, \
+from main.shops import validate_shopgames, update_outdated_game_shop_prices, \
     scrape_site
 
 logger = logging.getLogger(__name__)
@@ -25,16 +25,22 @@ class Command(BaseCommand):
         shop_names = options['shop_name']
         logger.info(f'cmd scraping shops {shop_names}')
         for shop_name in shop_names:
+
             if shop_name.lower() == SHOP_RARU.lower():
-                scrape_raru(fail_fast=options.get('fail_fast'))
+                shop = Shop.objects.get(name=SHOP_RARU)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == SHOP_TAKEALOT.lower():
-                scrape_takealot(fail_fast=options.get('fail_fast'))
+                shop = Shop.objects.get(name=SHOP_TAKEALOT)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'mav':
-                scrape_meeps_and_veeps(fail_fast=options.get('fail_fast'))
+                shop = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'timeless':
-                scrape_timeless(fail_fast=options.get('fail_fast'))
+                shop = Shop.objects.get(name=SHOP_TIMELESS)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'geekhome':
-                scrape_geekhome(fail_fast=options.get('fail_fast'))
+                shop = Shop.objects.get(name=SHOP_GEEKHOME)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'thd':
                 shop = Shop.objects.get(name=SHOP_THD)
                 scrape_site(shop, fail_fast=options.get('fail_fast'))

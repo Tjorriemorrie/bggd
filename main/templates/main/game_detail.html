@@ -55,11 +55,11 @@
                         {% if game.shop_mean %}<br/><sup>Avg price: {{ game.shop_mean|intcomma }}</sup>{% endif %}
                     </h6>
                     <p>
-                        {% for shopgame in game.shopgames.all %}
+                    {% for shopgame in game.shopgames.all %}
                         {{ shopgame.shop.name }}: {{ shopgame|price }}<br/>
-                        {% empty %}
+                    {% empty %}
                         <span class="badge bg-warning">Not available at any shop</span>
-                        {% endfor %}
+                    {% endfor %}
                     </p>
                 </div>
             </div>
