@@ -40,7 +40,7 @@ sleep_time = 0
 last_url = None
 
 
-@retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60)
+@retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60, tries=10)
 def get(url: str, headers: dict = None) -> requests.Response:
     global sleep_time
     global last_url

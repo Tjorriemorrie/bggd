@@ -281,6 +281,8 @@ def scrape_tabletop_guru_game(url: str) -> dict:
     details = json.loads(script.contents[0])
 
     price = details['price'] // 100
+    if 'ORDER BY' in details['title']:
+        price /= 0.30
     status = STOCK_IN if details['available'] else STOCK_OUT
 
     return {
