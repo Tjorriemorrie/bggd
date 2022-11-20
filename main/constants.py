@@ -65,8 +65,8 @@ SHOP_GEEKHOME = 'GeekHome'
 SHOP_THD = 'The Hidden Den'
 SHOP_TTG = 'Tabletop Guru'
 SHOP_NAMES = [
-    SHOP_TTG,
     SHOP_THD,
+    SHOP_TTG,
     SHOP_MEEPS_AND_VEEPS,
     SHOP_GEEKHOME,
     SHOP_TIMELESS,

@@ -296,7 +296,7 @@ def scrape_timeless_game(url: str) -> dict:
     html = BeautifulSoup(res.text, 'html.parser')
 
     container = html.find('div', class_='w3-display-container')
-    price_txt = container.find_all('span', class_='w3-xxlarge')[0].text
+    price_txt = container.find_all('span', class_='w3-xxlarge')[-1].text
     price_txt = price_txt.replace('R', '').strip()
 
     status_txt = container.find_all('div')[0].text

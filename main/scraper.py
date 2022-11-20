@@ -55,7 +55,8 @@ def get(url: str, headers: dict = None) -> requests.Response:
     try:
         res = requests.get(url, headers=headers)
     except Exception as exc:
-        logger.warning(f'Connection error! {exc}')
+        logger.warning(f'Connection error! url={url}')
+        logger.warning(f'Connection error! exc={exc}')
         raise RequestsError() from exc
     if res.status_code in [429, 430]:
         logger.warning(f'Too many requests! {url}')
