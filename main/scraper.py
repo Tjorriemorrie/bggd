@@ -138,10 +138,10 @@ def scrape_game(game: Game):
     polls = preload['item']['polls']
     if polls['userplayers']['recommended']:
         game.rec_min_players = polls['userplayers']['recommended'][0]['min']
-        game.rec_max_players = polls['userplayers']['recommended'][0]['max']
+        game.rec_max_players = polls['userplayers']['recommended'][0]['max'] or 8
     if polls['userplayers']['best']:
         game.best_min_players = polls['userplayers']['best'][0]['min']
-        game.best_max_players = polls['userplayers']['best'][0]['max']
+        game.best_max_players = polls['userplayers']['best'][0]['max'] or 8
     game.rec_min_age = polls['playerage'].rstrip('+').partition('–')[0]
     game.weight_avg = polls['boardgameweight']['averageweight']
 
