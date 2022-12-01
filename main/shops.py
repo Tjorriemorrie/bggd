@@ -332,6 +332,31 @@ def scrape_geekhome_game(url: str) -> dict:
     }
 
 
+def scrape_takealot_game(url: str) -> dict:
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
+    }
+    res = get(url, headers)
+    html = BeautifulSoup(res.text, 'html.parser')
+
+    input_tag = html.find('input', id='id_strike_price')
+    price = int(input_tag['value'])
+    status = STOCK_IN
+
+    # availability = data['stock_availability']['status']
+    # if availability in ['fubar']:
+    #     status = STOCK_OUT
+    # elif availability in ['In stock', 'Ships in 5 - 7 work days']:
+    #     status = STOCK_IN
+    # else:
+    #     raise NotImplementedError(f'Not sure what is: {availability}')
+    # price = data['data_layer']['totalPrice']
+    return {
+        'status': status,
+        'price': price,
+    }
+
+
 ###############################################################################################################
 # DEPRECATED
 ###############################################################################################################
@@ -356,29 +381,3 @@ def scrape_raru_game(url: str) -> dict:
         'status': status,
         'price': int(price),
     }
-
-
-
-def scrape_takealot_game(url: str) -> dict:
-    plid = url.split('/')[-1]
-    api_url = f'https://api.takealot.com/rest/v-1-10-0/product-details/{plid}?platform=desktop&display_credit=true'
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-    }
-    res = get(api_url, headers)
-    data = res.json()
-
-    availability = data['stock_availability']['status']
-    if availability in ['fubar']:
-        status = STOCK_OUT
-    elif availability in ['In stock', 'Ships in 5 - 7 work days']:
-        status = STOCK_IN
-    else:
-        raise NotImplementedError(f'Not sure what is: {availability}')
-    price = data['data_layer']['totalPrice']
-    return {
-        'status': status,
-        'price': price,
-    }
-
-

@@ -56,7 +56,7 @@ INSTALLED_APPS = [
     'health_check.contrib.migrations',
     'health_check.contrib.psutil',  # disk and memory utilization; requires psutil
 
-    # 'django_extensions',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [

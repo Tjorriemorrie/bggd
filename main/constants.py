@@ -48,11 +48,8 @@ REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 
 
 # memory limits
-REC_MIN_CUTOFF = 11
-REC_MAX_CUTOFF = 220
-# 10 220
-# 10 200
-# 10 240
+REC_MIN_CUTOFF = 12
+REC_MAX_CUTOFF = 200
 
 STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'
@@ -65,11 +62,12 @@ SHOP_GEEKHOME = 'GeekHome'
 SHOP_THD = 'The Hidden Den'
 SHOP_TTG = 'Tabletop Guru'
 SHOP_NAMES = [
-    SHOP_THD,
     SHOP_TTG,
+    SHOP_THD,
     SHOP_MEEPS_AND_VEEPS,
     SHOP_GEEKHOME,
     SHOP_TIMELESS,
+    SHOP_TAKEALOT,
 ]
 
 SOME_YEARS_AGO = now().year - 8

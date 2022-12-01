@@ -20,7 +20,7 @@ function main() {
 
   ./manage.py train_models sim
 
-  ./manage.py scrape_shop mav timeless geekhome thd ttg outdated
+  ./manage.py scrape_shop mav timeless geekhome thd ttg takealot outdated
 }
 
 main

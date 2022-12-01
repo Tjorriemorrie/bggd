@@ -56,7 +56,9 @@
                     </h6>
                     <p>
                     {% for shopgame in game.shopgames.all %}
-                        {{ shopgame.shop.name }}: {{ shopgame|price }}<br/>
+                        {% if shopgame.current_price %}
+                            {{ shopgame.shop.name }}: {{ shopgame|price }}<br/>
+                        {% endif %}
                     {% empty %}
                         <span class="badge bg-warning">Not available at any shop</span>
                     {% endfor %}
