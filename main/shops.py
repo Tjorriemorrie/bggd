@@ -343,14 +343,16 @@ def scrape_takealot_game(url: str) -> dict:
     price = int(input_tag['value'])
     status = STOCK_IN
 
-    # availability = data['stock_availability']['status']
-    # if availability in ['fubar']:
-    #     status = STOCK_OUT
-    # elif availability in ['In stock', 'Ships in 5 - 7 work days']:
-    #     status = STOCK_IN
-    # else:
-    #     raise NotImplementedError(f'Not sure what is: {availability}')
-    # price = data['data_layer']['totalPrice']
+    script = html.find_all('script', type='text/javascript')[-1]
+    script_text = script.contents[0]
+    script_text = script_text[script_text.find('{'):]
+    script_text = script_text[:script_text.find('var ctx')]
+    script_text = script_text[:script_text.rfind('}')+1]
+    details = json.loads(script_text)
+    # price = details['plugins']['annotation']['annotations']['current_price']['yMax']
+    price_data = [i for i in details['datasets'] if i['label'] == 'Current Price'][0]
+    price = int(price_data['data'][-1])
+
     return {
         'status': status,
         'price': price,
