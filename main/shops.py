@@ -202,7 +202,7 @@ def scrape_site(shop: Shop, shopgames: List[ShopGame] = None, fail_fast: bool = 
             continue
 
         # when price is 0 it is not priced
-        if not data['price']:
+        if not data['price'] or data['price'] < 100:
             if not shopgame.mia:
                 shopgame.mia = True
                 shopgame.save()
