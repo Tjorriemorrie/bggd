@@ -1,0 +1,191 @@
+{% extends 'main/base.html' %}
+{% load humanize %}
+
+{% block title %}Country - {{ block.super }}{% endblock %}
+
+{% block content %}
+<div class="container">
+    <h1>South Africa</h1>
+
+
+    <br/>
+    <div class="row">
+        <div class="col text-center">
+            <h3>Players</h3>
+            <h5>{{ players|length|intcomma }}</h5>
+        </div>
+        <div class="col text-center">
+            <h3>Reviews</h3>
+            <h5>{{ reviews|length|intcomma }}</h5>
+        </div>
+        <div class="col text-center">
+            <h3>Games</h3>
+            <h5>{{ games|length|intcomma }}</h5>
+        </div>
+    </div>
+
+
+    <div class="row mt-5">
+        <div class="col-3">
+            {{ graph_provinces|safe }}
+        </div>
+        <div class="col-9">
+            {{ graph_cities|safe }}
+        </div>
+        <small class="text-muted">WTF is up with all these typos. There were {{ typos }} that I had to fix manually. Geeks are supposed to have proper spelling.</small>
+    </div>
+
+
+    <div class="row mt-5">
+        <div class="col">
+            <h3>Top raters</h3>
+            <p>There were {{ new_players|intcomma }} new players (first year rating on BGG).</p>
+            <p>There were {{ players_gone|intcomma }} players that abandoned. (rated last year but not this year on BGG).</p>
+            {{ graph_top_raters|safe }}
+            <p>Seems dubious how simmy has 260 ratings, however next year it can be grouped by owned games (not yet scraped).</p>
+            <small class="text-muted">I am buying more than a game a month and I am not in the top 50.</small>
+        </div>
+    </div>
+
+
+    <div class="row mt-5">
+        <div class="col">
+            <h3>Game Ratings</h3>
+            <p>Excludes ratings for games that were rated before this year and the rating was only updated/changed during this year,
+                i.e. only new ratings during this year is used.</p>
+            <p>Unlike the global average of 8, it seems this country is more critical and tends to average to 7.</p>
+            {{ graph_grr|safe }}
+        </div>
+    </div>
+
+
+    <div class="row">
+        <div class="col">
+            <small class="text-muted">WTF is up with all these old games getting so many ratings... since it is all new ratings meaning it was played first-time this year.</small>
+            {{ graph_gpy|safe }}
+            
+
+            <h3>Top rated games</h3>
+            <p>Highest rated games with number of ratings above average number of ratings of {{ avg_ratings|intcomma }}</p>
+            {# first 5 #}
+            <br/>
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in best_games|slice:':5' %}
+                        {% include 'main/country_best_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# second 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in best_games|slice:'5:10' %}
+                        {% include 'main/country_best_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# third 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in best_games|slice:'10:15' %}
+                        {% include 'main/country_best_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# fourth 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in best_games|slice:'15:20' %}
+                        {% include 'main/country_best_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+
+            <h3 class="mt-5">Most popular games</h3>
+            <p>The games with the most number of ratings (weighted by rating value).</p>
+            {# first 5 #}
+            <br/>
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_games|slice:':5' %}
+                        {% include 'main/country_pop_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# second 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_games|slice:'5:10' %}
+                        {% include 'main/country_pop_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# third 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_games|slice:'10:15' %}
+                        {% include 'main/country_pop_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# fourth 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_games|slice:'15:20' %}
+                        {% include 'main/country_pop_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# fifth 10 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_games|slice:'20:30' %}
+                        {% include 'main/country_pop_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# sixth 10 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_games|slice:'30:40' %}
+                        {% include 'main/country_pop_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# seventh 10 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_games|slice:'40:' %}
+                        {% include 'main/country_pop_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+{% endblock %}

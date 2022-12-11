@@ -1,14 +1,14 @@
 import logging
-from collections import Counter
+from collections import Counter, defaultdict
 from datetime import timedelta, datetime
 from itertools import combinations
-from operator import attrgetter
+from operator import attrgetter, itemgetter
 
 import pandas as pd
 import plotly.express as px
-from django.db.models import Q, Count, F, Sum, Avg, QuerySet, Min
+from django.db.models import Q, Count, F, Sum, Avg, QuerySet, Min, Max
 from django.db.models.functions import TruncMonth, Least
-from django.shortcuts import redirect
+from django.shortcuts import redirect, render
 from django.utils.decorators import method_decorator
 from django.utils.timezone import now, make_aware
 from django.views.decorators.cache import cache_page
@@ -18,7 +18,12 @@ from pytube import Search
 from bgg.settings import CACHE_DURATION
 from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, \
     WEIGHTS_CUTOFF, SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
-    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF, IGNORE_FAMILIES, SOME_YEARS_AGO
+    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF, IGNORE_FAMILIES, SOME_YEARS_AGO, COUNTRY_SOUTH_AFRICA, PROVINCES_LIST, \
+    CITIES, PROVINCE_KWAZULU_NATAL, PROVINCE_WESTERN_CAPE, CITY_ELLISRAS, PROVINCE_LIMPOPO, CITY_PIETERMARITZBURG, \
+    CITY_CAPE_TOWN, CITY_JOHANNESBURG, PROVINCE_FREE_STATE, CITY_BLOEMFONTEIN, PROVINCE_NORTH_WEST, PROVINCE_GAUTENG, \
+    CITY_POTCHEFSTROOM, CITY_STELLENBOSCH, PROVINCE_MPUMALANGA, CITY_PIETERSBURG, CITY_DURBAN, CITY_GRAHAMSTOWN, \
+    CITY_GEORGE, CITY_CENTURION, PROVINCE_NORTHERN_CAPE, CITY_PORT_ELIZABETH, PROVINCE_EASTERN_CAPE, CITY_BENONI, \
+    CITY_PRETORIA
 from main.models import Game, Player, Review, Day, Award, \
     AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
@@ -330,6 +335,226 @@ def player_predict_view(request, pk):
         player.redo_started_at = None
         player.save()
     return redirect(player)
+
+
+class CountryView(CachedTemplateViewGet):
+    template_name = 'main/country.html'
+
+    def get_context_data(self, **kwargs):
+        start_of_year = datetime(2022, 1, 1)
+        start_of_last_year = datetime(2021, 1, 1)
+        data = super().get_context_data(**kwargs)
+        players = Player.objects.filter(
+            country=COUNTRY_SOUTH_AFRICA,
+            last_review_at__gte=start_of_year
+        ).all()
+
+        data['players'] = players
+
+        games = defaultdict(list)
+        players_gone = Player.objects.filter(
+            country=COUNTRY_SOUTH_AFRICA,
+            last_review_at__gte=start_of_last_year,
+        ).exclude(pk__in=[p.pk for p in players]).count()
+        data['players_gone'] = players_gone
+
+        reviews_per_player = []
+        new_players = 0
+
+        area_typos = 0
+        cntr_provinces = Counter()
+        cntr_cities = Counter()
+        for player in players:
+
+            # new players
+            if not player.reviews.filter(created_at__lt=start_of_year).count():
+                new_players += 1
+
+            player_reviews = player.reviews.filter(created_at__gte=start_of_year).all()
+            for review in player_reviews:
+                games[review.game].append(review.rating)
+
+            # get reviews per player
+            reviews_per_player.append((player.nick, len(player_reviews)))
+
+            # get area counts
+            if not player.area:
+                continue
+            area = player.area.rstrip(', South Africa')
+            places = area.split(',')
+            if len(places) != 2:
+                if places in [['Pre'], ['KwaZulu-Natal'], ['KwaZulu Natal'], ['Gauteng'], ['Haw'], ['Joburg & Cape Town'], ['Kwa-Zulu Natal'], ['Western Cape']]:
+                    area_typos += 1
+                    continue
+                if places in [['Cape Town'], ['Blouberg'], ['Stellenridge', ' Cape Town', ' Western Cape'], ['Brackenfell'], ['Tokai', ' Cape Town', ' Western Cape']]:
+                    area_typos += 1
+                    places = [CITY_CAPE_TOWN, PROVINCE_WESTERN_CAPE]
+                elif places in [['Stellenbos']]:
+                    area_typos += 1
+                    places = [CITY_STELLENBOSCH, PROVINCE_WESTERN_CAPE]
+                elif places in [['Pietermaritzburg']]:
+                    area_typos += 1
+                    places = [CITY_PIETERMARITZBURG, PROVINCE_KWAZULU_NATAL]
+                elif places in [['Lephalale']]:
+                    area_typos += 1
+                    places = [CITY_ELLISRAS, PROVINCE_LIMPOPO]
+                elif places in [['Bloemfontein']]:
+                    area_typos += 1
+                    places = [CITY_BLOEMFONTEIN, PROVINCE_FREE_STATE]
+                elif places in [['Johannesburg']]:
+                    area_typos += 1
+                    places = [CITY_JOHANNESBURG, PROVINCE_GAUTENG]
+                elif places in [['Potchefstroom']]:
+                    area_typos += 1
+                    places = [CITY_POTCHEFSTROOM, PROVINCE_NORTH_WEST]
+                elif places in [['La Lucia', ' Durban', ' KwaZulu-Natal'], ['Durban']]:
+                    area_typos += 1
+                    places = [CITY_DURBAN, PROVINCE_KWAZULU_NATAL]
+                elif places in [['Georg']]:
+                    area_typos += 1
+                    places = [CITY_GEORGE, PROVINCE_WESTERN_CAPE]
+                elif places in [['Lyttelton']]:
+                    area_typos += 1
+                    places = [CITY_CENTURION, PROVINCE_GAUTENG]
+                elif places in [['Port Elizabe']]:
+                    area_typos += 1
+                    places = [CITY_PORT_ELIZABETH, PROVINCE_EASTERN_CAPE]
+                elif places in [['Benon']]:
+                    area_typos += 1
+                    places = [CITY_BENONI, PROVINCE_GAUTENG]
+                else:
+                    raise ValueError(f'expected 2 values for area: {places}')
+
+            province = places[1].strip().title()
+            if province not in PROVINCES_LIST:
+                if province in ['Florid', 'Unspecified', 'Hampshire', 'Les']:
+                    area_typos += 1
+                    continue
+                if province in ['North Wes', 'North-Wes']:
+                    area_typos += 1
+                    province = PROVINCE_NORTH_WEST
+                elif province in ['Westkap', 'Cape', 'Western Province', 'Kuilsrivie']:
+                    area_typos += 1
+                    province = PROVINCE_WESTERN_CAPE
+                elif province in ['Kzn', 'Kwa-Zulu Natal', 'Kwazulu Natal']:
+                    area_typos += 1
+                    province = PROVINCE_KWAZULU_NATAL
+                elif province in ['Guateng']:
+                    area_typos += 1
+                    province = PROVINCE_GAUTENG
+                elif province in ['Mpumalang']:
+                    area_typos += 1
+                    province = PROVINCE_MPUMALANGA
+                elif province in ['Freestate']:
+                    area_typos += 1
+                    province = PROVINCE_FREE_STATE
+                elif province in ['Limpop']:
+                    area_typos += 1
+                    province = PROVINCE_LIMPOPO
+                elif province in ['South-']:
+                    area_typos += 1
+                    province = PROVINCE_GAUTENG
+                elif province in ['Northen Province']:
+                    area_typos += 1
+                    province = PROVINCE_NORTHERN_CAPE
+                else:
+                    raise ValueError(f'expected province: {province}')
+            cntr_provinces.update([province])
+
+            data['new_players'] = new_players
+
+            city = places[0].strip().title()
+            if city not in CITIES[province]:
+                if city in ['Johannesburgo', 'Sandton', 'Johanneburg', 'Newtown']:
+                    area_typos += 1
+                    city = CITY_JOHANNESBURG
+                elif city in ['Kapstadt', 'Bellville', 'Capetown', 'Durbanville', 'Brackenfell']:
+                    area_typos += 1
+                    city = CITY_CAPE_TOWN
+                elif city in ['Polokwane', 'Polokwane City']:
+                    area_typos += 1
+                    city = CITY_PIETERSBURG
+                elif city in ['Makhanda']:
+                    area_typos += 1
+                    city = CITY_GRAHAMSTOWN
+                elif city in ['Pietersburg']:
+                    area_typos += 1
+                    province = PROVINCE_MPUMALANGA
+                elif city in ['Pietersburg']:
+                    area_typos += 1
+                    province = PROVINCE_MPUMALANGA
+                elif city in ['Pretoria/Centurion']:
+                    area_typos += 1
+                    province = CITY_PRETORIA
+                else:
+                    raise ValueError(f'Expected city in {province}: {city}')
+            cntr_cities.update([city])
+
+        data['typos'] = area_typos
+
+        df_provinces = pd.DataFrame(cntr_provinces.most_common(10), columns=['province', 'cnt'])
+        fig_provinces = px.bar(
+            df_provinces, x='province', y='cnt', #histfunc='sum', #range_x=(0, 10),
+            labels={'province': 'Provinces', 'cnt': 'Count'},
+            title='Histogram of provinces')
+        # df_provinces.update_traces(nbinsx=20, autobinx=False)
+        data['graph_provinces'] = fig_provinces.to_html(full_html=False)
+
+        df_cities = pd.DataFrame(cntr_cities.most_common(20), columns=['city', 'cnt'])
+        fig_cities = px.bar(
+            df_cities, x='city', y='cnt', #histfunc='sum', #range_x=(0, 10),
+            labels={'city': 'Cities', 'cnt': 'Count'},
+            title='Histogram of cities')
+        # df_cities.update_traces(nbinsx=20, autobinx=False)
+        data['graph_cities'] = fig_cities.to_html(full_html=False)
+
+        reviews = Review.objects.filter(player__country=COUNTRY_SOUTH_AFRICA).all()
+        data['reviews'] = reviews
+
+        reviews_per_player.sort(key=itemgetter(1), reverse=True)
+        df_top_raters = pd.DataFrame(reviews_per_player[:50], columns=['player', 'cnt'])
+        fig_top_raters = px.bar(
+            df_top_raters, x='cnt', y='player', #histfunc='sum', #range_x=(0, 10),
+            labels={'player': 'Player', 'cnt': 'Ratings made'},
+            title='Top 50 raters', orientation='h', height=1200)
+        # df_cities.update_traces(nbinsx=20, autobinx=False)
+        data['graph_top_raters'] = fig_top_raters.to_html(full_html=False)
+
+        data['games'] = games
+        games_rating_rated = [
+            (g.name, len(rs), sum(rs) / len(rs))
+            for g, rs in games.items()]
+        df_grr = pd.DataFrame(games_rating_rated, columns=['game', 'count', 'rating'])
+        fig_grr = px.scatter(df_grr, x="count", y="rating", hover_name='game',
+                             title='Number of ratings vs average rating score', height=600)
+        data['graph_grr'] = fig_grr.to_html(full_html=False)
+
+        for game, ratings in games.items():
+            game.total_ratings = len(ratings)
+            game.average_rating = sum(ratings) / len(ratings)
+            game.score = game.total_ratings * game.average_rating
+
+        top_games = [g for g in games]
+        top_games.sort(key=attrgetter('score'), reverse=True)
+        data['top_games'] = top_games[:50]
+
+        avg_ratings = sum(g.total_ratings for g in games) / len(games)
+        data['avg_ratings'] = avg_ratings
+        best_games = [g for g in games if g.total_ratings > avg_ratings]
+        best_games.sort(key=attrgetter('average_rating'), reverse=True)
+        data['best_games'] = best_games[:20]
+
+        # games per year
+        cntr_gpy = Counter([g.year for g in games if g.year >= start_of_year.year - 20])
+        df_gpy = pd.DataFrame(cntr_gpy.most_common(999), columns=['year', 'cnt'])
+        fig_gpy = px.bar(
+            df_gpy, x='year', y='cnt', #histfunc='sum', #range_x=(0, 10),
+            labels={'year': 'Release year of game', 'cnt': 'Number of games rated'},
+            title='Histogram of games by year')
+        # df_gpy.update_traces(nbinsx=20, autobinx=False)
+        data['graph_gpy'] = fig_gpy.to_html(full_html=False)
+
+        return data
 
 
 class ReviewView(CachedTemplateViewGet):

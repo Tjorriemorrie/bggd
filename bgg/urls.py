@@ -32,4 +32,6 @@ urlpatterns = [
     path('reviews/', views.ReviewView.as_view(), name='reviews'),
     path('shop/', views.ShopView.as_view(), name='shop'),
     path(r'ht/', include('health_check.urls')),
+
+    path(r'country', views.CountryView.as_view(), name='country'),
 ]

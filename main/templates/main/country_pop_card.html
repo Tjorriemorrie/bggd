@@ -1,0 +1,23 @@
+{% load humanize %}
+
+<div class="card border-dark">
+    <a href="{% url 'game_detail' game.id %}" class="text-reset text-decoration-none">
+        <img src="{{ game.img }}" class="card-img-top"/>
+    </a>
+    <div class="card-body">
+        <h5 class="card-title">
+            <a href="{% url 'game_detail' game.id %}" class="text-reset text-decoration-none">
+                {{ game.name }} <small>[{{ game.year }}]</small>
+            </a>
+        </h5>
+        <p class="card-text">
+            <strong>Score: {{ game.score|floatformat:0|intcomma }}</strong>
+            <br/>Rating: {{ game.average_rating|floatformat:1 }}
+            <br/>Ratings: {{ game.total_ratings|floatformat:0|intcomma }}
+            <br/>
+            <small class="text-muted">
+                <br/>
+            </small>
+        </p>
+    </div>
+</div>
