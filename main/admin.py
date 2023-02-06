@@ -13,7 +13,7 @@ from django.utils.timezone import now
 from retry import retry
 
 from main.constants import SHOP_RARU, SHOP_MEEPS_AND_VEEPS, \
-    SHOP_TIMELESS, SHOP_GEEKHOME, SHOP_THD, SHOP_TTG, SHOP_TAKEALOT
+    SHOP_TIMELESS, SHOP_GEEKHOME, SHOP_THD, SHOP_TTG, SHOP_TAKEALOT, SHOP_GARGOYLE
 from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
     ShopGame, Price, Label
 from main.recommendations import predict_player
@@ -163,6 +163,8 @@ class ShopGameAdmin(admin.ModelAdmin):
             return redirect('/admin/main/shopgamethehiddenden/')
         elif obj.shop.name == SHOP_TTG:
             return redirect('/admin/main/shopgametabletopguru/')
+        elif obj.shop.name == SHOP_GARGOYLE:
+            return redirect('/admin/main/shopgamegargoyle/')
         else:
             return super()._response_post_save(request, obj)
 
@@ -189,11 +191,16 @@ class ShopGameRenew(Game):
 
 @admin.register(ShopGameRenew)
 class ShopGameRenewAdmin(admin.ModelAdmin):
-    list_display = ['name', 'year',
-                    'tl_shop', 'mav_shop', 'thd_shop', 'ttg_shop', 'gh_shop', 'takealot_shop',
+    list_display = ['title', 'year',
+                    'tl_shop', 'mav_shop', 'gargoyle_shop', 'thd_shop', 'ttg_shop', 'gh_shop', 'takealot_shop',
                     'priority', 'oldest_updated_at', 'created_at']
     search_fields = ('name',)
     actions = [shopgames_updated_at_cmd]
+
+    @admin.display(ordering=F('name'))
+    def title(self, obj: Game):
+        return format_html(
+            f'<p>{obj.name}<br/><img height="60" src="{obj.img}"/></p>')
 
     @admin.display(ordering=F('priority').desc(nulls_last=False))
     def priority(self, game: Game) -> str:
@@ -316,6 +323,41 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
 
         return format_html(
             f'<a href="{gh_search}" target="_blank">search</a><br/>'
+            f'{shopgame_url}<br/>'
+            f'{status}'
+            # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    def gargoyle_shop(self, game: Game):
+        gar = Shop.objects.get(name=SHOP_GARGOYLE)
+        name = game.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+
+        # search
+        params = urlencode({
+            'post_type': 'product',
+            's': name,
+        })
+        search = f'<a href="{gar.host}?{params}" target="_blank">search</a>'
+
+        # status
+        shopgame = ShopGame.objects.filter(game=game, shop=gar).first()
+        if not shopgame:
+            status = 'no shop'
+        elif shopgame.mia:
+            status = '<img src="/static/admin/img/icon-no.svg" alt="False">'
+        elif not shopgame.current_price:
+            status = 'no price'
+        else:
+            status = f'R{shopgame.current_price}'
+
+        if shopgame:
+            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+        else:
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gar.id}&game={game.id}" target="_blank">add url</a>'
+
+        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
+        return format_html(
+            f'{search}<br/>'
             f'{shopgame_url}<br/>'
             f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
@@ -692,6 +734,62 @@ class ShopGameTabletopGuruAdmin(admin.ModelAdmin):
         return format_html(
             f'<a href="{ttg_search}" target="_blank">search {ttg}</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={ttg.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    def hotness_fmt(self, obj: Game):
+        hotness = int(obj.hotness) if obj.hotness else 0
+        return format_html(f'{hotness}')
+
+
+class ShopGameGargoyle(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Shop Grinning Gargoyle'
+        verbose_name_plural = 'Shop Grinning Gargoyle'
+
+
+@admin.action(description='Mark Grinning Gargoyle shopgames as MIA')
+def mark_mia_gargoyle_cmd(modeladmin, request, queryset):
+    shop = Shop.objects.get(name=SHOP_GARGOYLE)
+    for game in queryset:
+        shopgame, _ = ShopGame.objects.update_or_create(
+            game=game,
+            shop=shop,
+            defaults={
+                'url_at': now(),
+                'url': None,
+                'mia': True,
+            }
+        )
+
+
+@admin.register(ShopGameGargoyle)
+class ShopGameGargoyleAdmin(admin.ModelAdmin):
+    list_display = ('gargoyle', 'title', 'year', 'hotness_fmt')
+    ordering = ('year', 'hotness')
+    actions = (mark_mia_gargoyle_cmd,)
+
+    def get_queryset(self, request):
+        return Game.objects.exclude(shopgames__shop__name=SHOP_GARGOYLE)
+
+    def title(self, obj: Game):
+        return format_html(
+            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+
+    def gargoyle(self, obj: Game):
+        gar = Shop.objects.get(name=SHOP_GARGOYLE)
+        name = obj.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+        # https://grinning-gargoyle.co.za/?s=detective&post_type=product&product_cat=
+        params = urlencode({
+            'post_type': 'product',
+            's': name,
+        })
+        gargoyle_search = f'{gar.host}/search?{params}'
+        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gar.id})
+        return format_html(
+            f'<a href="{gargoyle_search}" target="_blank">search {gar}</a><br/><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={gar.id}&game={obj.id}">add url</a><br/><br/>'
             f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 

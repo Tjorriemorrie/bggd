@@ -252,6 +252,27 @@ def scrape_meeps_and_veeps_game(url: str) -> dict:
     }
 
 
+def scrape_grinning_gargoyle_game(url: str) -> dict:
+    res = get(url)
+    html = BeautifulSoup(res.text, 'html.parser')
+
+    scripts = html.find_all('script')
+    scripts = [s for s in scripts if s.get('type', '') == 'application/ld+json']
+    details = json.loads(scripts[-1].contents[0])
+    price = int(float(details['@graph'][-1]['offers'][-1]['price']))
+    if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
+        status = STOCK_IN
+    elif 'OutOfStock' in details['@graph'][-1]['offers'][-1]['availability']:
+        status = STOCK_OUT
+    else:
+        raise ValueError(f'Unknown availability: {details["@graph"][-1]["offers"]}')
+
+    return {
+        'status': status,
+        'price': price,
+    }
+
+
 def scrape_the_hidden_den_game(url: str) -> dict:
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
@@ -259,7 +280,7 @@ def scrape_the_hidden_den_game(url: str) -> dict:
     scripts = html.find_all('script')
     scripts = [s for s in scripts if s.get('type', '') == 'application/ld+json']
     details = json.loads(scripts[-1].contents[0])
-    price = int(details['@graph'][-1]['offers'][-1]['price'])
+    price = int(float(details['@graph'][-1]['offers'][-1]['price']))
     if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_IN
     elif 'OutOfStock' in details['@graph'][-1]['offers'][-1]['availability']:
