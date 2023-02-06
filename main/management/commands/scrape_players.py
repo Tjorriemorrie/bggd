@@ -8,6 +8,7 @@ from django.db.models import Max, F, Q
 from django.utils.timezone import now
 from retry import retry
 
+from main.constants import COUNTRY_SOUTH_AFRICA
 from main.errors import PlayerScrapeError, PlayerRatingNewGameError, OutOfTimeError, \
     PlayerRatingUsernameNotFoundError
 from main.models import Player, Game
@@ -136,6 +137,50 @@ class Command(BaseCommand):
             # renew loop
             players = Player.objects.order_by('rec_at').all()[:100]
 
+    def _upkeep_south_africa(self, game_ids: List[int]):
+        logger.info(''.join(['='] * 40) + ' scraping south africa ' + ''.join(['='] * 40))
+        today = now()
+        players = Player.objects.filter(country=COUNTRY_SOUTH_AFRICA).order_by('rec_at').all()[:100]
+        while players:
+            for player in players:
+                self._check_watch()
+                days_since = (today - player.rec_at).days
+
+                # details
+                try:
+                    scrape_player(player)
+                except PlayerScrapeError:
+                    player.delete()
+                    logger.info(f'Deleted bad user {player}')
+                    continue
+
+                # upkeep ratings
+                try:
+                    scrape_player_ratings(player)
+                except (TypeError, KeyError,
+                        PlayerRatingNewGameError,
+                        PlayerRatingUsernameNotFoundError):
+                    pass  # stopped at new game
+
+                # dud player?
+                if not player.reviews.count():
+                    player.delete()
+                    logger.info(f'Deleted player without ratings {player}')
+                    continue
+
+                # recommendations
+                predict_player(player, game_ids)
+
+                # update game days
+                # if it is not updated, then bad days with scraping errors will
+                # not get fixed, e.g. jul 2022 with very, very low rating counts.
+                # update_gamedays(player)
+
+                logger.info(f'{self.prefix} upkeeped {player} again after {days_since} days')
+
+            # renew loop
+            players = Player.objects.filter(country=COUNTRY_SOUTH_AFRICA).order_by('rec_at').all()[:100]
+
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _loader(self, *args, **options):
         game_ids = Game.objects.values_list('id', flat=True)
@@ -147,6 +192,7 @@ class Command(BaseCommand):
 
         # with remaining time
         self._upkeep(game_ids)
+        # self._upkeep_south_africa(game_ids)
 
     def handle(self, *args, **options):
         try:

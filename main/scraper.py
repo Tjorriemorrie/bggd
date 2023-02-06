@@ -72,7 +72,7 @@ def scrape_rankings() -> List[Game]:
     logger.info('Scraping rankings...')
     games = []
     name_pattern = re.compile(r'(.*)\s\((-?\d+)\)')
-    id_pattern = re.compile(r'/boardgame/(\d+)/')
+    id_pattern = re.compile(r'/(?:boardgame|boardgameexpansion)/(\d+)/')
     created = False
     page = 0
     while not created:
@@ -87,16 +87,21 @@ def scrape_rankings() -> List[Game]:
             rank = tds[0].text.strip()
             url = tds[1].find('a')['href']
             id_matches = id_pattern.search(url)
+            try:
+                bgg_id = id_matches.group(1)
+            except AttributeError:
+                logger.error(f'Could not scrape: no id from {url}')
+                raise
             name_year = tds[2].find_all('div')[1].text.strip()
             name_matches = name_pattern.search(name_year)
             try:
                 name = name_matches.group(1)
                 year = int(name_matches.group(2))
             except AttributeError:
-                logger.error(f'Could not scrape: {name_year}')
+                logger.error(f'Could not scrape: no name/year from {name_year}')
                 continue
             game, created = Game.objects.update_or_create(
-                bgg_id=id_matches.group(1),
+                bgg_id=bgg_id,
                 defaults={
                     'rank': int(rank),
                     'url': url,
@@ -343,7 +348,11 @@ def scrape_player_ratings(player: Player):
             rating = round(float(rating_info[0]), 1)
             rating = min(10., rating)
             rating = max(1., rating)
-            rated_on = make_aware(datetime.strptime(rating_info[1].rstrip('*'), '%b %Y'))
+            try:
+                rated_on = make_aware(datetime.strptime(rating_info[1].rstrip('*'), '%b %Y'))
+            except IndexError:
+                # month and year is in next year. just skip.
+                continue
             # get comment
             comment_and_date = list(cells[3].stripped_strings)
             comment = comment_and_date[0] if comment_and_date else None

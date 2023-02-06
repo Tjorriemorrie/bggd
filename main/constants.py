@@ -46,10 +46,12 @@ REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 # 12/240: 1.nemesis 2.dune 3.kemet 4.TI4 5.eclipse
 # 11/220: 1.TI4 2.nemesis 3.inis 4.cloud 5.dimperium 7.eclipse
 
+# jan 2022
+
 
 # memory limits
 REC_MIN_CUTOFF = 12
-REC_MAX_CUTOFF = 200
+REC_MAX_CUTOFF = 160
 
 STOCK_IN = 'In Stock'
 STOCK_OUT = 'Out of Stock'
@@ -61,7 +63,9 @@ SHOP_TIMELESS = 'Timeless'
 SHOP_GEEKHOME = 'GeekHome'
 SHOP_THD = 'The Hidden Den'
 SHOP_TTG = 'Tabletop Guru'
+SHOP_GARGOYLE = 'Grinning Gargoyle'
 SHOP_NAMES = [
+    SHOP_GARGOYLE,
     SHOP_TTG,
     SHOP_THD,
     SHOP_MEEPS_AND_VEEPS,

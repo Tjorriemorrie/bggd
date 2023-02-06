@@ -11,8 +11,11 @@
             </a>
         </h5>
         <p class="card-text">
-            <p>Rating: {{ game.average_rating|floatformat:2 }}</p>
-            <p>Ratings: {{ game.total_ratings|intcomma }}</p>
+            <h5>Recs: {{ game.rsa_recs|intcomma }}</h5>
+            <p>
+                Global rating: {{ game.rating|floatformat:1 }}
+                <br/>{{ game.weight_tag }}
+            </p>
         </p>
     </div>
 </div>

@@ -554,6 +554,53 @@ class CountryView(CachedTemplateViewGet):
         # df_gpy.update_traces(nbinsx=20, autobinx=False)
         data['graph_gpy'] = fig_gpy.to_html(full_html=False)
 
+        # recs
+        top_recs = list()
+        recs_per_game = Counter([r.game for p in players for r in p.recs.all()])
+        for game, recs in recs_per_game.most_common(20):
+            game.rsa_recs = recs
+            top_recs.append(game)
+        data['top_recs'] = top_recs
+
+        # top ranked
+        points = [25, 18, 15, 12, 8, 6, 4, 2, 1, 1]
+        top_ranked_last_year = defaultdict(lambda: 0)
+        last_players = Player.objects.filter(
+            country=COUNTRY_SOUTH_AFRICA,
+            last_review_at__gte=start_of_last_year,
+            last_review_at__lte=start_of_year
+        ).all()
+        for last_player in last_players:
+            last_reviews = last_player.reviews.annotate(
+                cutoff=Min('created_at', 'reviewed_at')
+            ).filter(
+                cutoff__lte=start_of_year
+            ).order_by(
+                '-rating', '-created_at'
+            ).all()
+            for point, last_review in zip(points, last_reviews):
+                top_ranked_last_year[last_review.game] += point
+        top_rank_last = list(top_ranked_last_year.items())
+        top_rank_last.sort(key=itemgetter(1), reverse=True)
+        top_rank_last = {gr[0]: ix + 1 for ix, gr in enumerate(top_rank_last)}
+
+        top_ranked_this_year = defaultdict(lambda: 0)
+        for player in players:
+            reviews = player.reviews.order_by('-rating', '-created_at').all()
+            for point, review in zip(points, reviews):
+                top_ranked_this_year[review.game] += point
+        rankings = list(top_ranked_this_year.items())
+        rankings.sort(key=itemgetter(1), reverse=True)
+        final_rankings = []
+        for ix, ranking in enumerate(rankings[:100]):
+            final_rankings.append((
+                ranking[0],
+                ranking[1],
+                ix + 1,
+                'New' if not top_rank_last.get(ranking[0]) else top_rank_last[ranking[0]] - ix + 1
+            ))
+        data['rankings'] = final_rankings[::-1]
+
         return data
 
 

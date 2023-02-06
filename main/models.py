@@ -106,7 +106,8 @@ class Game(models.Model):
     def best_shop(self) -> Optional['ShopGame']:
         """Returns best shop with available stock."""
         return self.shopgames.filter(
-            current_available=True
+            current_available=True,
+            url__isnull=False
         ).order_by('current_price').first()
 
     def comments(self) -> List['Review']:

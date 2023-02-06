@@ -6,7 +6,7 @@ from retry import retry
 
 from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_THD, SHOP_TTG, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
     SHOP_GEEKHOME
-from main.models import Shop
+from main.models import Shop, Game
 from main.shops import validate_shopgames, update_outdated_game_shop_prices, \
     scrape_site
 
@@ -52,6 +52,13 @@ class Command(BaseCommand):
                 validate_shopgames()
 
             elif shop_name.lower() == 'outdated':
+                outs = Game.objects.filter(
+                    shop_available=True,
+                    shop_saving__gte=0
+                ).order_by('-shop_saving', '-hotness').all()[:20]
+                for out in outs:
+                    out.shop_outdated = True
+                    out.save()
                 update_outdated_game_shop_prices()
 
             else:

@@ -5,7 +5,7 @@
 
 {% block content %}
 <div class="container">
-    <h1>South Africa</h1>
+    <h1>South Africa 2022</h1>
 
 
     <br/>
@@ -32,7 +32,7 @@
         <div class="col-9">
             {{ graph_cities|safe }}
         </div>
-        <small class="text-muted">WTF is up with all these typos. There were {{ typos }} that I had to fix manually. Geeks are supposed to have proper spelling.</small>
+        <small class="text-muted">There were {{ typos }} that I had to fix manually. Such shame.</small>
     </div>
 
 
@@ -53,7 +53,6 @@
             <h3>Game Ratings</h3>
             <p>Excludes ratings for games that were rated before this year and the rating was only updated/changed during this year,
                 i.e. only new ratings during this year is used.</p>
-            <p>Unlike the global average of 8, it seems this country is more critical and tends to average to 7.</p>
             {{ graph_grr|safe }}
         </div>
     </div>
@@ -112,6 +111,7 @@
 
             <h3 class="mt-5">Most popular games</h3>
             <p>The games with the most number of ratings (weighted by rating value).</p>
+            <p>These might correlate to new games acquired this year</p>
             {# first 5 #}
             <br/>
             <div class="row">
@@ -183,9 +183,93 @@
                     </div>
                 </div>
             </div>
+            <br/>
+            <small class="text-muted">Nemesis Lockdown was the BlackFriday game, and it is not in the top 50. Much shame.</small>
 
         </div>
     </div>
+
+
+    <div class="row mt-5">
+        <div class="col">
+            <h3>Most recommended games</h3>
+            <p>Using an SVD algorithm recommendation system. Counting the top 10 recommended games for all players with more than 3 ratings.</p>
+
+            {# first 5 #}
+            <br/>
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_recs|slice:':5' %}
+                        {% include 'main/country_rec_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# second 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_recs|slice:'5:10' %}
+                        {% include 'main/country_rec_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# third 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_recs|slice:'10:15' %}
+                        {% include 'main/country_rec_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {# fourth 5 #}
+            <div class="row">
+                <div class="col">
+                    <div class="card-group">
+                        {% for game in top_recs|slice:'15:20' %}
+                        {% include 'main/country_rec_card.html' with game=game %}
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+
+    <div class="row mt-5">
+        <div class="col">
+            <h3>Current Top Ranked Games</h3>
+            <p>The top ranked of players, ordered by rating then date.</p>
+            <p>Using F1 scoring for top 10 for each player.</p>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Rank</th>
+                    <th>Score</th>
+                    <th colspan="2">Game</th>
+                    <th>Movement from last year</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for g, s, r, m in rankings %}
+                    <tr>
+                        <td>{{ r }}</td>
+                        <td>{{ s|intcomma }}</td>
+                        <td><img height="70" src="{{ g.img }}" class="img"/></td>
+                        <td>{{ g.name }}</td>
+                        <td>{{ m }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
 
 </div>
 {% endblock %}
