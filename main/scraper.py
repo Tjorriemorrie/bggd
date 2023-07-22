@@ -7,11 +7,13 @@ from typing import List, Tuple
 
 import requests
 from bs4 import BeautifulSoup
+from django.conf import settings
 from django.db import IntegrityError, OperationalError
 from django.db.models import Avg
 from django.utils.timezone import now, make_aware
 from retry import retry
 
+from main.constants import REVIEW_STATUS_CHOICES, REVIEW_STATUS_NONE
 from main.errors import PlayerScrapeError, PlayerRatingUsernameNotFoundError
 from main.models import Game, Label, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
@@ -81,6 +83,9 @@ def scrape_rankings() -> List[Game]:
         html = BeautifulSoup(res.text, 'html.parser')
         rows = html.find_all('tr', id='row_')
         logger.info(f'Found {len(rows)} rows for page {page}...')
+        if not rows:
+            logger.error(f'No rows for {res.text}')
+            raise ValueError(f'Could not scrape games at {URL_RANKINGS}{page}')
 
         for row in rows:
             tds = row.find_all('td')
@@ -282,6 +287,22 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
         review.reviewed_at = reviewed_at
         review.rating = item['rating']
         created = True
+        review.save()
+
+    # review status
+    for status, _ in REVIEW_STATUS_CHOICES:
+        if status not in item['status']:
+            continue
+        if status == review.status:
+            break
+        else:
+            review.status = status
+            review.save()
+            break
+    else:
+        if settings.DEBUG:
+            raise Exception(f'unknown statuses: {item["status"]}')
+        review.status = REVIEW_STATUS_NONE
         review.save()
 
     return review, created

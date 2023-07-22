@@ -4,8 +4,8 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
-from main.constants import SHOP_RARU, SHOP_TAKEALOT, SHOP_THD, SHOP_TTG, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
-    SHOP_GEEKHOME
+from main.constants import SHOP_THD, SHOP_TTG, SHOP_MEEPS_AND_VEEPS, \
+    SHOP_TIMELESS, SHOP_GEEKHOME, SHOP_GARGOYLE
 from main.models import Shop, Game
 from main.shops import validate_shopgames, update_outdated_game_shop_prices, \
     scrape_site
@@ -26,13 +26,7 @@ class Command(BaseCommand):
         logger.info(f'cmd scraping shops {shop_names}')
         for shop_name in shop_names:
 
-            if shop_name.lower() == SHOP_RARU.lower():
-                shop = Shop.objects.get(name=SHOP_RARU)
-                scrape_site(shop, fail_fast=options.get('fail_fast'))
-            elif shop_name.lower() == SHOP_TAKEALOT.lower():
-                shop = Shop.objects.get(name=SHOP_TAKEALOT)
-                scrape_site(shop, fail_fast=options.get('fail_fast'))
-            elif shop_name.lower() == 'mav':
+            if shop_name.lower() == 'mav':
                 shop = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
                 scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'timeless':
@@ -46,6 +40,9 @@ class Command(BaseCommand):
                 scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'ttg':
                 shop = Shop.objects.get(name=SHOP_TTG)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
+            elif shop_name.lower() == 'gargoyle':
+                shop = Shop.objects.get(name=SHOP_GARGOYLE)
                 scrape_site(shop, fail_fast=options.get('fail_fast'))
 
             elif shop_name.lower() == 'validate':

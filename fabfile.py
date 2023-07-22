@@ -7,7 +7,7 @@ from invoke import task, run, Responder
 host = '178.62.218.44'
 user = 'django'
 dir = '/home/django/bggd'
-pwd = getenv('DO_PWD')
+pwd = getenv('BGGD_PWD')
 _conn = None
 
 if not pwd:
@@ -104,8 +104,8 @@ def deploy(ctx):
         'cron_redo.sh',
     }
     # clean dir
-    conn.local('find . -iname ".ds_store" -delete', echo=True)
-    conn.local('find . -depth -name __pycache__ -type d -exec rm -r "{}" \;', echo=True)
+    #conn.local('find . -iname ".ds_store" -delete', echo=True)
+    #conn.local('find . -depth -name __pycache__ -type d -exec rm -r "{}" \;', echo=True)
     conn.local(f'tar -czf deploy.tar.gz {" ".join(files)}', echo=True)
 
     print('Copying to remote server...')
@@ -123,8 +123,8 @@ def deploy(ctx):
         f'cd {dir}',
         'source env/bin/activate',
         'pip install -qr requirements.txt',
-        f'./manage.py migrate --no-input',
-        f'./manage.py collectstatic --no-input',
+        f'python manage.py migrate --no-input',
+        f'python manage.py collectstatic --no-input',
     ]
     conn.run(' && '.join(cmds), echo=True)
     conn.run(f'sed -i "s/DEBUG = True/DEBUG = False/g" {dir}/bgg/settings.py', echo=True)

@@ -7,10 +7,10 @@ from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 
 from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, \
-    STOCK_OUT, SHOP_RARU, SHOP_TAKEALOT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
+    STOCK_OUT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
     LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, \
     AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_MONTH, IGNORE_FAMILIES, \
-    SHOP_GEEKHOME, SHOP_THD, SHOP_TTG, SHOP_GARGOYLE
+    SHOP_GEEKHOME, SHOP_THD, SHOP_TTG, SHOP_GARGOYLE, REVIEW_STATUS_CHOICES
 
 CHOICES_WEIGHTS = (
     (WEIGHT_HEAVY, WEIGHT_HEAVY),
@@ -292,6 +292,7 @@ class Review(models.Model):
     rating = models.FloatField(db_index=True)
     comment = models.CharField(max_length=256, null=True)
     reviewed_at = models.DateTimeField(db_index=True)
+    status = models.CharField(max_length=50, choices=REVIEW_STATUS_CHOICES)
 
     predicted = models.FloatField(null=True)
 
@@ -367,7 +368,6 @@ class Rec(models.Model):
 
 class Shop(models.Model):
     SHOP_CHOICES = (
-        (SHOP_TAKEALOT, SHOP_TAKEALOT),
         (SHOP_MEEPS_AND_VEEPS, SHOP_MEEPS_AND_VEEPS),
         (SHOP_TIMELESS, SHOP_TIMELESS),
         (SHOP_GEEKHOME, SHOP_GEEKHOME),

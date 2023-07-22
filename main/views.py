@@ -6,24 +6,17 @@ from operator import attrgetter, itemgetter
 
 import pandas as pd
 import plotly.express as px
-from django.db.models import Q, Count, F, Sum, Avg, QuerySet, Min, Max
-from django.db.models.functions import TruncMonth, Least
-from django.shortcuts import redirect, render
+from django.db.models import Q, Count, F, Avg, QuerySet, Min
+from django.db.models.functions import TruncMonth
+from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.utils.timezone import now, make_aware
 from django.views.decorators.cache import cache_page
 from django.views.generic import ListView, TemplateView, DetailView
 from pytube import Search
 
+import main.constants as c
 from bgg.settings import CACHE_DURATION
-from main.constants import START_GAME_OF_THE, WEIGHTS, PLAYERS_SIZES, \
-    WEIGHTS_CUTOFF, SHOP_RARU, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
-    SHOP_NAMES, REC_MIN_CUTOFF, REC_MAX_CUTOFF, IGNORE_FAMILIES, SOME_YEARS_AGO, COUNTRY_SOUTH_AFRICA, PROVINCES_LIST, \
-    CITIES, PROVINCE_KWAZULU_NATAL, PROVINCE_WESTERN_CAPE, CITY_ELLISRAS, PROVINCE_LIMPOPO, CITY_PIETERMARITZBURG, \
-    CITY_CAPE_TOWN, CITY_JOHANNESBURG, PROVINCE_FREE_STATE, CITY_BLOEMFONTEIN, PROVINCE_NORTH_WEST, PROVINCE_GAUTENG, \
-    CITY_POTCHEFSTROOM, CITY_STELLENBOSCH, PROVINCE_MPUMALANGA, CITY_PIETERSBURG, CITY_DURBAN, CITY_GRAHAMSTOWN, \
-    CITY_GEORGE, CITY_CENTURION, PROVINCE_NORTHERN_CAPE, CITY_PORT_ELIZABETH, PROVINCE_EASTERN_CAPE, CITY_BENONI, \
-    CITY_PRETORIA
 from main.models import Game, Player, Review, Day, Award, \
     AWARD_GAME_OF_THE_YEAR, \
     AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
@@ -69,7 +62,7 @@ class GotView(CachedTemplateViewGet):
     def get_context_data(self, **kwargs):
         award_groups = {}
         to = now().year + 1
-        for year in reversed(range(START_GAME_OF_THE.year, to)):
+        for year in reversed(range(c.START_GAME_OF_THE.year, to)):
             half_year = make_aware(datetime(year, 7, 1))
             award_groups[year] = {
                 'year': Award.objects.filter(
@@ -88,7 +81,7 @@ class GotView(CachedTemplateViewGet):
                 ).order_by('awarded_at').all(),
             }
         ctx = {
-            'start_at': START_GAME_OF_THE,
+            'start_at': c.START_GAME_OF_THE,
             'award_groups': award_groups,
         }
         return ctx
@@ -116,8 +109,8 @@ class AboutView(CachedTemplateViewGet):
         ctx = {
             'game_added': game_added,
             'player_turnover': player_turnover,
-            'min_used': REC_MIN_CUTOFF,
-            'max_used': REC_MAX_CUTOFF,
+            'min_used': c.REC_MIN_CUTOFF,
+            'max_used': c.REC_MAX_CUTOFF,
         }
         return ctx
 
@@ -191,7 +184,7 @@ class GameListView(OrderingListView, SearchListView, CachedListViewGet):
 
     def get_context_data(self, *, object_list=None, **kwargs):
         ctx = super().get_context_data(object_list=object_list, **kwargs)
-        ctx['weights_percentiles'] = WEIGHTS_CUTOFF
+        ctx['weights_percentiles'] = c.WEIGHTS_CUTOFF
         # show only available
         ctx['available'] = 0 if self.request.GET.get('s') else int(self.request.GET.get('a', 1))
         return ctx
@@ -249,7 +242,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
         qs = super().get_queryset()
         search = self.request.GET.get('s')
         if not search:
-            qs = qs.filter(last_review_at__year__gt=SOME_YEARS_AGO)
+            qs = qs.filter(last_review_at__year__gt=c.SOME_YEARS_AGO)
         return qs
 
     def get_context_data(self, *args, object_list=None, **kwargs):
@@ -262,7 +255,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
         #         last_day=Max('reviewed_at')
         #     ).order_by('player').values_list('last_day', flat=True)
 
-        ctx['some_years_ago'] = SOME_YEARS_AGO
+        ctx['some_years_ago'] = c.SOME_YEARS_AGO
         return ctx
 
 
@@ -273,10 +266,10 @@ class PlayerDetailView(DetailView):
     def get_context_data(self, **kwargs):
         data = super().get_context_data(**kwargs)
 
-        data['weights'] = WEIGHTS
-        data['player_sizes'] = PLAYERS_SIZES
+        data['weights'] = c.WEIGHTS
+        data['player_sizes'] = c.PLAYERS_SIZES
 
-        # graph
+        # graph: vs
         fig_data = [
             {'Actual': r.rating, 'Expected': r.predicted, 'Name': r.game.name}
             for r in self.object.reviews.all()
@@ -285,13 +278,14 @@ class PlayerDetailView(DetailView):
             min_est = min([f['Expected'] for f in fig_data])
             max_est = max([f['Expected'] for f in fig_data])
             df = pd.DataFrame(fig_data)
-            fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name', title='Actual vs expected rating')
+            fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name',
+                             title='Actual vs expected rating')
             fig.add_shape(type="line", x0=min_est, y0=min_est, x1=max_est, y1=max_est)
             fig.update_yaxes(dtick=1)
             fig.update_xaxes(dtick=1)
             data['graph'] = fig.to_html(full_html=False)
 
-        # reviews sorted
+        # graph: heatmap
         if self.object.reviews.count():
             reviews = list(self.object.reviews.filter(
                 predicted__isnull=False,
@@ -318,9 +312,18 @@ class PlayerDetailView(DetailView):
             # fig = px.bar(df, x='player_count', y='count', title='Number of games per best player count')
             h_data = [list(p.values()) for p in p_data.values()]
             fig = px.imshow(
-                h_data, x=[1, 2, 3, 4, 5], y=['very light', 'light', 'medium', 'heavy', 'very heavy'],
+                h_data, x=[1, 2, 3, 4, 5],
+                y=['very light', 'light', 'medium', 'heavy', 'very heavy'],
                 labels={'x': 'Player count', 'y': 'Complexity'}, title='Heatmap of player games')
             data['heat'] = fig.to_html(full_html=False)
+
+        # split by status
+        data['collection'] = [
+            ('Owned', self.object.reviews.filter(status=c.REVIEW_STATUS_OWN).all()),
+            ('Sold', self.object.reviews.filter(status=c.REVIEW_STATUS_PREV_OWNED).all()),
+            ('Wanted', self.object.reviews.filter(status=c.REVIEW_STATUS_WISH_LIST).all()),
+            ('Other', self.object.reviews.filter(status=c.REVIEW_STATUS_NONE).all()),
+        ]
 
         return data
 
@@ -345,7 +348,7 @@ class CountryView(CachedTemplateViewGet):
         start_of_last_year = datetime(2021, 1, 1)
         data = super().get_context_data(**kwargs)
         players = Player.objects.filter(
-            country=COUNTRY_SOUTH_AFRICA,
+            country=c.COUNTRY_SOUTH_AFRICA,
             last_review_at__gte=start_of_year
         ).all()
 
@@ -353,7 +356,7 @@ class CountryView(CachedTemplateViewGet):
 
         games = defaultdict(list)
         players_gone = Player.objects.filter(
-            country=COUNTRY_SOUTH_AFRICA,
+            country=c.COUNTRY_SOUTH_AFRICA,
             last_review_at__gte=start_of_last_year,
         ).exclude(pk__in=[p.pk for p in players]).count()
         data['players_gone'] = players_gone
@@ -383,80 +386,83 @@ class CountryView(CachedTemplateViewGet):
             area = player.area.rstrip(', South Africa')
             places = area.split(',')
             if len(places) != 2:
-                if places in [['Pre'], ['KwaZulu-Natal'], ['KwaZulu Natal'], ['Gauteng'], ['Haw'], ['Joburg & Cape Town'], ['Kwa-Zulu Natal'], ['Western Cape']]:
+                if places in [['Pre'], ['KwaZulu-Natal'], ['KwaZulu Natal'], ['Gauteng'], ['Haw'],
+                              ['Joburg & Cape Town'], ['Kwa-Zulu Natal'], ['Western Cape']]:
                     area_typos += 1
                     continue
-                if places in [['Cape Town'], ['Blouberg'], ['Stellenridge', ' Cape Town', ' Western Cape'], ['Brackenfell'], ['Tokai', ' Cape Town', ' Western Cape']]:
+                if places in [['Cape Town'], ['Blouberg'],
+                              ['Stellenridge', ' Cape Town', ' Western Cape'], ['Brackenfell'],
+                              ['Tokai', ' Cape Town', ' Western Cape']]:
                     area_typos += 1
-                    places = [CITY_CAPE_TOWN, PROVINCE_WESTERN_CAPE]
+                    places = [c.CITY_CAPE_TOWN, c.PROVINCE_WESTERN_CAPE]
                 elif places in [['Stellenbos']]:
                     area_typos += 1
-                    places = [CITY_STELLENBOSCH, PROVINCE_WESTERN_CAPE]
+                    places = [c.CITY_STELLENBOSCH, c.PROVINCE_WESTERN_CAPE]
                 elif places in [['Pietermaritzburg']]:
                     area_typos += 1
-                    places = [CITY_PIETERMARITZBURG, PROVINCE_KWAZULU_NATAL]
+                    places = [c.CITY_PIETERMARITZBURG, c.PROVINCE_KWAZULU_NATAL]
                 elif places in [['Lephalale']]:
                     area_typos += 1
-                    places = [CITY_ELLISRAS, PROVINCE_LIMPOPO]
+                    places = [c.CITY_ELLISRAS, c.PROVINCE_LIMPOPO]
                 elif places in [['Bloemfontein']]:
                     area_typos += 1
-                    places = [CITY_BLOEMFONTEIN, PROVINCE_FREE_STATE]
+                    places = [c.CITY_BLOEMFONTEIN, c.PROVINCE_FREE_STATE]
                 elif places in [['Johannesburg']]:
                     area_typos += 1
-                    places = [CITY_JOHANNESBURG, PROVINCE_GAUTENG]
+                    places = [c.CITY_JOHANNESBURG, c.PROVINCE_GAUTENG]
                 elif places in [['Potchefstroom']]:
                     area_typos += 1
-                    places = [CITY_POTCHEFSTROOM, PROVINCE_NORTH_WEST]
+                    places = [c.CITY_POTCHEFSTROOM, c.PROVINCE_NORTH_WEST]
                 elif places in [['La Lucia', ' Durban', ' KwaZulu-Natal'], ['Durban']]:
                     area_typos += 1
-                    places = [CITY_DURBAN, PROVINCE_KWAZULU_NATAL]
+                    places = [c.CITY_DURBAN, c.PROVINCE_KWAZULU_NATAL]
                 elif places in [['Georg']]:
                     area_typos += 1
-                    places = [CITY_GEORGE, PROVINCE_WESTERN_CAPE]
+                    places = [c.CITY_GEORGE, c.PROVINCE_WESTERN_CAPE]
                 elif places in [['Lyttelton']]:
                     area_typos += 1
-                    places = [CITY_CENTURION, PROVINCE_GAUTENG]
+                    places = [c.CITY_CENTURION, c.PROVINCE_GAUTENG]
                 elif places in [['Port Elizabe']]:
                     area_typos += 1
-                    places = [CITY_PORT_ELIZABETH, PROVINCE_EASTERN_CAPE]
+                    places = [c.CITY_PORT_ELIZABETH, c.PROVINCE_EASTERN_CAPE]
                 elif places in [['Benon']]:
                     area_typos += 1
-                    places = [CITY_BENONI, PROVINCE_GAUTENG]
+                    places = [c.CITY_BENONI, c.PROVINCE_GAUTENG]
                 else:
                     raise ValueError(f'expected 2 values for area: {places}')
 
             province = places[1].strip().title()
-            if province not in PROVINCES_LIST:
+            if province not in c.PROVINCES_LIST:
                 if province in ['Florid', 'Unspecified', 'Hampshire', 'Les']:
                     area_typos += 1
                     continue
                 if province in ['North Wes', 'North-Wes']:
                     area_typos += 1
-                    province = PROVINCE_NORTH_WEST
+                    province = c.PROVINCE_NORTH_WEST
                 elif province in ['Westkap', 'Cape', 'Western Province', 'Kuilsrivie']:
                     area_typos += 1
-                    province = PROVINCE_WESTERN_CAPE
+                    province = c.PROVINCE_WESTERN_CAPE
                 elif province in ['Kzn', 'Kwa-Zulu Natal', 'Kwazulu Natal']:
                     area_typos += 1
-                    province = PROVINCE_KWAZULU_NATAL
+                    province = c.PROVINCE_KWAZULU_NATAL
                 elif province in ['Guateng']:
                     area_typos += 1
-                    province = PROVINCE_GAUTENG
+                    province = c.PROVINCE_GAUTENG
                 elif province in ['Mpumalang']:
                     area_typos += 1
-                    province = PROVINCE_MPUMALANGA
+                    province = c.PROVINCE_MPUMALANGA
                 elif province in ['Freestate']:
                     area_typos += 1
-                    province = PROVINCE_FREE_STATE
+                    province = c.PROVINCE_FREE_STATE
                 elif province in ['Limpop']:
                     area_typos += 1
-                    province = PROVINCE_LIMPOPO
+                    province = c.PROVINCE_LIMPOPO
                 elif province in ['South-']:
                     area_typos += 1
-                    province = PROVINCE_GAUTENG
+                    province = c.PROVINCE_GAUTENG
                 elif province in ['Northen Province']:
                     area_typos += 1
-                    province = PROVINCE_NORTHERN_CAPE
+                    province = c.PROVINCE_NORTHERN_CAPE
                 else:
                     raise ValueError(f'expected province: {province}')
             cntr_provinces.update([province])
@@ -464,28 +470,28 @@ class CountryView(CachedTemplateViewGet):
             data['new_players'] = new_players
 
             city = places[0].strip().title()
-            if city not in CITIES[province]:
+            if city not in c.CITIES[province]:
                 if city in ['Johannesburgo', 'Sandton', 'Johanneburg', 'Newtown']:
                     area_typos += 1
-                    city = CITY_JOHANNESBURG
+                    city = c.CITY_JOHANNESBURG
                 elif city in ['Kapstadt', 'Bellville', 'Capetown', 'Durbanville', 'Brackenfell']:
                     area_typos += 1
-                    city = CITY_CAPE_TOWN
+                    city = c.CITY_CAPE_TOWN
                 elif city in ['Polokwane', 'Polokwane City']:
                     area_typos += 1
-                    city = CITY_PIETERSBURG
+                    city = c.CITY_PIETERSBURG
                 elif city in ['Makhanda']:
                     area_typos += 1
-                    city = CITY_GRAHAMSTOWN
+                    city = c.CITY_GRAHAMSTOWN
                 elif city in ['Pietersburg']:
                     area_typos += 1
-                    province = PROVINCE_MPUMALANGA
+                    province = c.PROVINCE_MPUMALANGA
                 elif city in ['Pietersburg']:
                     area_typos += 1
-                    province = PROVINCE_MPUMALANGA
+                    province = c.PROVINCE_MPUMALANGA
                 elif city in ['Pretoria/Centurion']:
                     area_typos += 1
-                    province = CITY_PRETORIA
+                    province = c.CITY_PRETORIA
                 else:
                     raise ValueError(f'Expected city in {province}: {city}')
             cntr_cities.update([city])
@@ -494,7 +500,7 @@ class CountryView(CachedTemplateViewGet):
 
         df_provinces = pd.DataFrame(cntr_provinces.most_common(10), columns=['province', 'cnt'])
         fig_provinces = px.bar(
-            df_provinces, x='province', y='cnt', #histfunc='sum', #range_x=(0, 10),
+            df_provinces, x='province', y='cnt',  # histfunc='sum', #range_x=(0, 10),
             labels={'province': 'Provinces', 'cnt': 'Count'},
             title='Histogram of provinces')
         # df_provinces.update_traces(nbinsx=20, autobinx=False)
@@ -502,19 +508,19 @@ class CountryView(CachedTemplateViewGet):
 
         df_cities = pd.DataFrame(cntr_cities.most_common(20), columns=['city', 'cnt'])
         fig_cities = px.bar(
-            df_cities, x='city', y='cnt', #histfunc='sum', #range_x=(0, 10),
+            df_cities, x='city', y='cnt',  # histfunc='sum', #range_x=(0, 10),
             labels={'city': 'Cities', 'cnt': 'Count'},
             title='Histogram of cities')
         # df_cities.update_traces(nbinsx=20, autobinx=False)
         data['graph_cities'] = fig_cities.to_html(full_html=False)
 
-        reviews = Review.objects.filter(player__country=COUNTRY_SOUTH_AFRICA).all()
+        reviews = Review.objects.filter(player__country=c.COUNTRY_SOUTH_AFRICA).all()
         data['reviews'] = reviews
 
         reviews_per_player.sort(key=itemgetter(1), reverse=True)
         df_top_raters = pd.DataFrame(reviews_per_player[:50], columns=['player', 'cnt'])
         fig_top_raters = px.bar(
-            df_top_raters, x='cnt', y='player', #histfunc='sum', #range_x=(0, 10),
+            df_top_raters, x='cnt', y='player',  # histfunc='sum', #range_x=(0, 10),
             labels={'player': 'Player', 'cnt': 'Ratings made'},
             title='Top 50 raters', orientation='h', height=1200)
         # df_cities.update_traces(nbinsx=20, autobinx=False)
@@ -548,7 +554,7 @@ class CountryView(CachedTemplateViewGet):
         cntr_gpy = Counter([g.year for g in games if g.year >= start_of_year.year - 20])
         df_gpy = pd.DataFrame(cntr_gpy.most_common(999), columns=['year', 'cnt'])
         fig_gpy = px.bar(
-            df_gpy, x='year', y='cnt', #histfunc='sum', #range_x=(0, 10),
+            df_gpy, x='year', y='cnt',  # histfunc='sum', #range_x=(0, 10),
             labels={'year': 'Release year of game', 'cnt': 'Number of games rated'},
             title='Histogram of games by year')
         # df_gpy.update_traces(nbinsx=20, autobinx=False)
@@ -566,7 +572,7 @@ class CountryView(CachedTemplateViewGet):
         points = [25, 18, 15, 12, 8, 6, 4, 2, 1, 1]
         top_ranked_last_year = defaultdict(lambda: 0)
         last_players = Player.objects.filter(
-            country=COUNTRY_SOUTH_AFRICA,
+            country=c.COUNTRY_SOUTH_AFRICA,
             last_review_at__gte=start_of_last_year,
             last_review_at__lte=start_of_year
         ).all()
@@ -658,7 +664,7 @@ class ShopView(CachedTemplateViewGet):
 
         # shop sizes
         df_data = []
-        for shop_name in SHOP_NAMES:
+        for shop_name in c.SHOP_NAMES:
             shop = Shop.objects.get(name=shop_name)
             for inv in ['MIA', 'Out of Stock', 'In Stock']:
                 qs = ShopGame.objects.filter(shop=shop)
@@ -680,12 +686,12 @@ class ShopView(CachedTemplateViewGet):
 
         # shop price heatmap
         heat_data = {}
-        combs = list(combinations(SHOP_NAMES, 2))
+        combs = list(combinations(c.SHOP_NAMES, 2))
         for name1, name2 in combs:
             if name1 not in heat_data:
-                heat_data[name1] = {n: 0 for n in SHOP_NAMES}
+                heat_data[name1] = {n: 0 for n in c.SHOP_NAMES}
             if name2 not in heat_data:
-                heat_data[name2] = {n: 0 for n in SHOP_NAMES}
+                heat_data[name2] = {n: 0 for n in c.SHOP_NAMES}
 
             shopgames_1 = ShopGame.objects.filter(
                 shop__name=name1
@@ -717,7 +723,7 @@ class ShopView(CachedTemplateViewGet):
 
         heat_raw = [list(p.values()) for p in heat_data.values()]
         fig_shop_price = px.imshow(
-            heat_raw, x=SHOP_NAMES, y=SHOP_NAMES,
+            heat_raw, x=c.SHOP_NAMES, y=c.SHOP_NAMES,
             title='Avg price war of same games in stock<br><sup>higher is cheaper</sup>')
 
         ctx = {

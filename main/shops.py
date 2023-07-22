@@ -8,7 +8,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from django.utils.timezone import now
 
-from main.constants import STOCK_OUT, STOCK_IN, SHOP_NAMES
+from main.constants import STOCK_OUT, STOCK_IN, SHOP_NAMES, SHOP_GEEKHOME
 from main.models import Shop, Price, Day, Game, ShopGame, GameDay
 from main.scraper import get
 
@@ -32,7 +32,7 @@ def update_game_shop_prices(game: Game):
     # retrieve all shop prices
     name_shopgames = {}
     dfs = {}
-    for shopgame in game.shopgames.all():
+    for shopgame in game.shopgames.exclude(shop__name=SHOP_GEEKHOME).all():
         name = shopgame.shop.name.replace(' ', '').lower()
         values = shopgame.prices.filter(status=STOCK_IN).values_list('day__day', 'price')
         if not values:
@@ -350,57 +350,4 @@ def scrape_geekhome_game(url: str) -> dict:
     return {
         'status': status,
         'price': int(float(price_txt)),
-    }
-
-
-def scrape_takealot_game(url: str) -> dict:
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-    }
-    res = get(url, headers)
-    html = BeautifulSoup(res.text, 'html.parser')
-
-    input_tag = html.find('input', id='id_strike_price')
-    price = int(input_tag['value'])
-    status = STOCK_IN
-
-    script = html.find_all('script', type='text/javascript')[-1]
-    script_text = script.contents[0]
-    script_text = script_text[script_text.find('{'):]
-    script_text = script_text[:script_text.find('var ctx')]
-    script_text = script_text[:script_text.rfind('}')+1]
-    details = json.loads(script_text)
-    # price = details['plugins']['annotation']['annotations']['current_price']['yMax']
-    price_data = [i for i in details['datasets'] if i['label'] == 'Current Price'][0]
-    price = int(price_data['data'][-1])
-
-    return {
-        'status': status,
-        'price': price,
-    }
-
-
-###############################################################################################################
-# DEPRECATED
-###############################################################################################################
-
-def scrape_raru_game(url: str) -> dict:
-    res = get(url)
-    html = BeautifulSoup(res.text, 'html.parser')
-
-    availability = html.find('div', class_='avail').text
-    if availability in ['Out of Stock', 'Not available'] or availability.startswith('Unreleased'):
-        status = STOCK_OUT
-    elif availability in ['In Stock', 'Dispatched in 30 to 45 working days', 'Dispatched in 25 to 30 working days', 'Dispatched in 20 to 30 working days', 'Dispatched in 15 to 20 working days', 'Dispatched in 10 to 15 working days', 'Dispatched in 10 to 20 working days', 'Dispatched in 7 to 10 working days', 'Dispatched in 5 to 7 working days']:
-        status = STOCK_IN
-    else:
-        raise NotImplementedError(f'Not sure what is: {availability}')
-    try:
-        price = html.find('dl', class_='price').find('dd').find('span').text.replace(',', '')
-    except AttributeError as exc:
-        tbc = html.find('dl', class_='price').find('dd').text.strip() == 'TBC'
-        price = 0
-    return {
-        'status': status,
-        'price': int(price),
     }
