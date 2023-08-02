@@ -300,8 +300,8 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
             review.save()
             break
     else:
-        if settings.DEBUG:
-            raise Exception(f'unknown statuses: {item["status"]}')
+        # if item['status'] and settings.DEBUG:
+        #     raise Exception(f'unknown statuses: {item["status"]}')
         review.status = REVIEW_STATUS_NONE
         review.save()
 

@@ -285,6 +285,8 @@ def scrape_the_hidden_den_game(url: str) -> dict:
         status = STOCK_IN
     elif 'OutOfStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_OUT
+    elif 'BackOrder' in details['@graph'][-1]['offers'][-1]['availability']:
+        status = STOCK_IN
     else:
         raise ValueError(f'Unknown availability: {details["@graph"][-1]["offers"]}')
 
