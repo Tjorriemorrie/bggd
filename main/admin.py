@@ -298,7 +298,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             'post_type': 'product',
             's': name,
         })
-        gh_search = f'{gh.host}?{params}'
+        gh_search = f'{gh.HOST}?{params}'
         # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': game.id, 'shop_id': gh.id})
 
         # status
@@ -334,7 +334,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             's': name,
             'product_cat': '',
         })
-        search = f'<a href="{gar.host}?{params}" target="_blank">search</a>'
+        search = f'<a href="{gar.HOST}?{params}" target="_blank">search</a>'
 
         # status
         shopgame = ShopGame.objects.filter(game=game, shop=gar).first()
@@ -369,7 +369,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             'post_type': 'product',
             's': name,
         })
-        search = f'<a href="{thd.host}?{params}" target="_blank">search</a>'
+        search = f'<a href="{thd.HOST}?{params}" target="_blank">search</a>'
 
         # status
         shopgame = ShopGame.objects.filter(game=game, shop=thd).first()
@@ -404,7 +404,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             'post_type': 'product',
             'q': name,
         })
-        search = f'<a href="{ttg.host}/search?{params}" target="_blank">search</a>'
+        search = f'<a href="{ttg.HOST}/search?{params}" target="_blank">search</a>'
 
         # status
         shopgame = ShopGame.objects.filter(game=game, shop=ttg).first()
@@ -546,7 +546,7 @@ class ShopGameGeekhomeAdmin(admin.ModelAdmin):
             'post_type': 'product',
             's': name,
         })
-        gh_search = f'{gh.host}?{params}'
+        gh_search = f'{gh.HOST}?{params}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gh.id})
         return format_html(
             f'<a href="{gh_search}" target="_blank">search geekhome</a><br/><br/>'
@@ -586,7 +586,7 @@ class ShopGameTheHiddenDenAdmin(admin.ModelAdmin):
             'post_type': 'product',
             's': name,
         })
-        thd_search = f'{thd.host}?{params}'
+        thd_search = f'{thd.HOST}?{params}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
         return format_html(
             f'<a href="{thd_search}" target="_blank">search {thd}</a><br/><br/>'
@@ -641,7 +641,7 @@ class ShopGameTabletopGuruAdmin(admin.ModelAdmin):
             'post_type': 'product',
             'q': name,
         })
-        ttg_search = f'{ttg.host}/search?{params}'
+        ttg_search = f'{ttg.HOST}/search?{params}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': ttg.id})
         return format_html(
             f'<a href="{ttg_search}" target="_blank">search {ttg}</a><br/><br/>'
@@ -698,7 +698,7 @@ class ShopGameGargoyleAdmin(admin.ModelAdmin):
             's': name,
             'product_cat': '',
         })
-        gargoyle_search = f'{gar.host}?{params}'
+        gargoyle_search = f'{gar.HOST}?{params}'
         shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gar.id})
         return format_html(
             f'<a href="{gargoyle_search}" target="_blank">search {gar}</a><br/><br/>'

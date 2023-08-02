@@ -9,18 +9,18 @@ function main() {
   cd /home/django/bggd
   source env/bin/activate
 
-  ./manage.py update_game_stats
+  python manage.py update_game_stats
 
-  ./manage.py scrape_games
+  python manage.py scrape_games
 
   while [ $SECONDS -lt $end ];
   do
-    ./manage.py scrape_players
+    python manage.py scrape_players
   done
 
-  ./manage.py train_models sim
+  python manage.py train_models sim
 
-  ./manage.py scrape_shop mav timeless geekhome thd ttg takealot outdated
+  python manage.py scrape_shop mav timeless geekhome thd ttg outdated
 }
 
 main

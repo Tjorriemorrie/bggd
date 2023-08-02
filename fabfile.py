@@ -4,14 +4,14 @@ from os import getenv
 from fabric import Connection
 from invoke import task, run, Responder
 
-host = '178.62.218.44'
-user = 'django'
-dir = '/home/django/bggd'
-pwd = getenv('BGGD_PWD')
+HOST = '178.62.218.44'
+USER = 'django'
+DIR = '/home/django/bggd'
+PWD = getenv('BGGD_PWD')
 _conn = None
 
-if not pwd:
-    raise ValueError('Missing DO_PWD')
+if not PWD:
+    raise ValueError('Missing digital ocean password')
 
 
 @task
@@ -25,9 +25,9 @@ def get_conn() -> Connection:
     if not _conn:
         print('getting connection...')
         _conn = Connection(
-            host, user=user,
+            HOST, user=USER,
             connect_kwargs={
-                'password': pwd, 'look_for_keys': False,  'allow_agent': False})
+                'password': PWD, 'look_for_keys': False, 'allow_agent': False})
     return _conn
 
 
@@ -37,19 +37,19 @@ def download_db(ctx):
     conn = get_conn()
 
     db_backup = 'db.sqlite3.bck'
-    conn.run(f'cp {dir}/db.sqlite3 {dir}/{db_backup}', echo=True)
+    conn.run(f'cp {DIR}/db.sqlite3 {DIR}/{db_backup}', echo=True)
 
     print('zipping files...')
     zip_file = 'data.tar.gz'
     cmds = [
-        f'cd {dir}',
+        f'cd {DIR}',
         f'tar -czvf {zip_file} {db_backup}',  # --xform s:^.*/::
     ]
     conn.run(' && '.join(cmds), echo=True)
 
-    conn.run(f'ls -la {dir}')
+    conn.run(f'ls -la {DIR}')
     print('downloading zip file...')
-    conn.get(f'{dir}/{zip_file}')
+    conn.get(f'{DIR}/{zip_file}')
 
     print('backing up local data...')
     today = datetime.utcnow().strftime('%y%m%d')
@@ -73,10 +73,10 @@ def upload_model(ctx):
     conn.local(f'tar -czvf {zip_file} {mdl_file}', echo=True)
 
     print('Copying model file to server...')
-    conn.put(f'{zip_file}', f'{dir}/')
+    conn.put(f'{zip_file}', f'{DIR}/')
 
-    conn.run(f'cp {dir}/{mdl_file} {dir}/{mdl_bck}', echo=True)
-    conn.run(f'tar -xf {dir}/{zip_file} -C {dir}', echo=True)
+    conn.run(f'cp {DIR}/{mdl_file} {DIR}/{mdl_bck}', echo=True)
+    conn.run(f'tar -xf {DIR}/{zip_file} -C {DIR}', echo=True)
 
     print('done')
 
@@ -97,6 +97,7 @@ def deploy(ctx):
     conn = get_conn()
     files = {
         'requirements.txt',
+        # '.env.template',
         'main',
         'bgg',
         'manage.py',
@@ -109,27 +110,27 @@ def deploy(ctx):
     conn.local(f'tar -czf deploy.tar.gz {" ".join(files)}', echo=True)
 
     print('Copying to remote server...')
-    conn.put('deploy.tar.gz', f'{dir}/')
+    conn.put('deploy.tar.gz', f'{DIR}/')
 
     # back up db
-    conn.run(f'cp {dir}/db.sqlite3 {dir}/db.sqlite3.bck', echo=True)
+    conn.run(f'cp {DIR}/db.sqlite3 {DIR}/db.sqlite3.bck', echo=True)
 
-    conn.run(f'tar -xf {dir}/deploy.tar.gz -C {dir}', echo=True)
-    conn.run(f'mkdir -p {dir}/logs', echo=True)
+    conn.run(f'tar -xf {DIR}/deploy.tar.gz -C {DIR}', echo=True)
+    conn.run(f'mkdir -p {DIR}/logs', echo=True)
 
     systemctl(ctx, 'stop nginx')
     systemctl(ctx, 'stop gunicorn')
     cmds = [
-        f'cd {dir}',
+        f'cd {DIR}',
         'source env/bin/activate',
         'pip install -qr requirements.txt',
         f'python manage.py migrate --no-input',
         f'python manage.py collectstatic --no-input',
     ]
     conn.run(' && '.join(cmds), echo=True)
-    conn.run(f'sed -i "s/DEBUG = True/DEBUG = False/g" {dir}/bgg/settings.py', echo=True)
+    # conn.run(f'sed -i "s/DEBUG = True/DEBUG = False/g" {dir}/bgg/settings.py', echo=True)
     # conn.run(f'sed -i "s/# @method_decorator/@method_decorator/g" {dir}/main/views.py', echo=True)
-    conn.run(f'rm {dir}/deploy.tar.gz', echo=True)
+    conn.run(f'rm {DIR}/deploy.tar.gz', echo=True)
 
     systemctl(ctx, 'start nginx')
     systemctl(ctx, 'start gunicorn')
@@ -140,7 +141,7 @@ def systemctl(ctx, cmd):
     conn = get_conn()
     sudo_pwd = Responder(
         pattern=r'password:',
-        response=f'{pwd}\n')
+        response=f'{PWD}\n')
     conn.sudo(f'systemctl {cmd}', echo=True, pty=True, watchers=[sudo_pwd])
 
 
@@ -149,7 +150,7 @@ def reboot(ctx):
     conn = get_conn()
     sudo_pwd = Responder(
         pattern=r'password:',
-        response=f'{pwd}\n')
+        response=f'{PWD}\n')
     conn.sudo('reboot', echo=True, pty=True, watchers=[sudo_pwd])
 
 
@@ -157,7 +158,7 @@ def reboot(ctx):
 def run_command(ctx, cmd):
     conn = get_conn()
     cmds = [
-        f'cd {dir}',
+        f'cd {DIR}',
         'source env/bin/activate',
         f'./manage.py {cmd}',
     ]
@@ -167,20 +168,20 @@ def run_command(ctx, cmd):
 @task
 def tail_log(ctx):
     conn = get_conn()
-    conn.run(f'tail -100f {dir}/logs/default.log')
+    conn.run(f'tail -100f {DIR}/logs/default.log')
 
 
 @task
 def cat_log(ctx, cmd):
     conn = get_conn()
-    conn.run(f'cat {dir}/logs/default.log | tail -n{cmd}', echo=True)
+    conn.run(f'cat {DIR}/logs/default.log | tail -n{cmd}', echo=True)
 
 
 @task
 def run_cron(ctx):
     conn = get_conn()
     cmds = [
-        f'cd {dir}',
+        f'cd {DIR}',
         'source env/bin/activate',
         f'./cron.sh',
     ]
@@ -191,10 +192,16 @@ def run_cron(ctx):
 def upgrade_pip(ctx):
     conn = get_conn()
     cmds = [
-        f'cd {dir}',
+        f'cd {DIR}',
         'source env/bin/activate',
         f'pip install -U pip',
     ]
     conn.run(' && '.join(cmds), echo=True)
+
+
+@task
+def restart_svc(ctx):
+    systemctl(ctx, 'restart nginx')
+    systemctl(ctx, 'restart gunicorn')
 
 
