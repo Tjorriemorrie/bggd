@@ -122,9 +122,13 @@ def deploy(ctx):
         'python manage.py collectstatic --no-input',
     ]
     conn.run(' && '.join(cmds), echo=True)
-    # conn.run(f'sed -i "s/DEBUG = True/DEBUG = False/g" {dir}/bgg/settings.py', echo=True)
-    # conn.run(f'sed -i "s/# @method_decorator/@method_decorator/g" {dir}/main/views.py', echo=True)
     conn.run(f'rm {DIR}/deploy.tar.gz', echo=True)
+    # set executables and fix line endings
+    conn.run('chmod +x /home/django/bggd/manage.py')
+    conn.run('chmod +x /home/django/bggd/cron.sh')
+    conn.run('chmod +x /home/django/bggd/cron_redo.sh')
+    conn.run('sed -i "s/\r$//" /home/django/bggd/cron_redo.sh')
+    conn.run('sed -i "s/\r$//" /home/django/bggd/cron.sh')
 
     systemctl(ctx, 'start nginx')
     systemctl(ctx, 'start gunicorn')

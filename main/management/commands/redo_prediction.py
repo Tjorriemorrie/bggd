@@ -1,11 +1,10 @@
 import logging
 from datetime import timedelta
-from typing import List
 
 from django.core.management import BaseCommand
 from django.utils.timezone import now
 
-from main.models import Player, Game
+from main.models import Game, Player
 from main.recommendations import predict_player
 from main.scraper import scrape_player_ratings
 
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     help = 'Redo player prediction'
 
-    def _predict_player(self, game_ids: List[int], player: Player):
+    def _predict_player(self, game_ids: list[int], player: Player):
         predict_player(player, game_ids)
         player.redo_requested_at = None
         player.redo_completed_at = now()
@@ -25,11 +24,11 @@ class Command(BaseCommand):
     def _load_next_player(self):
         # logger.info('Searching for player...')
         ten_min_ago = now() - timedelta(minutes=10)
-        player = Player.objects.filter(
-            redo_requested_at__isnull=False
-        ).exclude(
-            redo_started_at__gt=ten_min_ago
-        ).first()
+        player = (
+            Player.objects.filter(redo_requested_at__isnull=False)
+            .exclude(redo_started_at__gt=ten_min_ago)
+            .first()
+        )
         if player:
             player.redo_started_at = now()
             player.redo_completed_at = None
@@ -37,9 +36,10 @@ class Command(BaseCommand):
         return player
 
     def handle(self, *args, **options):
+        """Run cmd."""
         player = self._load_next_player()
         if not player:
-            # logger.info('No player requested redo')
+            logger.info('No player requested redo')
             return
 
         # first refresh ratings
