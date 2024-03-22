@@ -29,11 +29,11 @@ env.read_env()  # read .env file, if it exists
 # See https://docs.djangoproject.com/en/3.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = env('SECRET_KEY')
+SECRET_KEY = env.str('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG')
-DEVELOPER = env('DEVELOPER')
+DEBUG = env.bool('DEBUG', False)
+DEVELOPER = env.bool('DEVELOPER', False)
 
 ALLOWED_HOSTS = [
     '127.0.0.1',

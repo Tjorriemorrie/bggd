@@ -2,13 +2,12 @@ from datetime import datetime
 from os import getenv
 
 from fabric import Connection
-from invoke import task, run, Responder
+from invoke import Responder, task
 
 HOST = '178.62.218.44'
 USER = 'django'
 DIR = '/home/django/bggd'
 PWD = getenv('BGGD_PWD')
-_conn = None
 
 if not PWD:
     raise ValueError('Missing digital ocean password')
@@ -16,23 +15,25 @@ if not PWD:
 
 @task
 def name(c):
+    """Print name of server, used as a test."""
     conn = get_conn()
     conn.run('uname -a', echo=True)
 
 
 def get_conn() -> Connection:
-    global _conn
-    if not _conn:
-        print('getting connection...')
-        _conn = Connection(
-            HOST, user=USER,
-            connect_kwargs={
-                'password': PWD, 'look_for_keys': False, 'allow_agent': False})
-    return _conn
+    """Get connection to server."""
+    print('getting connection...')
+    conn = Connection(
+        HOST,
+        user=USER,
+        connect_kwargs={'password': PWD, 'look_for_keys': False, 'allow_agent': False},
+    )
+    return conn
 
 
 @task
 def download_db(ctx):
+    """Download the db to localhost."""
     print('Retrieving db and model')
     conn = get_conn()
 
@@ -57,12 +58,13 @@ def download_db(ctx):
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
-    conn.local(f'mv -f db.sqlite3.bck db.sqlite3', echo=True)
+    conn.local('mv -f db.sqlite3.bck db.sqlite3', echo=True)
     print('done')
 
 
 @task
 def upload_model(ctx):
+    """Upload the model to the server."""
     print('Uploading model to site...')
     conn = get_conn()
 
@@ -82,16 +84,8 @@ def upload_model(ctx):
 
 
 @task
-def commit(ctx):
-    print('committing changes')
-    msg = input('Commit message: ')
-    run('ga .', echo=True)
-    run(f'ga -c "{msg}', echo=True)
-    run(f'gu', echo=True)
-
-
-@task
 def deploy(ctx):
+    """Deploy to server."""
     # commit(ctx)
     print('Deploying site...')
     conn = get_conn()
@@ -105,8 +99,8 @@ def deploy(ctx):
         'cron_redo.sh',
     }
     # clean dir
-    #conn.local('find . -iname ".ds_store" -delete', echo=True)
-    #conn.local('find . -depth -name __pycache__ -type d -exec rm -r "{}" \;', echo=True)
+    # conn.local('find . -iname ".ds_store" -delete', echo=True)
+    # conn.local('find . -depth -name __pycache__ -type d -exec rm -r "{}" \;', echo=True)
     conn.local(f'tar -czf deploy.tar.gz {" ".join(files)}', echo=True)
 
     print('Copying to remote server...')
@@ -124,8 +118,8 @@ def deploy(ctx):
         f'cd {DIR}',
         'source env/bin/activate',
         'pip install -qr requirements.txt',
-        f'python manage.py migrate --no-input',
-        f'python manage.py collectstatic --no-input',
+        'python manage.py migrate --no-input',
+        'python manage.py collectstatic --no-input',
     ]
     conn.run(' && '.join(cmds), echo=True)
     # conn.run(f'sed -i "s/DEBUG = True/DEBUG = False/g" {dir}/bgg/settings.py', echo=True)
@@ -138,24 +132,23 @@ def deploy(ctx):
 
 @task
 def systemctl(ctx, cmd):
+    """Run a systemctl command."""
     conn = get_conn()
-    sudo_pwd = Responder(
-        pattern=r'password:',
-        response=f'{PWD}\n')
+    sudo_pwd = Responder(pattern=r'password:', response=f'{PWD}\n')
     conn.sudo(f'systemctl {cmd}', echo=True, pty=True, watchers=[sudo_pwd])
 
 
 @task
 def reboot(ctx):
+    """Reboot the server."""
     conn = get_conn()
-    sudo_pwd = Responder(
-        pattern=r'password:',
-        response=f'{PWD}\n')
+    sudo_pwd = Responder(pattern=r'password:', response=f'{PWD}\n')
     conn.sudo('reboot', echo=True, pty=True, watchers=[sudo_pwd])
 
 
 @task
 def run_command(ctx, cmd):
+    """Run a django command."""
     conn = get_conn()
     cmds = [
         f'cd {DIR}',
@@ -167,41 +160,44 @@ def run_command(ctx, cmd):
 
 @task
 def tail_log(ctx):
+    """Follows the log file."""
     conn = get_conn()
-    conn.run(f'tail -100f {DIR}/logs/default.log')
+    conn.run(f'tail -100f {DIR}/logs/wsgi.log')
 
 
 @task
 def cat_log(ctx, cmd):
+    """Print out the log file."""
     conn = get_conn()
-    conn.run(f'cat {DIR}/logs/default.log | tail -n{cmd}', echo=True)
+    conn.run(f'cat {DIR}/logs/wsgi.log | tail -n{cmd}', echo=True)
 
 
 @task
 def run_cron(ctx):
+    """Run the cron manually."""
     conn = get_conn()
     cmds = [
         f'cd {DIR}',
         'source env/bin/activate',
-        f'./cron.sh',
+        './cron.sh',
     ]
     conn.run(' && '.join(cmds), echo=True)
 
 
 @task
 def upgrade_pip(ctx):
+    """Upgrade pip."""
     conn = get_conn()
     cmds = [
         f'cd {DIR}',
         'source env/bin/activate',
-        f'pip install -U pip',
+        'python -m pip install -U pip',
     ]
     conn.run(' && '.join(cmds), echo=True)
 
 
 @task
 def restart_svc(ctx):
+    """Restart web server."""
     systemctl(ctx, 'restart nginx')
     systemctl(ctx, 'restart gunicorn')
-
-

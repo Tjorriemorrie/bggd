@@ -1,4 +1,5 @@
 import logging
+from calendar import SUNDAY
 from datetime import timedelta
 
 from django.core.management import BaseCommand
@@ -7,7 +8,7 @@ from django.utils.timezone import now
 from retry import retry
 
 from main.models import Game
-from main.scraper import scrape_rankings, scrape_game
+from main.scraper import scrape_game, scrape_rankings
 
 logger = logging.getLogger(__name__)
 
@@ -17,7 +18,7 @@ class Command(BaseCommand):
 
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _main(self, *args, **options):
-        one_day_ago = now() - timedelta(hours=30)
+        # one_day_ago = now() - timedelta(hours=30)
         days_ago = 5
         total_game_cnt = Game.objects.count()
         daily_cut = total_game_cnt // days_ago
@@ -45,13 +46,15 @@ class Command(BaseCommand):
             logger.info(f'Progress {ix}/{len(games)}')
             scrape_game(game)
 
-        logger.info(''.join(['='] * 99))
-        logger.info('No more new games, will scrape for next one...')
-        scrape_rankings()
+        if now().weekday() == SUNDAY:
+            logger.info(''.join(['='] * 99))
+            logger.info('No more new games, will scrape for next one...')
+            scrape_rankings()
 
         logger.info(''.join(['='] * 50) + ' scraping done ' + ''.join(['='] * 50))
 
     def handle(self, *args, **options):
+        """Run the scraping games command."""
         try:
             self._main(*args, **options)
         except Exception:
