@@ -171,6 +171,7 @@
                                     <th>Rating</th>
                                     <th>&nbsp;</th>
                                     <th>Game</th>
+                                    <th>Plays</th>
                                     <th>Players</th>
                                     <th>Weight</th>
                                     <th>Expected</th>
@@ -197,6 +198,7 @@
                                                 <small class="text-muted">{{ review.comment }}</small>
                                             {% endif %}
                                         </td>
+                                        <td>{{ review.num_plays|intcomma }}</td>
                                         <td>{{ review.game.players_fmt }}</td>
                                         <td>{{ review.game.weight_tag }}</td>
                                         <td>

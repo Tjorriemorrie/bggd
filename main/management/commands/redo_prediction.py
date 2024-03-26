@@ -1,9 +1,11 @@
 import logging
+from contextlib import suppress
 from datetime import timedelta
 
 from django.core.management import BaseCommand
 from django.utils.timezone import now
 
+from main.errors import PlayerRatingNewGameError, PlayerRatingUsernameNotFoundError
 from main.models import Game, Player
 from main.recommendations import predict_player
 from main.scraper import scrape_player_ratings
@@ -43,7 +45,10 @@ class Command(BaseCommand):
             return
 
         # first refresh ratings
-        scrape_player_ratings(player)
+        with suppress(
+            TypeError, KeyError, PlayerRatingNewGameError, PlayerRatingUsernameNotFoundError
+        ):
+            scrape_player_ratings(player)
 
         # then redo prediction
         game_ids = Game.objects.values_list('id', flat=True)

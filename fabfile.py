@@ -124,11 +124,11 @@ def deploy(ctx):
     conn.run(' && '.join(cmds), echo=True)
     conn.run(f'rm {DIR}/deploy.tar.gz', echo=True)
     # set executables and fix line endings
-    conn.run('chmod +x /home/django/bggd/manage.py')
-    conn.run('chmod +x /home/django/bggd/cron.sh')
-    conn.run('chmod +x /home/django/bggd/cron_redo.sh')
-    conn.run('sed -i "s/\r$//" /home/django/bggd/cron_redo.sh')
-    conn.run('sed -i "s/\r$//" /home/django/bggd/cron.sh')
+    conn.run('chmod +x /home/django/bggd/manage.py', echo=True)
+    conn.run('chmod +x /home/django/bggd/cron.sh', echo=True)
+    conn.run('chmod +x /home/django/bggd/cron_redo.sh', echo=True)
+    conn.run('sed -i "s/\r$//" /home/django/bggd/cron_redo.sh', echo=True)
+    conn.run('sed -i "s/\r$//" /home/django/bggd/cron.sh', echo=True)
 
     systemctl(ctx, 'start nginx')
     systemctl(ctx, 'start gunicorn')

@@ -1,16 +1,32 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import Optional
 
-from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 
-from main.constants import WEIGHT_HEAVY, WEIGHT_MEDIUM, WEIGHT_LIGHT, STOCK_IN, \
-    STOCK_OUT, SHOP_MEEPS_AND_VEEPS, SHOP_TIMELESS, \
-    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, \
-    AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_MONTH, IGNORE_FAMILIES, \
-    SHOP_GEEKHOME, SHOP_THD, SHOP_TTG, SHOP_GARGOYLE, REVIEW_STATUS_CHOICES
+from main.constants import (
+    AWARD_GAME_OF_THE_MONTH,
+    AWARD_GAME_OF_THE_YEAR,
+    IGNORE_FAMILIES,
+    LABEL_CATEGORY,
+    LABEL_FAMILY,
+    LABEL_MECHANIC,
+    LABEL_SUBDOMAIN,
+    REVIEW_STATUS_CHOICES,
+    SHOP_GARGOYLE,
+    SHOP_GEEKHOME,
+    SHOP_MEEPS_AND_VEEPS,
+    SHOP_THD,
+    SHOP_TIMELESS,
+    SHOP_TTG,
+    STOCK_IN,
+    STOCK_OUT,
+    WEIGHT_HEAVY,
+    WEIGHT_LIGHT,
+    WEIGHT_MEDIUM,
+)
 
 CHOICES_WEIGHTS = (
     (WEIGHT_HEAVY, WEIGHT_HEAVY),
@@ -19,7 +35,15 @@ CHOICES_WEIGHTS = (
 )
 
 
-class Label(models.Model):
+class Timestamped(models.Model):
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        abstract = True
+
+
+class Label(Timestamped):
     CHOICES_LABELS = (
         (LABEL_CATEGORY, LABEL_CATEGORY),
         (LABEL_MECHANIC, LABEL_MECHANIC),
@@ -29,14 +53,12 @@ class Label(models.Model):
     bgg_id = models.PositiveIntegerField()
     name = models.CharField(max_length=256)
     type = models.CharField(max_length=256, choices=CHOICES_LABELS)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f'<Label-{self.bgg_id} {self.type} {self.name}>'
 
 
-class Game(models.Model):
+class Game(Timestamped):
     categories = models.ManyToManyField(Label, related_name='cat_games', blank=True)
     mechanics = models.ManyToManyField(Label, related_name='mec_games', blank=True)
     families = models.ManyToManyField(Label, related_name='fam_games', blank=True)
@@ -45,7 +67,8 @@ class Game(models.Model):
     bgg_id = models.PositiveIntegerField(db_index=True)
     name = models.CharField(max_length=250)
     year = models.IntegerField(
-        validators=[MinValueValidator(-2500), MaxValueValidator(now().year + 1)])
+        validators=[MinValueValidator(-2500), MaxValueValidator(now().year + 1)]
+    )
     url = models.CharField(max_length=250)
     rank = models.PositiveIntegerField()
 
@@ -90,9 +113,6 @@ class Game(models.Model):
     shop_outdated = models.BooleanField(default=False)
     shop_updated_at = models.DateTimeField(null=True, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
         ordering = ('rank',)
 
@@ -101,44 +121,47 @@ class Game(models.Model):
 
     @property
     def bgg_link(self):
+        """Get boardgamegeek game url."""
         return f'https://www.boardgamegeek.com/boardgame/{self.bgg_id}'
 
     def best_shop(self) -> Optional['ShopGame']:
         """Returns best shop with available stock."""
-        return self.shopgames.filter(
-            current_available=True,
-            url__isnull=False
-        ).order_by('current_price').first()
+        return (
+            self.shopgames.filter(current_available=True, url__isnull=False)
+            .order_by('current_price')
+            .first()
+        )
 
-    def comments(self) -> List['Review']:
+    def comments(self) -> list['Review']:
+        """Get ordred comments."""
         return self.reviews.filter(
-            comment__isnull=False,
-            player__reviews_scr__isnull=False
+            comment__isnull=False, player__reviews_scr__isnull=False
         ).order_by('-player__reviews_scr')
 
-    def similar(self) -> List['Game']:
+    def similar(self) -> list['Game']:
         """Returns similar games from kmean clustering."""
         if not self.sim_cluster:
             return []
-        return Game.objects.exclude(id=self.id).filter(
-            sim_cluster=self.sim_cluster).all()
+        return Game.objects.exclude(id=self.id).filter(sim_cluster=self.sim_cluster).all()
 
     def mechanics_comma(self) -> str:
+        """Format mechanics with comma."""
         return ', '.join([m.name for m in self.mechanics.all()])
 
-    def good_families(self) -> List[Label]:
-        return [
-            f for f in self.families.all() if not
-            any(ig in f.name for ig in IGNORE_FAMILIES)]
+    def good_families(self) -> list[Label]:
+        """Get families that are used."""
+        return [f for f in self.families.all() if not any(ig in f.name for ig in IGNORE_FAMILIES)]
 
     def families_comma(self) -> str:
+        """Format families with comma."""
         return ', '.join([f.name for f in self.families.all()])
 
     def categories_comma(self) -> str:
+        """Format categories with comma."""
         return ', '.join([c.name for c in self.categories.all()])
 
     def players_fmt(self) -> str:
-        """Show players on game detail page"""
+        """Show players on game detail page."""
         cnts = []
         for cnt in range(1, 9):
             if self.best_min_players <= cnt <= self.best_max_players:
@@ -147,9 +170,10 @@ class Game(models.Model):
                 cnts.append(f'{cnt}')
             elif self.min_players <= cnt <= self.max_players:
                 cnts.append(f'<small class="text-muted">{cnt}</small>')
-        return mark_safe('&nbsp;'.join(cnts))
+        return mark_safe('&nbsp;'.join(cnts))  # noqa S308
 
     def age_fmt(self) -> str:
+        """Format age specs."""
         if self.rec_min_age:
             return f'{self.rec_min_age}+'
         elif self.min_age:
@@ -157,6 +181,7 @@ class Game(models.Model):
         return ''
 
     def awards_fmt(self) -> str:
+        """Format awards."""
         badges = []
         for award in self.awards.all():
             if award.type == AWARD_GAME_OF_THE_YEAR:
@@ -172,7 +197,7 @@ class Game(models.Model):
         return ''.join(badges)
 
 
-class Player(models.Model):
+class Player(Timestamped):
     bgg_id = models.PositiveIntegerField(null=True)
     nick = models.CharField(max_length=256, unique=True)
 
@@ -195,21 +220,21 @@ class Player(models.Model):
     redo_started_at = models.DateTimeField(null=True, blank=True)
     redo_completed_at = models.DateTimeField(null=True, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     def __str__(self) -> str:
         name = f' ({self.name})' if self.name else ''
         return f'Player {self.nick}{name}'
 
     @property
     def bgg_link(self):
+        """Get boardgamegeek url."""
         return f'https://www.boardgamegeek.com/user/{self.nick}'
 
     def get_absolute_url(self) -> str:
+        """Get absolute url for links."""
         return f'/players/{self.id}'
 
     def geo(self):
+        """Get geo location."""
         geo = ''
         if self.country:
             geo = self.country
@@ -218,6 +243,7 @@ class Player(models.Model):
         return geo or ''
 
     def is_rsa(self) -> bool:
+        """Is south africa country."""
         return self.country and self.country == 'South Africa'
 
 
@@ -226,8 +252,8 @@ class PlayerProxy(Player):
         proxy = True
 
 
-class Day(models.Model):
-    day = models.DateField(db_index=True)
+class Day(Timestamped):
+    day = models.DateField(unique=True)
 
     reviews_cnt = models.IntegerField()
     reviews_avg = models.FloatField()
@@ -235,14 +261,12 @@ class Day(models.Model):
     last_review_at = models.DateTimeField()
     is_outdated = models.BooleanField(db_index=True, default=False)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     def __str__(self) -> str:
         return f'<Day {self.day:"%y-%m-%d} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
 
     @staticmethod
     def get_today() -> 'Day':
+        """Get today as model instance."""
         today = now()
         day, _ = Day.objects.get_or_create(
             day=datetime(today.year, today.month, today.day),
@@ -251,12 +275,26 @@ class Day(models.Model):
                 'reviews_avg': 0,
                 'last_review_id': 0,
                 'last_review_at': now(),
-            }
+            },
+        )
+        return day
+
+    @staticmethod
+    def get_day_at(date_string: str) -> 'Day':
+        """Get specific day from string."""
+        day, _ = Day.objects.get_or_create(
+            day=date_string,
+            defaults={
+                'reviews_cnt': 0,
+                'reviews_avg': 0,
+                'last_review_id': 0,
+                'last_review_at': now(),
+            },
         )
         return day
 
 
-class GameDay(models.Model):
+class GameDay(Timestamped):
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='gamedays')
     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='gamedays')
 
@@ -270,23 +308,22 @@ class GameDay(models.Model):
     shop_mean = models.FloatField(null=True, blank=True)
     shop_saving = models.FloatField(null=True, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
         unique_together = ('game', 'day')
 
     def __str__(self) -> str:
-        return f'<GameDay game={self.game.name} {self.day.day:"%y-%m-%d"} cnt={self.reviews_cnt} avg={round(self.reviews_avg, 1)}>'
+        return (
+            f'<GameDay game={self.game.name} {self.day.day:"%y-%m-%d"} cnt={self.reviews_cnt} '
+            f'avg={round(self.reviews_avg, 1)}>'
+        )
 
 
-class Review(models.Model):
-    player = models.ForeignKey(
-        Player, on_delete=models.CASCADE, related_name='reviews')
-    game = models.ForeignKey(
-        Game, on_delete=models.CASCADE, related_name='reviews')
+class Review(Timestamped):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='reviews')
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='reviews')
     gameday = models.ForeignKey(
-        GameDay, null=True, on_delete=models.SET_NULL, related_name='reviews')
+        GameDay, null=True, on_delete=models.SET_NULL, related_name='reviews'
+    )
 
     bgg_id = models.PositiveIntegerField(db_index=True)
     rating = models.FloatField(db_index=True)
@@ -294,10 +331,11 @@ class Review(models.Model):
     reviewed_at = models.DateTimeField(db_index=True)
     status = models.CharField(max_length=50, choices=REVIEW_STATUS_CHOICES)
 
-    predicted = models.FloatField(null=True)
+    # plays
+    num_plays = models.IntegerField(default=0)
+    last_played_at = models.DateTimeField(null=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(db_index=True, auto_now=True)
+    predicted = models.FloatField(null=True)
 
     class Meta:
         unique_together = ('player', 'game')
@@ -307,20 +345,23 @@ class Review(models.Model):
 
     @property
     def diff(self) -> float:
+        """Get the difference between predicted and rating."""
         if not self.predicted:
             return 0
         return self.predicted - self.rating
 
     @property
     def diff_combine(self) -> float:
+        """Get rating and diff combined."""
         return self.rating + self.diff
 
     @property
     def day(self) -> datetime:
+        """Get day of review."""
         return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
-class Award(models.Model):
+class Award(Timestamped):
     CHOICES_AWARDS = (
         (AWARD_GAME_OF_THE_MONTH, AWARD_GAME_OF_THE_MONTH),
         (AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_YEAR),
@@ -339,34 +380,26 @@ class Award(models.Model):
     ru_score = models.FloatField(null=True)
     ru_num_ratings = models.IntegerField(null=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     def __str__(self) -> str:
         return f'<Award {self.description} game={self.game} score={int(self.score)}>'
 
 
-class Rec(models.Model):
-    player = models.ForeignKey(
-        Player, on_delete=models.CASCADE, related_name='recs')
+class Rec(Timestamped):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='recs')
     weight_tag = models.CharField(max_length=20, choices=CHOICES_WEIGHTS)
     best_players = models.PositiveSmallIntegerField()
 
-    game = models.ForeignKey(
-        Game, on_delete=models.CASCADE, related_name='recs', null=True)
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='recs', null=True)
     predicted = models.FloatField(null=True)
     is_primary = models.BooleanField(default=False)
 
     rec_at = models.DateTimeField(null=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     def __str__(self) -> str:
         return f'<Rec {self.weight_tag} {self.best_players} {self.game.name} -> {self.player.nick}>'
 
 
-class Shop(models.Model):
+class Shop(Timestamped):
     SHOP_CHOICES = (
         (SHOP_MEEPS_AND_VEEPS, SHOP_MEEPS_AND_VEEPS),
         (SHOP_TIMELESS, SHOP_TIMELESS),
@@ -377,14 +410,12 @@ class Shop(models.Model):
     )
     name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
     host = models.CharField(max_length=150, unique=True)
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self) -> str:
         return f'{self.name}'
 
 
-class ShopGame(models.Model):
+class ShopGame(Timestamped):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='shopgames')
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='shopgames')
     url = models.CharField(max_length=250, unique=True, null=True, blank=True)
@@ -394,24 +425,23 @@ class ShopGame(models.Model):
     current_available = models.BooleanField(null=True, blank=True)
     current_price = models.IntegerField(null=True, blank=True)
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
         unique_together = ('shop', 'game')
 
     def __str__(self) -> str:
-        tail = 'mia' if self.mia else 'n/a' if not self.current_available else f'R{self.current_price}'
+        tail = (
+            'mia' if self.mia else 'n/a' if not self.current_available else f'R{self.current_price}'
+        )
         return f'<{self.shop} + {self.game} = {tail}>'
 
-    def save(self, force_insert=False, force_update=False, using=None,
-             update_fields=None):
+    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
+        """Requires price if available."""
         if self.current_available is True and self.current_price == 0:
             raise ValueError(f'Cannot be free: {self}')
         super().save(force_insert, force_update, using, update_fields)
 
 
-class Price(models.Model):
+class Price(Timestamped):
     STOCK_CHOICES = (
         (STOCK_IN, STOCK_IN),
         (STOCK_OUT, STOCK_OUT),
@@ -422,11 +452,20 @@ class Price(models.Model):
     status = models.CharField(max_length=50, choices=STOCK_CHOICES)
     price = models.IntegerField()
 
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
     class Meta:
         unique_together = ('shopgame', 'day')
 
     def __str__(self) -> str:
         return f'Price {self.day}  {self.shopgame} {self.status} {self.price}'
+
+
+class Play(Timestamped):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='plays')
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='plays')
+    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='plays')
+    bgg_id = models.IntegerField()
+    duration = models.IntegerField(null=True)
+    num_players = models.IntegerField(null=True)
+
+    def __str__(self):
+        return f'<Play bggid={self.bgg_id} {self.game.name} by {self.player.nick} {self.day.day}>'

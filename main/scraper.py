@@ -1,22 +1,34 @@
 import json
 import logging
 import re
+from contextlib import suppress
 from datetime import datetime
 from time import sleep
-from typing import List, Tuple
 
 import requests
 from bs4 import BeautifulSoup
-from django.conf import settings
 from django.db import IntegrityError, OperationalError
 from django.db.models import Avg
-from django.utils.timezone import now, make_aware
+from django.utils.timezone import make_aware, now
 from retry import retry
 
-from main.constants import REVIEW_STATUS_CHOICES, REVIEW_STATUS_NONE
-from main.errors import PlayerScrapeError, PlayerRatingUsernameNotFoundError
-from main.models import Game, Label, \
-    LABEL_CATEGORY, LABEL_MECHANIC, LABEL_FAMILY, LABEL_SUBDOMAIN, Review, Player
+from main.constants import (
+    REVIEW_STATUS_CHOICES,
+    REVIEW_STATUS_NONE,
+    ROWS_TABLE_HEADERS,
+    SCRAPE_REVIEWS_EXISTING_BUFFER,
+)
+from main.errors import PlayerRatingUsernameNotFoundError, PlayerScrapeError
+from main.models import (
+    LABEL_CATEGORY,
+    LABEL_FAMILY,
+    LABEL_MECHANIC,
+    LABEL_SUBDOMAIN,
+    Game,
+    Label,
+    Player,
+    Review,
+)
 from main.stats import outdate_gameday_by_review
 
 logger = logging.getLogger(__name__)
@@ -26,7 +38,9 @@ URL_GAME = r'https://www.boardgamegeek.com/boardgame/{bgg_id}'
 URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'  # noqa: E501
 URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'  # noqa: E501
 URL_GAME_NUMPLAYERS = r'https://www.boardgamegeek.com/geekitempoll.php?action=view&itempolltype=numplayers&objectid={bgg_id}&objecttype=thing'  # noqa: E501
-URL_GAME_NUMPLAYERS_RESULTS = r'https://www.boardgamegeek.com/geekpoll.php?action=results&pollid={poll_id}'
+URL_GAME_NUMPLAYERS_RESULTS = (
+    r'https://www.boardgamegeek.com/geekpoll.php?action=results&pollid={poll_id}'
+)
 URL_PLAYER_RATINGS = r'https://www.boardgamegeek.com/geekcollection.php?ajax=1&action=collectionpage&username={nick}&gallery=&sort=rating&sortdir=desc&page=&pageID={page}&ff=1&hiddencolumns=&publisherid=&searchstr=&rankobjecttype=subtype&rankobjectid=1&columns[]=title&columns[]=rating&columns[]=bggrating&columns[]=comment&minrating=&rating=&minbggrating=&bggrating=&minplays=&maxplays=&searchfield=title&geekranks=Board%20Game%20Rank&subtype=boardgame&excludesubtype=boardgameexpansion&own=both&trade=both&want=both&wanttobuy=both&prevowned=both&comment=both&wishlist=both&rated=both&played=both&wanttoplay=both&preordered=both&hasparts=both&wantparts=both&wishlistpriority='  # noqa: E501
 
 
@@ -43,9 +57,10 @@ last_url = None
 
 
 @retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60, tries=10)
-def get(url: str, headers: dict = None) -> requests.Response:
-    global sleep_time
-    global last_url
+def get(url: str, params: dict = None, headers: dict = None) -> requests.Response:
+    """Helper function to do back off fetches with requests."""
+    global sleep_time  # noqa PLW0603
+    global last_url  # noqa PLW0603
     if last_url == url:
         sleep_time = round(sleep_time + 0.5, 3)
         logger.info(f'Increased sleep time to {sleep_time}')
@@ -55,22 +70,23 @@ def get(url: str, headers: dict = None) -> requests.Response:
     sleep(sleep_time)
 
     try:
-        res = requests.get(url, headers=headers)
+        res = requests.get(url, params=params, headers=headers, timeout=30)
     except Exception as exc:
         logger.warning(f'Connection error! url={url}')
         logger.warning(f'Connection error! exc={exc}')
         raise RequestsError() from exc
-    if res.status_code in [429, 430]:
+    if res.status_code == requests.codes.too_many:
         logger.warning(f'Too many requests! {url}')
         raise TooManyRequestsError()
-    elif res.status_code >= 500:
+    elif res.status_code >= requests.codes.server_error:
         logger.warning(f'Server error! {url}')
         raise TooManyRequestsError()
     res.raise_for_status()
     return res
 
 
-def scrape_rankings() -> List[Game]:
+def scrape_rankings() -> list[Game]:
+    """Scrape the ranking from boardgamegeek."""
     logger.info('Scraping rankings...')
     games = []
     name_pattern = re.compile(r'(.*)\s\((-?\d+)\)')
@@ -112,7 +128,8 @@ def scrape_rankings() -> List[Game]:
                     'url': url,
                     'name': name,
                     'year': year,
-                })
+                },
+            )
             logger.info(f'{created and "Created" or "Updated"} {game}')
             games.append(game)
             if created:
@@ -124,11 +141,11 @@ def scrape_rankings() -> List[Game]:
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def scrape_game(game: Game):
+    """Scrape the game from boardgamegeek."""
     logger.info(f'Scraping {game}')
-    res = requests.get(URL_GAME.format(bgg_id=game.bgg_id))
+    res = requests.get(URL_GAME.format(bgg_id=game.bgg_id), timeout=30)
     res.raise_for_status()
-    matches = re.search(
-        r'GEEK\.geekitemPreload\s=\s(.*)GEEK\.geekitemSettings', res.text, re.S)
+    matches = re.search(r'GEEK\.geekitemPreload\s=\s(.*)GEEK\.geekitemSettings', res.text, re.S)
     json_match = matches.groups()[0]
     preload = json.loads(json_match.strip().rstrip(';'))
 
@@ -166,10 +183,8 @@ def scrape_game(game: Game):
         data = []
         for link_item in preload['item']['links'][key]:
             label, _ = Label.objects.get_or_create(
-                bgg_id=link_item['objectid'],
-                defaults={
-                    'type': val[1],
-                    'name': link_item['name']})
+                bgg_id=link_item['objectid'], defaults={'type': val[1], 'name': link_item['name']}
+            )
             data.append(label)
         # logger.info(f'Set {len(data)} {val[1]}')
         getattr(game, val[0]).set(data)
@@ -184,13 +199,14 @@ def scrape_game(game: Game):
 
 
 def scrape_game_reviews(game: Game):
+    """Scrape game reviews from boardgamegeek."""
     logger.info(f'Scraping reviews of {game}')
     num_items = 0
 
     # first run from the front
     p = 0
     existing = 0
-    while existing <= 100:
+    while existing <= SCRAPE_REVIEWS_EXISTING_BUFFER:
         p += 1
         logger.info(f'Scraping page {p}/{num_items // 50 + 1} for reviews...')
         res = get(URL_GAME_RATINGS.format(bgg_id=game.bgg_id, p=p)).json()
@@ -233,22 +249,24 @@ def scrape_game_reviews(game: Game):
     logger.info(f'Finished scraping reviews for {game}!')
 
 
-def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
+def parse_game_review(game: Game, item: dict) -> tuple[Review, bool]:
+    """Parse game review from html."""
     item['rating'] = round(float(item['rating']), 1)
-    item['rating'] = max([1., item['rating']])
-    item['rating'] = min([10., item['rating']])
+    item['rating'] = max([1.0, item['rating']])
+    item['rating'] = min([10.0, item['rating']])
     try:
         player, _ = Player.objects.get_or_create(
             nick=item['user']['username'],
             defaults={
                 'country': item['user']['country'],
-                'avatar': item['user'].get('avatarurl_md')})
+                'avatar': item['user'].get('avatarurl_md'),
+            },
+        )
     except Player.MultipleObjectsReturned:
         logger.info(f'Found multiple nicks {item["user"]["username"]}')
         raise
     tstamp = item['review_tstamp'] or item['tstamp']
-    reviewed_at = make_aware(
-        datetime.strptime(tstamp, '%Y-%m-%d %H:%M:%S'))
+    reviewed_at = make_aware(datetime.strptime(tstamp, '%Y-%m-%d %H:%M:%S'))
     try:
         review, created = Review.objects.get_or_create(
             bgg_id=item['collid'],
@@ -256,7 +274,9 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
                 'game': game,
                 'player': player,
                 'rating': item['rating'],
-                'reviewed_at': reviewed_at})
+                'reviewed_at': reviewed_at,
+            },
+        )
     except IntegrityError:
         logger.warning(f'Integrity error on review item {item}!')
         review, created = Review.objects.update_or_create(
@@ -265,7 +285,9 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
             defaults={
                 'bgg_id': item['collid'],
                 'rating': item['rating'],
-                'reviewed_at': reviewed_at})
+                'reviewed_at': reviewed_at,
+            },
+        )
         logger.warning(f'{created and "Created" or "Updated"} review')
     except Review.MultipleObjectsReturned:
         logger.warning(f'Multiple objects returned for {item}!')
@@ -310,6 +332,7 @@ def parse_game_review(game: Game, item: dict) -> Tuple[Review, bool]:
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def scrape_player(player: Player):
+    """Scrape the player details."""
     res = get(player.bgg_link)
     html = BeautifulSoup(res.text, 'html.parser')
     avatar_block = html.find('div', class_='avatarblock')
@@ -318,10 +341,8 @@ def scrape_player(player: Player):
     player.bgg_id = avatar_block['data-userid']
     avatar_divs = avatar_block.find_all('div')
     player.name = avatar_divs[0].text.strip() or None
-    try:
+    with suppress(TypeError):
         player.avatar = avatar_block.find('img', alt='Avatar')['src']
-    except TypeError:
-        pass
     try:
         country, *areas = avatar_divs[2].stripped_strings
         player.country = country
@@ -332,7 +353,8 @@ def scrape_player(player: Player):
     player.save()
 
 
-def scrape_player_ratings(player: Player):
+def scrape_player_ratings(player: Player):  # noqa: PLR0915 PLR0912
+    """Scrape the player ratings."""
     orphan_game_ids = list(player.reviews.values_list('game_id', flat=True))
     page = 0
     while True:
@@ -344,9 +366,9 @@ def scrape_player_ratings(player: Player):
         try:
             rows = table.find_all('tr')
         except Exception as exc:
-            logger.error(f'No ratings for player URL = {url}')
+            logger.exception(f'No ratings for player URL = {url}')
             raise PlayerRatingUsernameNotFoundError() from exc
-        if len(rows) < 2:
+        if len(rows) < ROWS_TABLE_HEADERS:
             break
         for row in rows[1:]:
             # bgg id
@@ -367,8 +389,8 @@ def scrape_player_ratings(player: Player):
             if rating_info[0] == 'N/A':
                 continue
             rating = round(float(rating_info[0]), 1)
-            rating = min(10., rating)
-            rating = max(1., rating)
+            rating = min(10.0, rating)
+            rating = max(1.0, rating)
             try:
                 rated_on = make_aware(datetime.strptime(rating_info[1].rstrip('*'), '%b %Y'))
             except IndexError:
@@ -384,7 +406,9 @@ def scrape_player_ratings(player: Player):
                 try:  # should always have game id if review exists
                     orphan_game_ids.remove(review.game.id)
                 except ValueError:
-                    logger.error(f'{review.game.id} not found in remaining game ids {orphan_game_ids}')
+                    logger.error(
+                        f'{review.game.id} not found in remaining game ids {orphan_game_ids}'
+                    )
             except Review.DoesNotExist:
                 review = Review.objects.create(
                     player=player,
@@ -392,12 +416,15 @@ def scrape_player_ratings(player: Player):
                     bgg_id=bgg_id,
                     rating=rating,
                     comment=comment,
-                    reviewed_at=rated_on)
+                    reviewed_at=rated_on,
+                )
                 logger.info(f'Created missed {review} for existing {game}!')
                 continue
 
             if review.rating != rating or review.comment != comment:
-                logger.info(f'Rating for {game} changed from {review.rating} to {rating}: {comment}')
+                logger.info(
+                    f'Rating for {game} changed from {review.rating} to {rating}: {comment}'
+                )
                 review.rating = rating
                 review.comment = comment
                 review.save()

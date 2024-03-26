@@ -155,7 +155,6 @@ STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'static'
 
 # logging
-LOG_LEVEL = 'DEBUG' if DEBUG else 'INFO'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -169,7 +168,7 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'level': LOG_LEVEL,
+            'level': env('LOG_LEVEL'),
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'wsgi.log',
             'when': 'midnight',
@@ -186,7 +185,7 @@ LOGGING = {
     },
     'root': {
         'handlers': ['file', 'console'],
-        'level': LOG_LEVEL,
+        'level': env('LOG_LEVEL'),
         'propagate': False,
     },
     'loggers': {
