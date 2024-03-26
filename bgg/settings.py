@@ -160,7 +160,7 @@ LOGGING = {
     'disable_existing_loggers': False,
     'formatters': {
         'standard': {
-            'format': '%(asctime)s %(levelname)-8s - %(message)s (%(name)s:%(lineno)d)',
+            'format': '%(asctime)s %(levelname)-8s %(message)s {%(filename)s:%(lineno)d}',
         },
         'compact': {
             'format': '%(levelname)s - %(message)s',
@@ -189,10 +189,21 @@ LOGGING = {
         'propagate': False,
     },
     'loggers': {
+        # route to root for every django logger
         'django': {
             'handlers': [],
             'level': 'DEBUG',
             'propagate': True,
+        },
+        'django.db': {
+            'handlers': [],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django.utils': {
+            'handlers': [],
+            'level': 'DEBUG',
+            'propagate': False,
         },
     },
 }

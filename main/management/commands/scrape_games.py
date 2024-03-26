@@ -7,6 +7,7 @@ from django.db import OperationalError
 from django.utils.timezone import now
 from retry import retry
 
+from main.constants import GAME_LIMIT
 from main.models import Game
 from main.scraper import scrape_game, scrape_rankings
 
@@ -46,7 +47,11 @@ class Command(BaseCommand):
             logger.info(f'Progress {ix}/{len(games)}')
             scrape_game(game)
 
-        if now().weekday() == SUNDAY:
+        if Game.objects.count() > GAME_LIMIT:
+            worst_game = Game.objects.order_by('rank').last()
+            worst_game.delete()
+            logger.info(f'Deleted worst game {worst_game}')
+        elif now().weekday() == SUNDAY:
             logger.info(''.join(['='] * 99))
             logger.info('No more new games, will scrape for next one...')
             scrape_rankings()
