@@ -41,7 +41,7 @@ class Command(BaseCommand):
         """Run cmd."""
         player = self._load_next_player()
         if not player:
-            logger.info('No player requested redo')
+            # logger.info('No player requested redo')
             return
 
         # first refresh ratings

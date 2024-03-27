@@ -154,6 +154,7 @@ USE_TZ = True
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'static'
 
+
 # logging
 LOGGING = {
     'version': 1,
@@ -163,7 +164,7 @@ LOGGING = {
             'format': '%(asctime)s %(levelname)-8s %(message)s {%(filename)s:%(lineno)d}',
         },
         'compact': {
-            'format': '%(levelname)s - %(message)s',
+            'format': '%(levelname)-7s %(message)s',
         },
     },
     'handlers': {
@@ -189,24 +190,12 @@ LOGGING = {
         'propagate': False,
     },
     'loggers': {
-        # route to root for every django logger
         'django': {
-            'handlers': [],
-            'level': 'DEBUG',
-            'propagate': True,
-        },
-        'django.db': {
-            'handlers': [],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'django.utils': {
-            'handlers': [],
-            'level': 'DEBUG',
             'propagate': False,
         },
     },
 }
+
 
 # EMAIL
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

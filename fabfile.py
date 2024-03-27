@@ -91,7 +91,8 @@ def deploy(ctx):
     conn = get_conn()
     files = {
         'requirements.txt',
-        # '.env.template',
+        'robots.txt',
+        '.env.dist',
         'main',
         'bgg',
         'manage.py',

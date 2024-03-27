@@ -48,32 +48,68 @@
                         {{ game.max_play_time }}{% endif %}</h6>
                     <h6>Age: {{ game.age_fmt }}</h6>
                     <h6><a href="{{ game.bgg_link }}" target="_blank">GBB link</a></h6>
-
-                    <br/>
-                    <h6>
-                        Shops:
-                        {% if game.shop_mean %}<br/><sup>Avg price: {{ game.shop_mean|intcomma }}</sup>{% endif %}
-                    </h6>
-                    <p>
-                    {% for shopgame in game.shopgames.all %}
-                        {% if shopgame.current_price %}
-                            {{ shopgame.shop.name }}: {{ shopgame|price }}<br/>
-                        {% endif %}
-                    {% empty %}
-                        <span class="badge bg-warning">Not available at any shop</span>
-                    {% endfor %}
-                    </p>
                 </div>
             </div>
 
-            {% if day_graph %}
-            <br/>
             <div class="row">
                 <div class="col">
-                    {{ day_graph|safe }}
+                    <div class="accordion" id="accordionMeta">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingReviews">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#collapseReviews"
+                                        aria-expanded="true"
+                                        aria-controls="collapseReviews">
+                                    <strong>Reviews over time</strong>
+                                </button>
+                            </h2>
+                            <div id="collapseReviews"
+                                 class="accordion-collapse collapse show"
+                                 aria-labelledby="headingReviews"
+                                 data-bs-parent="#accordionMeta">
+                                <div class="accordion-body">
+                                    {% if day_graph %}
+                                        {{ day_graph|safe }}
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="headingShops">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse"
+                                        data-bs-target="#collapseShops"
+                                        aria-expanded="false"
+                                        aria-controls="collapseShops">
+                                    <strong>Prices in shops</strong>
+                                </button>
+                            </h2>
+                            <div id="collapseShops"
+                                 class="accordion-collapse collapse"
+                                 aria-labelledby="headingShops"
+                                 data-bs-parent="#accordionMeta">
+                                <div class="accordion-body">
+                                    <h6>
+                                        {% if game.shop_mean %}<br/><sup>Avg price: {{ game.shop_mean|intcomma }}</sup>{% endif %}
+                                    </h6>
+                                    <p>
+                                    {% for shopgame in game.shopgames.all %}
+                                        {% if shopgame.current_price %}
+                                            {{ shopgame.shop.name }}: {{ shopgame|price }}<br/>
+                                        {% endif %}
+                                    {% empty %}
+                                        <span class="badge bg-warning">Not available at any shop</span>
+                                    {% endfor %}
+                                    {% if prices_graph %}
+                                        {{ prices_graph|safe }}
+                                    {% endif %}
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            {% endif %}
+
 
             <br/>
             <div class="row">

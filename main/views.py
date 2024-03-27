@@ -1,25 +1,34 @@
 import logging
 from collections import Counter, defaultdict
-from datetime import timedelta, datetime
+from datetime import datetime, timedelta
 from itertools import combinations
 from operator import attrgetter, itemgetter
 
 import pandas as pd
 import plotly.express as px
-from django.db.models import Q, Count, F, Avg, QuerySet, Min
+from django.db.models import Avg, Count, F, Min, Q, QuerySet
 from django.db.models.functions import TruncMonth
 from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
-from django.utils.timezone import now, make_aware
+from django.utils.timezone import make_aware, now
 from django.views.decorators.cache import cache_page
-from django.views.generic import ListView, TemplateView, DetailView
+from django.views.generic import DetailView, ListView, TemplateView
 from pytube import Search
 
 import main.constants as c
 from bgg.settings import CACHE_DURATION
-from main.models import Game, Player, Review, Day, Award, \
-    AWARD_GAME_OF_THE_YEAR, \
-    AWARD_GAME_OF_THE_MONTH, ShopGame, Shop
+from main.graphs import get_game_prices_bar
+from main.models import (
+    AWARD_GAME_OF_THE_MONTH,
+    AWARD_GAME_OF_THE_YEAR,
+    Award,
+    Day,
+    Game,
+    Player,
+    Review,
+    Shop,
+    ShopGame,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +44,15 @@ class HomeView(CachedTemplateViewGet):
     template_name = 'main/home.html'
 
     def get_context_data(self, **kwargs):
+        """Get upcoming games."""
         days_90 = now() - timedelta(days=90)
-        latest = Game.objects.filter(
-            created_at__gt=days_90).order_by('-hotness').all()[:5]
-        upcoming = Game.objects.filter(
-            Q(recs_cnt__gt=0) &
-            Q(hotness__gt=0)
-        ).annotate(score=100 * F('recs_cnt') / F('reviews_cnt')).order_by(
-            '-score').all()[:10]
+        latest = Game.objects.filter(created_at__gt=days_90).order_by('-hotness').all()[:5]
+        upcoming = (
+            Game.objects.filter(Q(recs_cnt__gt=0) & Q(hotness__gt=0))
+            .annotate(score=100 * F('recs_cnt') / F('reviews_cnt'))
+            .order_by('-score')
+            .all()[:10]
+        )
         hotness = Game.objects.order_by('-hotness')[:10]
         ctx = {
             'nav': 'home',
@@ -60,25 +70,29 @@ class GotView(CachedTemplateViewGet):
     template_name = 'main/got.html'
 
     def get_context_data(self, **kwargs):
+        """Get games of the month."""
         award_groups = {}
         to = now().year + 1
         for year in reversed(range(c.START_GAME_OF_THE.year, to)):
             half_year = make_aware(datetime(year, 7, 1))
             award_groups[year] = {
                 'year': Award.objects.filter(
-                    Q(type=AWARD_GAME_OF_THE_YEAR)
-                    & Q(awarded_at__year=year)
+                    Q(type=AWARD_GAME_OF_THE_YEAR) & Q(awarded_at__year=year)
                 ).first(),
                 'top': Award.objects.filter(
                     Q(type=AWARD_GAME_OF_THE_MONTH)
                     & Q(awarded_at__year=year)
                     & Q(awarded_at__lt=half_year)
-                ).order_by('awarded_at').all(),
+                )
+                .order_by('awarded_at')
+                .all(),
                 'bottom': Award.objects.filter(
                     Q(type=AWARD_GAME_OF_THE_MONTH)
                     & Q(awarded_at__year=year)
                     & Q(awarded_at__gte=half_year)
-                ).order_by('awarded_at').all(),
+                )
+                .order_by('awarded_at')
+                .all(),
             }
         ctx = {
             'start_at': c.START_GAME_OF_THE,
@@ -91,18 +105,15 @@ class AboutView(CachedTemplateViewGet):
     template_name = 'main/about.html'
 
     def get_context_data(self, **kwargs):
+        """Get stats."""
         # player updated
-        oldest_rec = Player.objects.aggregate(
-            Min('rec_at')
-        )['rec_at__min']
+        oldest_rec = Player.objects.aggregate(Min('rec_at'))['rec_at__min']
         player_turnover = (now() - oldest_rec).days
 
         # game added
         one_month = now() - timedelta(days=30)
-        first_game = Game.objects.filter(
-            created_at__gte=one_month).order_by('created_at').first()
-        total_games = Game.objects.filter(
-            created_at__gte=one_month).count()
+        first_game = Game.objects.filter(created_at__gte=one_month).order_by('created_at').first()
+        total_games = Game.objects.filter(created_at__gte=one_month).count()
         game_days = (now() - first_game.created_at).days
         game_added = total_games // game_days
 
@@ -116,7 +127,7 @@ class AboutView(CachedTemplateViewGet):
 
 
 class ViewError(Exception):
-    """Bad view setup"""
+    """Bad view setup."""
 
 
 @method_decorator(cache_page(CACHE_DURATION), name='get')
@@ -133,11 +144,13 @@ class OrderingListView(ListView):
     ordering = None
 
     def get_ordering(self):
+        """Get ordering."""
         if not self.ordering:
             raise ViewError('Missing ordering on view')
         return self.request.GET.get('o', self.ordering)
 
     def get_context_data(self, *, object_list=None, **kwargs):
+        """Get ordering."""
         ctx = super().get_context_data(object_list=object_list, **kwargs)
         ctx['ordering'] = self.get_ordering()
         return ctx
@@ -147,11 +160,13 @@ class SearchListView(ListView):
     search_by = None
 
     def get_context_data(self, *, object_list=None, **kwargs):
+        """Get search query."""
         ctx = super().get_context_data(object_list=object_list, **kwargs)
         ctx['s'] = self.request.GET.get('s')
         return ctx
 
     def get_queryset(self):
+        """Get query from search."""
         queryset = super().get_queryset()
         search = self.request.GET.get('s')
         if not self.search_by:
@@ -176,6 +191,7 @@ class GameListView(OrderingListView, SearchListView, CachedListViewGet):
     ordering = '-hotness'
 
     def get_queryset(self):
+        """Get availability."""
         queryset = super().get_queryset()
         availability = int(self.request.GET.get('a', 1))
         if not self.request.GET.get('s') and availability:
@@ -183,6 +199,7 @@ class GameListView(OrderingListView, SearchListView, CachedListViewGet):
         return queryset
 
     def get_context_data(self, *, object_list=None, **kwargs):
+        """Get percentiles."""
         ctx = super().get_context_data(object_list=object_list, **kwargs)
         ctx['weights_percentiles'] = c.WEIGHTS_CUTOFF
         # show only available
@@ -195,13 +212,16 @@ class GameDetailView(CachedDetailViewGet):
     context_object_name = 'game'
 
     def get_context_data(self, **kwargs):
+        """Get game details."""
         ctx = super().get_context_data(**kwargs)
 
         # prev and next
-        ctx['prev'] = Game.objects.filter(
-            rating__gt=self.object.rating).order_by('rating', '-rank').first()
-        ctx['next'] = Game.objects.filter(
-            rating__lt=self.object.rating).order_by('-rating', 'rank').first()
+        ctx['prev'] = (
+            Game.objects.filter(rating__gt=self.object.rating).order_by('rating', '-rank').first()
+        )
+        ctx['next'] = (
+            Game.objects.filter(rating__lt=self.object.rating).order_by('-rating', 'rank').first()
+        )
 
         # graph histogram
         histogram = self.object.reviews.values('rating')
@@ -211,22 +231,33 @@ class GameDetailView(CachedDetailViewGet):
         ctx['rating_graph'] = fig.to_html(full_html=False)
 
         # graph daily
-        day_data = self.object.reviews.annotate(
-            month=TruncMonth('reviewed_at')).order_by('month').values('month').annotate(
-            cnt=Count('month')).values('month', 'cnt')
+        day_data = (
+            self.object.reviews.annotate(month=TruncMonth('reviewed_at'))
+            .order_by('month')
+            .values('month')
+            .annotate(cnt=Count('month'))
+            .values('month', 'cnt')
+        )
         if day_data:
-            day_df = pd.DataFrame([
-                {'Month': d['month'], 'Ratings': d['cnt']}
-                for d in day_data])
+            day_df = pd.DataFrame([{'Month': d['month'], 'Ratings': d['cnt']} for d in day_data])
             day_fig = px.bar(day_df, x='Month', y='Ratings', title='Ratings per month')
             ctx['day_graph'] = day_fig.to_html(full_html=False)
 
+        # graph for prices
+        if prices_fig := get_game_prices_bar(self.object):
+            ctx['prices_graph'] = prices_fig.to_html(full_html=False)
+        else:
+            ctx['prices_graph'] = None
+
         yt_search = Search(f'board game review {self.object.name} {self.object.year}')
-        ctx['yt_results'] = [{
-            'embed_url': yt.embed_url,
-            'title': yt.title,
-            'author': yt.author,
-        } for yt in yt_search.results][:6]
+        ctx['yt_results'] = [
+            {
+                'embed_url': yt.embed_url,
+                'title': yt.title,
+                'author': yt.author,
+            }
+            for yt in yt_search.results
+        ][:6]
 
         return ctx
 
@@ -239,6 +270,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
     search_by = 'nick'
 
     def get_queryset(self) -> QuerySet:
+        """Get search."""
         qs = super().get_queryset()
         search = self.request.GET.get('s')
         if not search:
@@ -246,6 +278,7 @@ class PlayerListView(OrderingListView, SearchListView, CachedListViewGet):
         return qs
 
     def get_context_data(self, *args, object_list=None, **kwargs):
+        """Get time."""
         ctx = super().get_context_data(*args, object_list=object_list, **kwargs)
 
         # add graph for listing only (not on search)
@@ -264,6 +297,7 @@ class PlayerDetailView(DetailView):
     context_object_name = 'player'
 
     def get_context_data(self, **kwargs):
+        """Get player detail."""
         data = super().get_context_data(**kwargs)
 
         data['weights'] = c.WEIGHTS
@@ -273,23 +307,27 @@ class PlayerDetailView(DetailView):
         fig_data = [
             {'Actual': r.rating, 'Expected': r.predicted, 'Name': r.game.name}
             for r in self.object.reviews.all()
-            if r.rating and r.predicted]
+            if r.rating and r.predicted
+        ]
         if fig_data:
             min_est = min([f['Expected'] for f in fig_data])
             max_est = max([f['Expected'] for f in fig_data])
             df = pd.DataFrame(fig_data)
-            fig = px.scatter(df, x="Expected", y="Actual", hover_name='Name',
-                             title='Actual vs expected rating')
-            fig.add_shape(type="line", x0=min_est, y0=min_est, x1=max_est, y1=max_est)
+            fig = px.scatter(
+                df, x='Expected', y='Actual', hover_name='Name', title='Actual vs expected rating'
+            )
+            fig.add_shape(type='line', x0=min_est, y0=min_est, x1=max_est, y1=max_est)
             fig.update_yaxes(dtick=1)
             fig.update_xaxes(dtick=1)
             data['graph'] = fig.to_html(full_html=False)
 
         # graph: heatmap
         if self.object.reviews.count():
-            reviews = list(self.object.reviews.filter(
-                predicted__isnull=False,
-            ).all())
+            reviews = list(
+                self.object.reviews.filter(
+                    predicted__isnull=False,
+                ).all()
+            )
             reviews.sort(key=attrgetter('predicted'), reverse=True)
             reviews.sort(key=attrgetter('rating'), reverse=True)
             data['reviews'] = reviews
@@ -309,12 +347,16 @@ class PlayerDetailView(DetailView):
                     if p in p_data[review.game.weight_tag]:
                         p_data[review.game.weight_tag][p] += 1
             # layout = {'xaxis': {'ticks': [int(x) for x in df['player_count']]}}
-            # fig = px.bar(df, x='player_count', y='count', title='Number of games per best player count')
+            # fig = px.bar(df, x='player_count', y='count',
+            #   title='Number of games per best player count')
             h_data = [list(p.values()) for p in p_data.values()]
             fig = px.imshow(
-                h_data, x=[1, 2, 3, 4, 5],
+                h_data,
+                x=[1, 2, 3, 4, 5],
                 y=['very light', 'light', 'medium', 'heavy', 'very heavy'],
-                labels={'x': 'Player count', 'y': 'Complexity'}, title='Heatmap of player games')
+                labels={'x': 'Player count', 'y': 'Complexity'},
+                title='Heatmap of player games',
+            )
             data['heat'] = fig.to_html(full_html=False)
 
         # split by status
@@ -329,9 +371,7 @@ class PlayerDetailView(DetailView):
 
 
 def player_predict_view(request, pk):
-    """
-    Prevent spam by checking requested_at is empty.
-    """
+    """Prevent spam by checking requested_at is empty."""
     player = Player.objects.get(pk=pk)
     if not player.redo_requested_at:
         player.redo_requested_at = now()
@@ -343,22 +383,26 @@ def player_predict_view(request, pk):
 class CountryView(CachedTemplateViewGet):
     template_name = 'main/country.html'
 
-    def get_context_data(self, **kwargs):
+    def get_context_data(self, **kwargs):  # noqa PLR0915 PLR0912
+        """Get country stats."""
         start_of_year = datetime(2022, 1, 1)
         start_of_last_year = datetime(2021, 1, 1)
         data = super().get_context_data(**kwargs)
         players = Player.objects.filter(
-            country=c.COUNTRY_SOUTH_AFRICA,
-            last_review_at__gte=start_of_year
+            country=c.COUNTRY_SOUTH_AFRICA, last_review_at__gte=start_of_year
         ).all()
 
         data['players'] = players
 
         games = defaultdict(list)
-        players_gone = Player.objects.filter(
-            country=c.COUNTRY_SOUTH_AFRICA,
-            last_review_at__gte=start_of_last_year,
-        ).exclude(pk__in=[p.pk for p in players]).count()
+        players_gone = (
+            Player.objects.filter(
+                country=c.COUNTRY_SOUTH_AFRICA,
+                last_review_at__gte=start_of_last_year,
+            )
+            .exclude(pk__in=[p.pk for p in players])
+            .count()
+        )
         data['players_gone'] = players_gone
 
         reviews_per_player = []
@@ -368,7 +412,6 @@ class CountryView(CachedTemplateViewGet):
         cntr_provinces = Counter()
         cntr_cities = Counter()
         for player in players:
-
             # new players
             if not player.reviews.filter(created_at__lt=start_of_year).count():
                 new_players += 1
@@ -383,16 +426,28 @@ class CountryView(CachedTemplateViewGet):
             # get area counts
             if not player.area:
                 continue
-            area = player.area.rstrip(', South Africa')
+            area = player.area.replace(', South Africa', '')
             places = area.split(',')
-            if len(places) != 2:
-                if places in [['Pre'], ['KwaZulu-Natal'], ['KwaZulu Natal'], ['Gauteng'], ['Haw'],
-                              ['Joburg & Cape Town'], ['Kwa-Zulu Natal'], ['Western Cape']]:
+            if len(places) != c.SPLIT_SIZE:
+                if places in [
+                    ['Pre'],
+                    ['KwaZulu-Natal'],
+                    ['KwaZulu Natal'],
+                    ['Gauteng'],
+                    ['Haw'],
+                    ['Joburg & Cape Town'],
+                    ['Kwa-Zulu Natal'],
+                    ['Western Cape'],
+                ]:
                     area_typos += 1
                     continue
-                if places in [['Cape Town'], ['Blouberg'],
-                              ['Stellenridge', ' Cape Town', ' Western Cape'], ['Brackenfell'],
-                              ['Tokai', ' Cape Town', ' Western Cape']]:
+                if places in [
+                    ['Cape Town'],
+                    ['Blouberg'],
+                    ['Stellenridge', ' Cape Town', ' Western Cape'],
+                    ['Brackenfell'],
+                    ['Tokai', ' Cape Town', ' Western Cape'],
+                ]:
                     area_typos += 1
                     places = [c.CITY_CAPE_TOWN, c.PROVINCE_WESTERN_CAPE]
                 elif places in [['Stellenbos']]:
@@ -483,10 +538,7 @@ class CountryView(CachedTemplateViewGet):
                 elif city in ['Makhanda']:
                     area_typos += 1
                     city = c.CITY_GRAHAMSTOWN
-                elif city in ['Pietersburg']:
-                    area_typos += 1
-                    province = c.PROVINCE_MPUMALANGA
-                elif city in ['Pietersburg']:
+                elif city in ['Pietersburg'] or city in ['Pietersburg']:
                     area_typos += 1
                     province = c.PROVINCE_MPUMALANGA
                 elif city in ['Pretoria/Centurion']:
@@ -500,17 +552,23 @@ class CountryView(CachedTemplateViewGet):
 
         df_provinces = pd.DataFrame(cntr_provinces.most_common(10), columns=['province', 'cnt'])
         fig_provinces = px.bar(
-            df_provinces, x='province', y='cnt',  # histfunc='sum', #range_x=(0, 10),
+            df_provinces,
+            x='province',
+            y='cnt',  # histfunc='sum', #range_x=(0, 10),
             labels={'province': 'Provinces', 'cnt': 'Count'},
-            title='Histogram of provinces')
+            title='Histogram of provinces',
+        )
         # df_provinces.update_traces(nbinsx=20, autobinx=False)
         data['graph_provinces'] = fig_provinces.to_html(full_html=False)
 
         df_cities = pd.DataFrame(cntr_cities.most_common(20), columns=['city', 'cnt'])
         fig_cities = px.bar(
-            df_cities, x='city', y='cnt',  # histfunc='sum', #range_x=(0, 10),
+            df_cities,
+            x='city',
+            y='cnt',  # histfunc='sum', #range_x=(0, 10),
             labels={'city': 'Cities', 'cnt': 'Count'},
-            title='Histogram of cities')
+            title='Histogram of cities',
+        )
         # df_cities.update_traces(nbinsx=20, autobinx=False)
         data['graph_cities'] = fig_cities.to_html(full_html=False)
 
@@ -520,19 +578,28 @@ class CountryView(CachedTemplateViewGet):
         reviews_per_player.sort(key=itemgetter(1), reverse=True)
         df_top_raters = pd.DataFrame(reviews_per_player[:50], columns=['player', 'cnt'])
         fig_top_raters = px.bar(
-            df_top_raters, x='cnt', y='player',  # histfunc='sum', #range_x=(0, 10),
+            df_top_raters,
+            x='cnt',
+            y='player',  # histfunc='sum', #range_x=(0, 10),
             labels={'player': 'Player', 'cnt': 'Ratings made'},
-            title='Top 50 raters', orientation='h', height=1200)
+            title='Top 50 raters',
+            orientation='h',
+            height=1200,
+        )
         # df_cities.update_traces(nbinsx=20, autobinx=False)
         data['graph_top_raters'] = fig_top_raters.to_html(full_html=False)
 
         data['games'] = games
-        games_rating_rated = [
-            (g.name, len(rs), sum(rs) / len(rs))
-            for g, rs in games.items()]
+        games_rating_rated = [(g.name, len(rs), sum(rs) / len(rs)) for g, rs in games.items()]
         df_grr = pd.DataFrame(games_rating_rated, columns=['game', 'count', 'rating'])
-        fig_grr = px.scatter(df_grr, x="count", y="rating", hover_name='game',
-                             title='Number of ratings vs average rating score', height=600)
+        fig_grr = px.scatter(
+            df_grr,
+            x='count',
+            y='rating',
+            hover_name='game',
+            title='Number of ratings vs average rating score',
+            height=600,
+        )
         data['graph_grr'] = fig_grr.to_html(full_html=False)
 
         for game, ratings in games.items():
@@ -554,9 +621,12 @@ class CountryView(CachedTemplateViewGet):
         cntr_gpy = Counter([g.year for g in games if g.year >= start_of_year.year - 20])
         df_gpy = pd.DataFrame(cntr_gpy.most_common(999), columns=['year', 'cnt'])
         fig_gpy = px.bar(
-            df_gpy, x='year', y='cnt',  # histfunc='sum', #range_x=(0, 10),
+            df_gpy,
+            x='year',
+            y='cnt',  # histfunc='sum', #range_x=(0, 10),
             labels={'year': 'Release year of game', 'cnt': 'Number of games rated'},
-            title='Histogram of games by year')
+            title='Histogram of games by year',
+        )
         # df_gpy.update_traces(nbinsx=20, autobinx=False)
         data['graph_gpy'] = fig_gpy.to_html(full_html=False)
 
@@ -574,17 +644,16 @@ class CountryView(CachedTemplateViewGet):
         last_players = Player.objects.filter(
             country=c.COUNTRY_SOUTH_AFRICA,
             last_review_at__gte=start_of_last_year,
-            last_review_at__lte=start_of_year
+            last_review_at__lte=start_of_year,
         ).all()
         for last_player in last_players:
-            last_reviews = last_player.reviews.annotate(
-                cutoff=Min('created_at', 'reviewed_at')
-            ).filter(
-                cutoff__lte=start_of_year
-            ).order_by(
-                '-rating', '-created_at'
-            ).all()
-            for point, last_review in zip(points, last_reviews):
+            last_reviews = (
+                last_player.reviews.annotate(cutoff=Min('created_at', 'reviewed_at'))
+                .filter(cutoff__lte=start_of_year)
+                .order_by('-rating', '-created_at')
+                .all()
+            )
+            for point, last_review in zip(points, last_reviews, strict=False):
                 top_ranked_last_year[last_review.game] += point
         top_rank_last = list(top_ranked_last_year.items())
         top_rank_last.sort(key=itemgetter(1), reverse=True)
@@ -593,18 +662,22 @@ class CountryView(CachedTemplateViewGet):
         top_ranked_this_year = defaultdict(lambda: 0)
         for player in players:
             reviews = player.reviews.order_by('-rating', '-created_at').all()
-            for point, review in zip(points, reviews):
+            for point, review in zip(points, reviews, strict=False):
                 top_ranked_this_year[review.game] += point
         rankings = list(top_ranked_this_year.items())
         rankings.sort(key=itemgetter(1), reverse=True)
         final_rankings = []
         for ix, ranking in enumerate(rankings[:100]):
-            final_rankings.append((
-                ranking[0],
-                ranking[1],
-                ix + 1,
-                'New' if not top_rank_last.get(ranking[0]) else top_rank_last[ranking[0]] - ix + 1
-            ))
+            final_rankings.append(
+                (
+                    ranking[0],
+                    ranking[1],
+                    ix + 1,
+                    'New'
+                    if not top_rank_last.get(ranking[0])
+                    else top_rank_last[ranking[0]] - ix + 1,
+                )
+            )
         data['rankings'] = final_rankings[::-1]
 
         return data
@@ -614,39 +687,45 @@ class ReviewView(CachedTemplateViewGet):
     template_name = 'main/reviews.html'
 
     def get_context_data(self, **kwargs):
+        """Get review graphs."""
         data = super().get_context_data(**kwargs)
 
         # rating histogram graph
-        histogram = Review.objects.values('rating').annotate(
-            cnt=Count('rating'))
+        histogram = Review.objects.values('rating').annotate(cnt=Count('rating'))
         df_rating = pd.DataFrame(list(histogram))
         fig_rating = px.histogram(
-            df_rating, x='rating', y='cnt', histfunc='sum', range_x=(0, 10),
+            df_rating,
+            x='rating',
+            y='cnt',
+            histfunc='sum',
+            range_x=(0, 10),
             labels={'rating': 'Rating value', 'cnt': 'count'},
-            title='Histogram of ratings')
+            title='Histogram of ratings',
+        )
         fig_rating.update_traces(nbinsx=20, autobinx=False)
         data['graph_rating'] = fig_rating.to_html(full_html=False)
 
         # graph of daily ratings
         days = Day.objects.order_by('-day').all()[:90]
-        data_day = [
-            {'Date': d.day, 'Ratings': d.reviews_cnt}
-            for d in days]
+        data_day = [{'Date': d.day, 'Ratings': d.reviews_cnt} for d in days]
         df = pd.DataFrame(data_day)
         fig_day = px.bar(
-            df, x="Date", y="Ratings", labels={'Ratings': '# of ratings'},
-            title='Ratings past quarter')
+            df,
+            x='Date',
+            y='Ratings',
+            labels={'Ratings': '# of ratings'},
+            title='Ratings past quarter',
+        )
         data['graph_day'] = fig_day.to_html(full_html=False)
 
-        reviews_cnts = Player.objects.filter(
-            reviews_cnt__gte=3,
-            reviews_cnt__lte=100
-        ).values_list('reviews_cnt', flat=True)
+        reviews_cnts = Player.objects.filter(reviews_cnt__gte=3, reviews_cnt__lte=100).values_list(
+            'reviews_cnt', flat=True
+        )
         cntr = Counter(reviews_cnts)
         df = pd.DataFrame(cntr.items())
         fig = px.histogram(
-            x=df[0], y=df[1], nbins=100,
-            labels={'x': 'number of reviews', 'y': 'players'})
+            x=df[0], y=df[1], nbins=100, labels={'x': 'number of reviews', 'y': 'players'}
+        )
         # fig.update_yaxes(tick0=1, dtick=1)
         data['graph_reviews_cnt'] = fig.to_html(full_html=False)
 
@@ -657,10 +736,12 @@ class ShopView(CachedTemplateViewGet):
     template_name = 'main/shop.html'
 
     def get_context_data(self, **kwargs):
-        games = Game.objects.filter(
-            shop_available=True,
-            shop_saving__gte=0
-        ).order_by('-shop_saving', '-hotness').all()[:20]
+        """Get shop games."""
+        games = (
+            Game.objects.filter(shop_available=True, shop_saving__gte=0)
+            .order_by('-shop_saving', '-hotness')
+            .all()[:20]
+        )
 
         # shop sizes
         df_data = []
@@ -680,9 +761,7 @@ class ShopView(CachedTemplateViewGet):
         # fig_shop_size = px.bar(
         #     df, x='shop', y='count', color='inventory',
         #     title='Shop size', color_discrete_sequence=['#bfbfbf', '#f72572', '#3af725'])
-        fig_shop_size = px.bar(
-            df, x='shop', y='in stock',
-            title='Shop size')
+        fig_shop_size = px.bar(df, x='shop', y='in stock', title='Shop size')
 
         # shop price heatmap
         heat_data = {}
@@ -693,25 +772,29 @@ class ShopView(CachedTemplateViewGet):
             if name2 not in heat_data:
                 heat_data[name2] = {n: 0 for n in c.SHOP_NAMES}
 
-            shopgames_1 = ShopGame.objects.filter(
-                shop__name=name1
-            ).exclude(
-                Q(current_available=False) | Q(mia=True)
-            ).values_list('game', flat=True)
-            shopgames_2 = ShopGame.objects.filter(
-                shop__name=name2
-            ).exclude(
-                Q(current_available=False) | Q(mia=True)
-            ).values_list('game', flat=True)
+            shopgames_1 = (
+                ShopGame.objects.filter(shop__name=name1)
+                .exclude(Q(current_available=False) | Q(mia=True))
+                .values_list('game', flat=True)
+            )
+            shopgames_2 = (
+                ShopGame.objects.filter(shop__name=name2)
+                .exclude(Q(current_available=False) | Q(mia=True))
+                .values_list('game', flat=True)
+            )
             game_ids = set(shopgames_1) & set(shopgames_2)
             logger.info(f'Found {len(game_ids)} between {name1} and {name2}')
 
-            price_1 = ShopGame.objects.filter(
-                shop__name=name1, game__id__in=game_ids
-            ).all().aggregate(Avg('current_price'))['current_price__avg']
-            price_2 = ShopGame.objects.filter(
-                shop__name=name2, game__id__in=game_ids
-            ).all().aggregate(Avg('current_price'))['current_price__avg']
+            price_1 = (
+                ShopGame.objects.filter(shop__name=name1, game__id__in=game_ids)
+                .all()
+                .aggregate(Avg('current_price'))['current_price__avg']
+            )
+            price_2 = (
+                ShopGame.objects.filter(shop__name=name2, game__id__in=game_ids)
+                .all()
+                .aggregate(Avg('current_price'))['current_price__avg']
+            )
             if price_1 is None or price_2 is None:
                 heat_data[name1][name2] = 0
                 heat_data[name2][name1] = 0
@@ -723,8 +806,11 @@ class ShopView(CachedTemplateViewGet):
 
         heat_raw = [list(p.values()) for p in heat_data.values()]
         fig_shop_price = px.imshow(
-            heat_raw, x=c.SHOP_NAMES, y=c.SHOP_NAMES,
-            title='Avg price war of same games in stock<br><sup>higher is cheaper</sup>')
+            heat_raw,
+            x=c.SHOP_NAMES,
+            y=c.SHOP_NAMES,
+            title='Avg price war of same games in stock<br><sup>higher is cheaper</sup>',
+        )
 
         ctx = {
             'games': games,
