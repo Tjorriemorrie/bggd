@@ -78,6 +78,7 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
     "PLR2004",  # Magic value used in comparison
 ]
 "**/models.py" = ["D105"]  # Missing docstring in magic method
+"**/migrations/*" = ["E501"]  # Line too long
 
 
 [tool.ruff.lint.pylint]
