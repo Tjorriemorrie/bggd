@@ -1,31 +1,30 @@
 import json
 import logging
 from datetime import datetime
-from typing import List
 
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 from django.utils.timezone import now
 
-from main.constants import STOCK_OUT, STOCK_IN, SHOP_NAMES, SHOP_GEEKHOME
-from main.models import Shop, Price, Day, Game, ShopGame, GameDay
+from main.constants import MINIMUM_GAME_PRICE, SHOP_GEEKHOME, SHOP_NAMES, STOCK_IN, STOCK_OUT
+from main.models import Day, Game, GameDay, Price, Shop, ShopGame
 from main.scraper import get
 
 logger = logging.getLogger(__name__)
 
 
 def update_outdated_game_shop_prices():
-    """Update outdated shop prices on games"""
+    """Update outdated shop prices on games."""
     games = Game.objects.filter(shop_outdated=True).all()
     logger.info(f'Updating {len(games)} outdated shop prices on games')
     for game in games:
         update_game_shop_prices(game)
 
 
-def update_game_shop_prices(game: Game):
-    """
-    Update the GameDay with the prices of the best shop.
+def update_game_shop_prices(game: Game):  # noqa PLR0915 PLR0912
+    """Update the GameDay with the prices of the best shop.
+
     Then set the final current value on the game.
     """
     logger.info(f'updating game shop prices for {game}')
@@ -57,23 +56,23 @@ def update_game_shop_prices(game: Game):
     # build best shop price per day
     # df = pd.concat(dfs.values())
     df = None
-    for name, df_shop in dfs.items():
+    for df_shop in dfs.values():
         if df is None:
             df = df_shop
         else:
             # df = df.join(df_shop)
             df = pd.merge(df, df_shop, how='outer', left_index=True, right_index=True)
     day = Day.get_today()
-    date_range = pd.date_range(
-        df.index[0],
-        datetime(day.day.year, day.day.month, day.day.day))
+    date_range = pd.date_range(df.index[0], datetime(day.day.year, day.day.month, day.day.day))
     df = df.reindex(date_range)
     for name in dfs:
         df[f'{name}_price'] = df[f'{name}_price'].ffill()
         shopgame = name_shopgames[name]
         last_price = shopgame.prices.last()
         if last_price.status != STOCK_IN:
-            oos_day = datetime(last_price.day.day.year, last_price.day.day.month, last_price.day.day.day)
+            oos_day = datetime(
+                last_price.day.day.year, last_price.day.day.month, last_price.day.day.day
+            )
             df.loc[df.index >= oos_day, f'{name}_price'] = np.nan
 
     df.dropna(axis=0, how='all', inplace=True)
@@ -82,8 +81,7 @@ def update_game_shop_prices(game: Game):
     df['saving'] = df['mean'] - df['best']
 
     # clear all game days price values
-    GameDay.objects.filter(game=game).update(
-        shop_best=None, shop_mean=None, shop_saving=None)
+    GameDay.objects.filter(game=game).update(shop_best=None, shop_mean=None, shop_saving=None)
 
     # update all days for the game
     for index, row in df.iterrows():
@@ -93,15 +91,14 @@ def update_game_shop_prices(game: Game):
                 'reviews_cnt': 0,
                 'reviews_avg': 0,
                 'last_review_id': 0,
-                'last_review_at': now()})
+                'last_review_at': now(),
+            },
+        )
         if day_created:
             logger.info(f'Created day! {day}')
         gameday, gameday_created = GameDay.objects.get_or_create(
-            game=game,
-            day=day,
-            defaults={
-                'reviews_cnt': 0,
-                'reviews_avg': 0})
+            game=game, day=day, defaults={'reviews_cnt': 0, 'reviews_avg': 0}
+        )
         if gameday_created:
             logger.info(f'Created gameday! {gameday}')
         gameday.shop_best = row['best']
@@ -125,11 +122,14 @@ def update_game_shop_prices(game: Game):
     game.shop_outdated = False
     game.shop_updated_at = now()
     game.save()
-    logger.info(f'Updated shop {game.name}: ava={game.shop_available} best={game.shop_price} mean={game.shop_mean} saving={game.shop_saving}')
+    logger.info(
+        f'Updated shop {game.name}: ava={game.shop_available} best={game.shop_price} '
+        f'mean={game.shop_mean} saving={game.shop_saving}'
+    )
 
 
 def validate_shopgames():
-    """Ensure shopgames have the correct current availability and price"""
+    """Ensure shopgames have the correct current availability and price."""
     logger.info('Validating all shopgames...')
     for shop_name in SHOP_NAMES:
         shop = Shop.objects.get(name=shop_name)
@@ -158,7 +158,8 @@ def validate_shopgames():
 ######################################################################################
 
 
-def scrape_site(shop: Shop, shopgames: List[ShopGame] = None, fail_fast: bool = False):
+def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = False):
+    """Scrape a site."""
     logger.info(f'Scraping {shop}')
     stats = {
         'no url': 0,
@@ -172,7 +173,7 @@ def scrape_site(shop: Shop, shopgames: List[ShopGame] = None, fail_fast: bool = 
     if not shopgames:
         shopgames = shop.shopgames.all()
     else:
-        assert all(sg.shop == shop for sg in shopgames)
+        assert all(sg.shop == shop for sg in shopgames)  # noqa S101
     for ix, shopgame in enumerate(shopgames):
         # logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
 
@@ -202,7 +203,7 @@ def scrape_site(shop: Shop, shopgames: List[ShopGame] = None, fail_fast: bool = 
             continue
 
         # when price is 0 it is not priced
-        if not data['price'] or data['price'] < 100:
+        if not data['price'] or data['price'] < MINIMUM_GAME_PRICE:
             if not shopgame.mia:
                 shopgame.mia = True
                 shopgame.save()
@@ -210,16 +211,18 @@ def scrape_site(shop: Shop, shopgames: List[ShopGame] = None, fail_fast: bool = 
             continue
 
         prev_price = shopgame.prices.last()
-        if not prev_price \
-                or prev_price.price != data['price'] \
-                or prev_price.status != data['status']:
+        if (
+            not prev_price
+            or prev_price.price != data['price']
+            or prev_price.status != data['status']
+        ):
             new_price, _ = Price.objects.update_or_create(
                 shopgame=shopgame,
                 day=day,
                 defaults={
                     'status': data['status'],
                     'price': data['price'],
-                }
+                },
             )
             logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
@@ -238,6 +241,7 @@ def scrape_site(shop: Shop, shopgames: List[ShopGame] = None, fail_fast: bool = 
 
 
 def scrape_meeps_and_veeps_game(url: str) -> dict:
+    """Scrape meeps and veeps."""
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
@@ -253,6 +257,7 @@ def scrape_meeps_and_veeps_game(url: str) -> dict:
 
 
 def scrape_grinning_gargoyle_game(url: str) -> dict:
+    """Scrape grinning gargoyle."""
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
@@ -274,6 +279,7 @@ def scrape_grinning_gargoyle_game(url: str) -> dict:
 
 
 def scrape_the_hidden_den_game(url: str) -> dict:
+    """Scrape the hidden den."""
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
@@ -297,6 +303,7 @@ def scrape_the_hidden_den_game(url: str) -> dict:
 
 
 def scrape_tabletop_guru_game(url: str) -> dict:
+    """Scrape tabletop guru."""
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
@@ -315,12 +322,15 @@ def scrape_tabletop_guru_game(url: str) -> dict:
 
 
 def scrape_timeless_game(url: str) -> dict:
+    """Scrape timeless."""
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
-    container = html.find('div', class_='w3-display-container')
+    containers = html.find_all('div', class_='w3-display-container')
+    container = containers[-1]
     try:
-        price_txt = container.find_all('span', class_='w3-xxlarge')[-1].text
+        price_boxes = container.find_all('span', class_='w3-xxlarge')
+        price_txt = price_boxes[-1].text
         price_txt = price_txt.replace('R', '').strip()
     except IndexError:
         price_txt = '0'
@@ -335,8 +345,9 @@ def scrape_timeless_game(url: str) -> dict:
 
 
 def scrape_geekhome_game(url: str) -> dict:
+    """Scrape geekhome."""
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
     res = get(url, headers)
     html = BeautifulSoup(res.text, 'html.parser')
@@ -350,7 +361,11 @@ def scrape_geekhome_game(url: str) -> dict:
     price_txt = price_txt.replace('R', '').replace(',', '').strip()
 
     status_txt = container.select('p[class*="stock"]')[0].text
-    status = STOCK_OUT if any(t in ['Out of stock', 'Available on Backorder'] for t in status_txt) else STOCK_IN
+    status = (
+        STOCK_OUT
+        if any(t in ['Out of stock', 'Available on Backorder'] for t in status_txt)
+        else STOCK_IN
+    )
 
     return {
         'status': status,
