@@ -218,7 +218,13 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
             )
             logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
 
-            shopgame.current_price = data['price']
+            shopgame.current_price = (
+                data['price']
+                if data['price']
+                else prev_price.price
+                if prev_price
+                else data['price']
+            )
             shopgame.current_available = data['status'] == STOCK_IN
             shopgame.mia = False
             shopgame.save()
