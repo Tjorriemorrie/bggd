@@ -20,7 +20,7 @@ function main() {
 
   python manage.py train_models sim
 
-  python manage.py scrape_shop mav timeless geekhome thd ttg outdated
+  python manage.py scrape_shop mav timeless geekhome thd ttg gargoyle outdated
 }
 
 main

@@ -34,7 +34,7 @@ def get_conn() -> Connection:
 @task
 def download_db(ctx):
     """Download the db to localhost."""
-    print('Retrieving db and model')
+    print('Retrieving db from server.')
     conn = get_conn()
 
     db_backup = 'db.sqlite3.bck'
@@ -54,11 +54,11 @@ def download_db(ctx):
 
     print('backing up local data...')
     today = datetime.utcnow().strftime('%y%m%d')
-    conn.local(f'cp db.sqlite3 backups/db.sqlite3.{today}', echo=True)
+    conn.local(f'cp .\\db.sqlite3 .\\backups\\db.sqlite3.{today}', echo=True)
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
-    conn.local('mv -f db.sqlite3.bck db.sqlite3', echo=True)
+    conn.local('mv -f .\\db.sqlite3.bck .\\db.sqlite3', echo=True)
     print('done')
 
 

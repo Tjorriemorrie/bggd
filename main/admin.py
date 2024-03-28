@@ -4,18 +4,23 @@ from datetime import timedelta
 
 from django.contrib import admin
 from django.db import OperationalError, models
-from django.db.models import F, QuerySet, Min, ExpressionWrapper
+from django.db.models import ExpressionWrapper, F, Min, QuerySet
 from django.shortcuts import redirect
-from django.urls import reverse, path
+from django.urls import path, reverse
 from django.utils.html import format_html
 from django.utils.http import urlencode
 from django.utils.timezone import now
 from retry import retry
 
-from main.constants import SHOP_MEEPS_AND_VEEPS, \
-    SHOP_TIMELESS, SHOP_GEEKHOME, SHOP_THD, SHOP_TTG, SHOP_GARGOYLE
-from main.models import Game, Review, Player, Day, Award, PlayerProxy, Shop, \
-    ShopGame, Price, Label
+from main.constants import (
+    SHOP_GARGOYLE,
+    SHOP_GEEKHOME,
+    SHOP_MEEPS_AND_VEEPS,
+    SHOP_THD,
+    SHOP_TIMELESS,
+    SHOP_TTG,
+)
+from main.models import Award, Day, Game, Label, Player, PlayerProxy, Price, Review, Shop, ShopGame
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
 from main.shops import scrape_site, update_game_shop_prices
@@ -32,18 +37,21 @@ class LabelAdmin(admin.ModelAdmin):
 
 @admin.action(description='Scrape games')
 def scrape_game_cmd(modeladmin, request, queryset):
+    """Scrape game command."""
     for obj in queryset:
         scrape_game(obj)
 
 
 @admin.action(description='Scrape players')
 def scrape_player_cmd(modeladmin, request, queryset):
+    """Scrape player command."""
     for obj in queryset:
         scrape_player(obj)
 
 
 @admin.action(description='Predict players')
 def predict_player_cmd(modeladmin, request, queryset):
+    """Predict player command."""
     game_ids = Game.objects.values_list('id', flat=True)
     for obj in queryset:
         predict_player(obj, game_ids)
@@ -51,6 +59,7 @@ def predict_player_cmd(modeladmin, request, queryset):
 
 @admin.action(description='Update shop game prices')
 def update_game_shop_prices_cmd(modeladmin, request, queryset):
+    """Update game shop prices command."""
     games = set([g for g in queryset])
     for game in games:
         update_game_shop_prices(game)
@@ -58,7 +67,21 @@ def update_game_shop_prices_cmd(modeladmin, request, queryset):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('id', 'hotness', 'rank', 'title', 'year', 'min_age', 'players', 'time', 'reviews_cnt_fmt', 'scraped_at', 'bgg_id', 'shop_price', 'shop_updated_at')
+    list_display = (
+        'id',
+        'hotness',
+        'rank',
+        'title',
+        'year',
+        'min_age',
+        'players',
+        'time',
+        'reviews_cnt_fmt',
+        'scraped_at',
+        'bgg_id',
+        'shop_price',
+        'shop_updated_at',
+    )
     # list_filter = ('shop_available',)
     ordering = ('-hotness',)
     actions = (scrape_game_cmd, update_game_shop_prices_cmd)
@@ -66,17 +89,22 @@ class GameAdmin(admin.ModelAdmin):
     exclude = ('shop_available', 'shop_price', 'shop_saving', 'hotness', 'sim_cluster')
 
     def reviews_cnt_fmt(self, obj: Game):
+        """Format reviews count."""
         url = reverse('admin:main_review_changelist')
         return format_html(f'<a href="{url}?game={obj.pk}">{obj.reviews_cnt}</a>')
 
     def title(self, obj: Game):
+        """Title."""
         return format_html(
-            f'<p><span style="float:left; min-width:100px"><img height="50" src="{obj.img}"/></span>{obj.name}<br/><small>{obj.pitch}</small></p>')
+            f'<p><span style="float:left; min-width:100px"><img height="50" src="{obj.img}"/></span>{obj.name}<br/><small>{obj.pitch}</small></p>'  # noqa E501
+        )
 
     def players(self, obj: Game):
+        """Players."""
         return format_html(f'{obj.min_players} &mdash; {obj.max_players}')
 
     def time(self, obj: Game):
+        """Time."""
         return format_html(f'{obj.min_play_time} &mdash; {obj.max_play_time}')
 
 
@@ -97,7 +125,7 @@ class PlayerAdmin(admin.ModelAdmin):
 
 
 @admin.register(Day)
-class PlayerAdmin(admin.ModelAdmin):
+class DayAdmin(admin.ModelAdmin):
     list_display = ('id', 'day', 'reviews_cnt', 'reviews_avg')
     ordering = ('day',)
 
@@ -110,8 +138,7 @@ class AwardAdmin(admin.ModelAdmin):
 
 @admin.register(PlayerProxy)
 class PlayerScheduleAdmin(admin.ModelAdmin):
-    list_display = (
-        'id', 'nick', 'redo_requested_at', 'redo_started_at', 'redo_completed_at')
+    list_display = ('id', 'nick', 'redo_requested_at', 'redo_started_at', 'redo_completed_at')
     search_fields = ('nick',)
     ordering = ('-redo_requested_at', '-redo_started_at', '-redo_completed_at')
 
@@ -123,11 +150,12 @@ class ShopAdmin(admin.ModelAdmin):
 
 @admin.action(description='Scrape games shop')
 def scrape_games_shop_cmd(modeladmin, request, queryset):
+    """Scrape games shop command."""
     logger.info('Admin cmd: scraping games shop')
     shops = defaultdict(list)
     for shopgame in queryset:
         shops[shopgame.shop.name].append(shopgame)
-    for name, shopgames in shops.items():
+    for shopgames in shops.values():
         scrape_site(shopgames[0].shop, shopgames=shopgames)
 
 
@@ -135,7 +163,14 @@ def scrape_games_shop_cmd(modeladmin, request, queryset):
 class ShopGameAdmin(admin.ModelAdmin):
     actions = (scrape_games_shop_cmd,)
     list_display = [
-        'shop', 'game', 'mia', 'prices_cnt', 'url_at']
+        'shop',
+        'game',
+        'mia',
+        'prices_cnt',
+        'current_available',
+        'current_price',
+        'url_at',
+    ]
     fields = ['shop', 'game', 'url', 'mia']
     search_fields = ['game__name', 'url']
     list_filter = ['shop__name', 'mia']
@@ -143,12 +178,14 @@ class ShopGameAdmin(admin.ModelAdmin):
     ordering = ['url_at']
 
     def save_model(self, request, obj, form, change):
+        """Save model."""
         if obj.url:
             obj.url = obj.url.partition('?')[0]
         obj.url_at = now()
         super().save_model(request, obj, form, change)
 
-    def _response_post_save(self, request, obj):
+    def _response_post_save(self, request, obj):  # noqa PLR0911
+        """Response post save."""
         if obj.shop.name == SHOP_MEEPS_AND_VEEPS:
             return redirect('/admin/main/shopgamemav/')
         elif obj.shop.name == SHOP_TIMELESS:
@@ -165,11 +202,13 @@ class ShopGameAdmin(admin.ModelAdmin):
             return super()._response_post_save(request, obj)
 
     def prices_cnt(self, obj: ShopGame) -> str:
+        """Prices count."""
         return f'{obj.prices.count()}'
 
 
 @admin.action(description='Mark shop games as updated')
 def shopgames_updated_at_cmd(modeladmin, request, queryset):
+    """Shopgames updated at command."""
     logger.info('Marking shopgames as updated')
     games = set(g for g in queryset)
     for game in games:
@@ -187,35 +226,58 @@ class ShopGameRenew(Game):
 
 @admin.register(ShopGameRenew)
 class ShopGameRenewAdmin(admin.ModelAdmin):
-    list_display = ['title', 'year',
-                    'tl_shop', 'mav_shop', 'gargoyle_shop', 'thd_shop', 'ttg_shop', 'gh_shop',
-                    'priority', 'oldest_updated_at', 'created_at']
+    list_display = [
+        'title',
+        'year',
+        'tl_shop',
+        'mav_shop',
+        'gargoyle_shop',
+        'thd_shop',
+        'ttg_shop',
+        'gh_shop',
+        'priority',
+        'oldest_updated_at',
+        'created_at',
+    ]
     search_fields = ('name',)
     actions = [shopgames_updated_at_cmd]
 
     @admin.display(ordering=F('name'))
     def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="60" src="{obj.img}"/></p>')
+        """Title."""
+        return format_html(f'<p>{obj.name}<br/><img height="60" src="{obj.img}"/></p>')
 
     @admin.display(ordering=F('priority').desc(nulls_last=False))
     def priority(self, game: Game) -> str:
+        """Priority."""
         return f'{int(game.priority * 1000)}'
 
     @admin.display(ordering=F('oldest_updated_at').asc(nulls_last=False))
     def oldest_updated_at(self, game: Game) -> str:
+        """Oldest updated at."""
         old = f'{game.oldest_updated_at:%Y-%m-%d %H:%I}' if game.oldest_updated_at else ''
         return f'{old}'
 
     def get_queryset(self, request) -> QuerySet:
+        """Get query."""
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(scraped_at__isnull=False)
         one_month = now() - timedelta(days=30)
         qs = qs.filter(created_at__lt=one_month)
         qs = qs.annotate(oldest_updated_at=Min('shopgames__updated_at'))
-        qs = qs.annotate(now_till_up=ExpressionWrapper(now() - F('oldest_updated_at'), models.FloatField()))
-        qs = qs.annotate(up_till_cr=ExpressionWrapper(F('oldest_updated_at') - F('created_at'), models.FloatField()))
-        qs = qs.annotate(priority=ExpressionWrapper((F('now_till_up') * 1.0) / (F('up_till_cr') * 1.0), models.FloatField()))
+        qs = qs.annotate(
+            now_till_up=ExpressionWrapper(now() - F('oldest_updated_at'), models.FloatField())
+        )
+        qs = qs.annotate(
+            up_till_cr=ExpressionWrapper(
+                F('oldest_updated_at') - F('created_at'), models.FloatField()
+            )
+        )
+        qs = qs.annotate(
+            priority=ExpressionWrapper(
+                (F('now_till_up') * 1.0) / (F('up_till_cr') * 1.0), models.FloatField()
+            )
+        )
         ordering = self.get_ordering(request)
         if ordering:
             qs = qs.order_by(*ordering)
@@ -223,12 +285,20 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
 
     @admin.display()
     def mav_shop(self, game: Game) -> str:
+        """MaV shop."""
         mav = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
 
         # search
-        name = game.name.replace(':', '').replace('?', ' ').replace(',', '').replace('!', ' ').replace('&', '')
+        name = (
+            game.name.replace(':', '')
+            .replace('?', ' ')
+            .replace(',', '')
+            .replace('!', ' ')
+            .replace('&', '')
+        )
         mav_search = f'https://meepsandveeps.co.za/search?type=product&q={name}'
-        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': mav.id})
+        # shopgame_mia_url = reverse(
+        #   'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': mav.id})
 
         shopgame = ShopGame.objects.filter(game=game, shop=mav).first()
         if not shopgame:
@@ -241,9 +311,11 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             status = f'R{shopgame.current_price}'
 
         if shopgame:
-            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            shopgame_url = (
+                f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            )
         else:
-            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={game.id}" target="_blank">add url</a>'
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
 
         return format_html(
             f'<a href="{mav_search}" target="_blank">search</a><br/>'
@@ -254,16 +326,20 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
 
     @admin.display()
     def tl_shop(self, game: Game) -> str:
+        """TL shop."""
         tl = Shop.objects.get(name=SHOP_TIMELESS)
 
         # search
         name = game.name.replace("'s", '').replace("'t", '').replace("'", '')
-        params = urlencode({
-            'filter': '',
-            'filter_product_name': name,
-        })
+        params = urlencode(
+            {
+                'filter': '',
+                'filter_product_name': name,
+            }
+        )
         timeless_search = f'https://www.timelessboardgames.co.za/online-shop/?{params}'
-        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id})
+        # shopgame_mia_url = reverse(
+        #   'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id})
 
         # status
         shopgame = ShopGame.objects.filter(game=game, shop=tl).first()
@@ -277,9 +353,11 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             status = f'R{shopgame.current_price}'
 
         if shopgame:
-            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            shopgame_url = (
+                f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            )
         else:
-            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={tl.id}&game={game.id}" target="_blank">add url</a>'
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={tl.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
 
         return format_html(
             f'<a href="{timeless_search}" target="_blank">search</a><br/>'
@@ -290,16 +368,20 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
 
     @admin.display()
     def gh_shop(self, game: Game) -> str:
+        """GH shop."""
         gh = Shop.objects.get(name=SHOP_GEEKHOME)
 
         # search
-        name = game.name  #.replace("'s", '').replace("'t", '').replace("'", '')
-        params = urlencode({
-            'post_type': 'product',
-            's': name,
-        })
+        name = game.name  # .replace("'s", '').replace("'t", '').replace("'", '')
+        params = urlencode(
+            {
+                'post_type': 'product',
+                's': name,
+            }
+        )
         gh_search = f'{gh.host}?{params}'
-        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': game.id, 'shop_id': gh.id})
+        # shopgame_mia_url = reverse(
+        #   'admin:shopgame_mia', kwargs={'game_id': game.id, 'shop_id': gh.id})
 
         # status
         shopgame = ShopGame.objects.filter(game=game, shop=gh).first()
@@ -313,9 +395,11 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             status = f'R{shopgame.current_price}'
 
         if shopgame:
-            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            shopgame_url = (
+                f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            )
         else:
-            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gh.id}&game={game.id}" target="_blank">add url</a>'
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gh.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
 
         return format_html(
             f'<a href="{gh_search}" target="_blank">search</a><br/>'
@@ -325,15 +409,18 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         )
 
     def gargoyle_shop(self, game: Game):
+        """Gargoyle shop."""
         gar = Shop.objects.get(name=SHOP_GARGOYLE)
-        name = game.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+        name = game.name  # .replace("'s", '').replace("'t", '').replace("'", '')
 
         # search
-        params = urlencode({
-            'post_type': 'product',
-            's': name,
-            'product_cat': '',
-        })
+        params = urlencode(
+            {
+                'post_type': 'product',
+                's': name,
+                'product_cat': '',
+            }
+        )
         search = f'<a href="{gar.host}?{params}" target="_blank">search</a>'
 
         # status
@@ -348,27 +435,31 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             status = f'R{shopgame.current_price}'
 
         if shopgame:
-            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            shopgame_url = (
+                f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            )
         else:
-            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gar.id}&game={game.id}" target="_blank">add url</a>'
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gar.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
 
-        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
+        # shopgame_mia_url = reverse(
+        #   'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
         return format_html(
-            f'{search}<br/>'
-            f'{shopgame_url}<br/>'
-            f'{status}'
+            f'{search}<br/>' f'{shopgame_url}<br/>' f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 
     def thd_shop(self, game: Game):
+        """THD shop."""
         thd = Shop.objects.get(name=SHOP_THD)
-        name = game.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+        name = game.name  # .replace("'s", '').replace("'t", '').replace("'", '')
 
         # search
-        params = urlencode({
-            'post_type': 'product',
-            's': name,
-        })
+        params = urlencode(
+            {
+                'post_type': 'product',
+                's': name,
+            }
+        )
         search = f'<a href="{thd.host}?{params}" target="_blank">search</a>'
 
         # status
@@ -383,27 +474,31 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             status = f'R{shopgame.current_price}'
 
         if shopgame:
-            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            shopgame_url = (
+                f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            )
         else:
-            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={thd.id}&game={game.id}" target="_blank">add url</a>'
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={thd.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
 
-        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
+        # shopgame_mia_url = reverse(
+        #   'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
         return format_html(
-            f'{search}<br/>'
-            f'{shopgame_url}<br/>'
-            f'{status}'
+            f'{search}<br/>' f'{shopgame_url}<br/>' f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 
     def ttg_shop(self, game: Game):
+        """TTG shop."""
         ttg = Shop.objects.get(name=SHOP_TTG)
-        name = game.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+        name = game.name  # .replace("'s", '').replace("'t", '').replace("'", '')
 
         # search
-        params = urlencode({
-            'post_type': 'product',
-            'q': name,
-        })
+        params = urlencode(
+            {
+                'post_type': 'product',
+                'q': name,
+            }
+        )
         search = f'<a href="{ttg.host}/search?{params}" target="_blank">search</a>'
 
         # status
@@ -418,21 +513,23 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             status = f'R{shopgame.current_price}'
 
         if shopgame:
-            shopgame_url = f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            shopgame_url = (
+                f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
+            )
         else:
-            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={ttg.id}&game={game.id}" target="_blank">add url</a>'
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={ttg.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
 
-        # shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
+        # shopgame_mia_url = reverse(
+        #   'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
         return format_html(
-            f'{search}<br/>'
-            f'{shopgame_url}<br/>'
-            f'{status}'
+            f'{search}<br/>' f'{shopgame_url}<br/>' f'{status}'
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 
 
 @admin.action(description='Mark The Hidden Den shopgames as MIA')
 def mark_mia_thd_cmd(modeladmin, request, queryset):
+    """Mark THD MIA command."""
     shop = Shop.objects.get(name=SHOP_THD)
     for game in queryset:
         shopgame, _ = ShopGame.objects.update_or_create(
@@ -442,7 +539,7 @@ def mark_mia_thd_cmd(modeladmin, request, queryset):
                 'url_at': now(),
                 'url': None,
                 'mia': True,
-            }
+            },
         )
 
 
@@ -459,17 +556,27 @@ class ShopGameMavAdmin(admin.ModelAdmin):
     ordering = ('year', 'hotness')
 
     def get_queryset(self, request):
+        """Get MaV query."""
         return Game.objects.exclude(shopgames__shop__name=SHOP_MEEPS_AND_VEEPS)
 
     def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+        """MaV title."""
+        return format_html(f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
 
     def mav(self, obj: Game):
+        """Meeps and Veeps."""
         mav = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
-        name = obj.name.replace(':', '').replace('?', ' ').replace(',', '').replace('!', ' ').replace('&', '')
+        name = (
+            obj.name.replace(':', '')
+            .replace('?', ' ')
+            .replace(',', '')
+            .replace('!', ' ')
+            .replace('&', '')
+        )
         mav_search = f'https://meepsandveeps.co.za/search?type=product&q={name}'
-        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': mav.id})
+        shopgame_mia_url = reverse(
+            'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': mav.id}
+        )
         return format_html(
             f'<a href="{mav_search}" target="_blank">search MaV</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={mav.id}&game={obj.id}">add url</a><br/><br/>'
@@ -477,6 +584,7 @@ class ShopGameMavAdmin(admin.ModelAdmin):
         )
 
     def hotness_fmt(self, obj: Game):
+        """Format hotness."""
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
 
@@ -494,28 +602,35 @@ class ShopGameTimelessAdmin(admin.ModelAdmin):
     ordering = ('year', 'hotness')
 
     def get_queryset(self, request):
+        """Get timeless query."""
         return Game.objects.exclude(shopgames__shop__name=SHOP_TIMELESS)
 
     def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+        """Timeless title."""
+        return format_html(f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
 
     def timeless(self, obj: Game):
+        """Timeless."""
         timeless = Shop.objects.get(name=SHOP_TIMELESS)
         name = obj.name.replace("'s", '').replace("'t", '').replace("'", '')
-        params = urlencode({
-            'filter': '',
-            'filter_product_name': name,
-        })
+        params = urlencode(
+            {
+                'filter': '',
+                'filter_product_name': name,
+            }
+        )
         timeless_search = f'https://www.timelessboardgames.co.za/online-shop/?{params}'
-        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id})
+        shopgame_mia_url = reverse(
+            'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': timeless.id}
+        )
         return format_html(
             f'<a href="{timeless_search}" target="_blank">search timeless</a><br/><br/>'
-            f'<a href="/admin/main/shopgame/add/?shop={timeless.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={timeless.id}&game={obj.id}">add url</a><br/><br/>'  # noqa E501
             f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 
     def hotness_fmt(self, obj: Game):
+        """Format hotness."""
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
 
@@ -533,21 +648,27 @@ class ShopGameGeekhomeAdmin(admin.ModelAdmin):
     ordering = ('year', 'hotness')
 
     def get_queryset(self, request):
+        """Get Geekhome query."""
         return Game.objects.exclude(shopgames__shop__name=SHOP_GEEKHOME)
 
     def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+        """Geekhome title."""
+        return format_html(f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
 
     def geekhome(self, obj: Game):
+        """Geekhome."""
         gh = Shop.objects.get(name=SHOP_GEEKHOME)
-        name = obj.name  #.replace("'s", '').replace("'t", '').replace("'", '')
-        params = urlencode({
-            'post_type': 'product',
-            's': name,
-        })
+        name = obj.name  # .replace("'s", '').replace("'t", '').replace("'", '')
+        params = urlencode(
+            {
+                'post_type': 'product',
+                's': name,
+            }
+        )
         gh_search = f'{gh.host}?{params}'
-        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gh.id})
+        shopgame_mia_url = reverse(
+            'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gh.id}
+        )
         return format_html(
             f'<a href="{gh_search}" target="_blank">search geekhome</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={gh.id}&game={obj.id}">add url</a><br/><br/>'
@@ -555,6 +676,7 @@ class ShopGameGeekhomeAdmin(admin.ModelAdmin):
         )
 
     def hotness_fmt(self, obj: Game):
+        """Format hotness."""
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
 
@@ -573,21 +695,27 @@ class ShopGameTheHiddenDenAdmin(admin.ModelAdmin):
     actions = (mark_mia_thd_cmd,)
 
     def get_queryset(self, request):
+        """Get THD query."""
         return Game.objects.exclude(shopgames__shop__name=SHOP_THD)
 
     def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+        """THD title."""
+        return format_html(f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
 
     def thd(self, obj: Game):
+        """The Hidden Den."""
         thd = Shop.objects.get(name=SHOP_THD)
-        name = obj.name  #.replace("'s", '').replace("'t", '').replace("'", '')
-        params = urlencode({
-            'post_type': 'product',
-            's': name,
-        })
+        name = obj.name  # .replace("'s", '').replace("'t", '').replace("'", '')
+        params = urlencode(
+            {
+                'post_type': 'product',
+                's': name,
+            }
+        )
         thd_search = f'{thd.host}?{params}'
-        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
+        shopgame_mia_url = reverse(
+            'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id}
+        )
         return format_html(
             f'<a href="{thd_search}" target="_blank">search {thd}</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={thd.id}&game={obj.id}">add url</a><br/><br/>'
@@ -595,6 +723,7 @@ class ShopGameTheHiddenDenAdmin(admin.ModelAdmin):
         )
 
     def hotness_fmt(self, obj: Game):
+        """Format hotness."""
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
 
@@ -608,6 +737,7 @@ class ShopGameTabletopGuru(Game):
 
 @admin.action(description='Mark Tabletop guru shopgames as MIA')
 def mark_mia_ttg_cmd(modeladmin, request, queryset):
+    """Mark TTG MIA command."""
     shop = Shop.objects.get(name=SHOP_TTG)
     for game in queryset:
         shopgame, _ = ShopGame.objects.update_or_create(
@@ -617,7 +747,7 @@ def mark_mia_ttg_cmd(modeladmin, request, queryset):
                 'url_at': now(),
                 'url': None,
                 'mia': True,
-            }
+            },
         )
 
 
@@ -628,21 +758,27 @@ class ShopGameTabletopGuruAdmin(admin.ModelAdmin):
     actions = (mark_mia_ttg_cmd,)
 
     def get_queryset(self, request):
+        """Get TTG query."""
         return Game.objects.exclude(shopgames__shop__name=SHOP_TTG)
 
     def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+        """TTG title."""
+        return format_html(f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
 
     def ttg(self, obj: Game):
+        """Table top guru."""
         ttg = Shop.objects.get(name=SHOP_TTG)
-        name = obj.name  #.replace("'s", '').replace("'t", '').replace("'", '')
-        params = urlencode({
-            'post_type': 'product',
-            'q': name,
-        })
+        name = obj.name  # .replace("'s", '').replace("'t", '').replace("'", '')
+        params = urlencode(
+            {
+                'post_type': 'product',
+                'q': name,
+            }
+        )
         ttg_search = f'{ttg.host}/search?{params}'
-        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': ttg.id})
+        shopgame_mia_url = reverse(
+            'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': ttg.id}
+        )
         return format_html(
             f'<a href="{ttg_search}" target="_blank">search {ttg}</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={ttg.id}&game={obj.id}">add url</a><br/><br/>'
@@ -650,6 +786,7 @@ class ShopGameTabletopGuruAdmin(admin.ModelAdmin):
         )
 
     def hotness_fmt(self, obj: Game):
+        """Format hotness."""
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
 
@@ -663,6 +800,7 @@ class ShopGameGargoyle(Game):
 
 @admin.action(description='Mark Grinning Gargoyle shopgames as MIA')
 def mark_mia_gargoyle_cmd(modeladmin, request, queryset):
+    """Mark gargoyle MIA command."""
     shop = Shop.objects.get(name=SHOP_GARGOYLE)
     for game in queryset:
         shopgame, _ = ShopGame.objects.update_or_create(
@@ -672,7 +810,7 @@ def mark_mia_gargoyle_cmd(modeladmin, request, queryset):
                 'url_at': now(),
                 'url': None,
                 'mia': True,
-            }
+            },
         )
 
 
@@ -683,23 +821,29 @@ class ShopGameGargoyleAdmin(admin.ModelAdmin):
     actions = (mark_mia_gargoyle_cmd,)
 
     def get_queryset(self, request):
+        """Get gargoyle query."""
         return Game.objects.exclude(shopgames__shop__name=SHOP_GARGOYLE)
 
     def title(self, obj: Game):
-        return format_html(
-            f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+        """Title property."""
+        return format_html(f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
 
     def gargoyle(self, obj: Game):
+        """Gargoyle shop."""
         gar = Shop.objects.get(name=SHOP_GARGOYLE)
-        name = obj.name  #.replace("'s", '').replace("'t", '').replace("'", '')
+        name = obj.name  # .replace("'s", '').replace("'t", '').replace("'", '')
         # https://grinning-gargoyle.co.za/?s=detective&post_type=product&product_cat=
-        params = urlencode({
-            'post_type': 'product',
-            's': name,
-            'product_cat': '',
-        })
+        params = urlencode(
+            {
+                'post_type': 'product',
+                's': name,
+                'product_cat': '',
+            }
+        )
         gargoyle_search = f'{gar.host}?{params}'
-        shopgame_mia_url = reverse('admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gar.id})
+        shopgame_mia_url = reverse(
+            'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': gar.id}
+        )
         return format_html(
             f'<a href="{gargoyle_search}" target="_blank">search {gar}</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={gar.id}&game={obj.id}">add url</a><br/><br/>'
@@ -707,6 +851,7 @@ class ShopGameGargoyleAdmin(admin.ModelAdmin):
         )
 
     def hotness_fmt(self, obj: Game):
+        """Format hotness."""
         hotness = int(obj.hotness) if obj.hotness else 0
         return format_html(f'{hotness}')
 
@@ -721,6 +866,7 @@ class PriceAdmin(admin.ModelAdmin):
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
 def mark_mia_view(request, game_id, shop_id):
+    """Mark game MIA."""
     shopgame, _ = ShopGame.objects.update_or_create(
         game_id=game_id,
         shop_id=shop_id,
@@ -728,7 +874,7 @@ def mark_mia_view(request, game_id, shop_id):
             'url_at': now(),
             'url': None,
             'mia': True,
-        }
+        },
     )
     shop_name = shopgame.shop.name.lower().replace(' ', '')
     if shop_name.startswith('meeps'):
@@ -740,4 +886,6 @@ def mark_mia_view(request, game_id, shop_id):
 
 
 admin_site_urls = admin.site.urls
-admin_site_urls[0].insert(7, path('game/<int:game_id>/shop/<int:shop_id>/mia/', mark_mia_view, name='shopgame_mia'))
+admin_site_urls[0].insert(
+    7, path('game/<int:game_id>/shop/<int:shop_id>/mia/', mark_mia_view, name='shopgame_mia')
+)

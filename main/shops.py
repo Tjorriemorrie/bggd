@@ -7,7 +7,7 @@ import pandas as pd
 from bs4 import BeautifulSoup
 from django.utils.timezone import now
 
-from main.constants import MINIMUM_GAME_PRICE, SHOP_GEEKHOME, SHOP_NAMES, STOCK_IN, STOCK_OUT
+from main.constants import MINIMUM_GAME_PRICE, SHOP_NAMES, STOCK_IN, STOCK_OUT
 from main.models import Day, Game, GameDay, Price, Shop, ShopGame
 from main.scraper import get
 
@@ -31,12 +31,12 @@ def update_game_shop_prices(game: Game):  # noqa PLR0915 PLR0912
     # retrieve all shop prices
     name_shopgames = {}
     dfs = {}
-    for shopgame in game.shopgames.exclude(shop__name=SHOP_GEEKHOME).all():
+    for shopgame in game.shopgames.all():
         name = shopgame.shop.name.replace(' ', '').lower()
-        values = shopgame.prices.filter(status=STOCK_IN).values_list('day__day', 'price')
+        values = shopgame.prices.filter(status=STOCK_IN).values_list('day__day', 'price', 'status')
         if not values:
             continue
-        df = pd.DataFrame(values, columns=['day', f'{name}_price'])
+        df = pd.DataFrame(values, columns=['day', f'{name}_price', f'{name}_status'])
         df['day'] = pd.to_datetime(df['day'])
         df = df.set_index('day')
         dfs[name] = df
@@ -67,13 +67,9 @@ def update_game_shop_prices(game: Game):  # noqa PLR0915 PLR0912
     df = df.reindex(date_range)
     for name in dfs:
         df[f'{name}_price'] = df[f'{name}_price'].ffill()
-        shopgame = name_shopgames[name]
-        last_price = shopgame.prices.last()
-        if last_price.status != STOCK_IN:
-            oos_day = datetime(
-                last_price.day.day.year, last_price.day.day.month, last_price.day.day.day
-            )
-            df.loc[df.index >= oos_day, f'{name}_price'] = np.nan
+        df[f'{name}_status'] = df[f'{name}_status'].ffill()
+        df.loc[df[f'{name}_status'] == STOCK_OUT, f'{name}_price'] = np.nan
+        df.drop(f'{name}_status', axis=1, inplace=True)
 
     df.dropna(axis=0, how='all', inplace=True)
     df['best'] = df.min(axis=1)
@@ -202,13 +198,9 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
             stats['errors'] += 1
             continue
 
-        # when price is 0 it is not priced
+        # when price is 0 it is not priced (but still need to save new price that it is oos)
         if not data['price'] or data['price'] < MINIMUM_GAME_PRICE:
-            if not shopgame.mia:
-                shopgame.mia = True
-                shopgame.save()
             stats['no price'] += 1
-            continue
 
         prev_price = shopgame.prices.last()
         if (
