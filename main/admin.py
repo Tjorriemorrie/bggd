@@ -170,6 +170,7 @@ class ShopGameAdmin(admin.ModelAdmin):
         'current_available',
         'current_price',
         'url_at',
+        'url',
     ]
     fields = ['shop', 'game', 'url', 'mia']
     search_fields = ['game__name', 'url']

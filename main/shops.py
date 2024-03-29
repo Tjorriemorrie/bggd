@@ -165,7 +165,6 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
         'no change': 0,
         'errors': 0,
     }
-    day = Day.get_today()
     if not shopgames:
         shopgames = shop.shopgames.all()
     else:
@@ -176,6 +175,8 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
         # still scrape games with 0 price (do not use MIA)
         if not shopgame.url:
             stats['no url'] += 1
+            # ensure the game is listed as not available (when url is removed)
+            upsert_new_price(ix, shopgame, shopgames, {'price': 0, 'status': STOCK_OUT}, stats)
             continue
 
         # update current price
@@ -202,40 +203,40 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
         if not data['price'] or data['price'] < MINIMUM_GAME_PRICE:
             stats['no price'] += 1
 
-        prev_price = shopgame.prices.last()
-        if (
-            not prev_price
-            or prev_price.price != data['price']
-            or prev_price.status != data['status']
-        ):
-            new_price, _ = Price.objects.update_or_create(
-                shopgame=shopgame,
-                day=day,
-                defaults={
-                    'status': data['status'],
-                    'price': data['price'],
-                },
-            )
-            logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
-
-            shopgame.current_price = (
-                data['price']
-                if data['price']
-                else prev_price.price
-                if prev_price
-                else data['price']
-            )
-            shopgame.current_available = data['status'] == STOCK_IN
-            shopgame.mia = False
-            shopgame.save()
-            stats['new'] += 1
-
-            shopgame.game.shop_outdated = True
-            shopgame.game.save()
-        else:
-            stats['no change'] += 1
+        upsert_new_price(ix, shopgame, shopgames, data, stats)
 
     logger.info(f'Finished scraping {shop}: {stats}')
+
+
+def upsert_new_price(
+    ix: int, shopgame: ShopGame, shopgames: list[ShopGame], data: dict, stats: dict
+):
+    """Upsert new price if different."""
+    day = Day.get_today()
+    prev_price = shopgame.prices.last()
+    if not prev_price or prev_price.price != data['price'] or prev_price.status != data['status']:
+        new_price, _ = Price.objects.update_or_create(
+            shopgame=shopgame,
+            day=day,
+            defaults={
+                'status': data['status'],
+                'price': data['price'],
+            },
+        )
+        logger.info(f'{ix}/{len(shopgames)}: New Price! {new_price}')
+
+        shopgame.current_price = (
+            data['price'] if data['price'] else prev_price.price if prev_price else data['price']
+        )
+        shopgame.current_available = data['status'] == STOCK_IN
+        shopgame.mia = not bool(shopgame.url)
+        shopgame.save()
+        stats['new'] += 1
+
+        shopgame.game.shop_outdated = True
+        shopgame.game.save()
+    else:
+        stats['no change'] += 1
 
 
 def scrape_meeps_and_veeps_game(url: str) -> dict:

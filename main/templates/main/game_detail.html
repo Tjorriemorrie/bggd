@@ -93,7 +93,7 @@
                                     </h6>
                                     <p>
                                     {% for shopgame in game.shopgames.all %}
-                                        {% if shopgame.current_price and shopgame.url %}
+                                        {% if shopgame.current_price %}
                                             {{ shopgame.shop.name }}: {{ shopgame|price }}<br/>
                                         {% endif %}
                                     {% empty %}
