@@ -9,7 +9,7 @@ from django.utils.timezone import now
 
 from main.constants import MINIMUM_GAME_PRICE, SHOP_NAMES, STOCK_IN, STOCK_OUT
 from main.models import Day, Game, GameDay, Price, Shop, ShopGame
-from main.scraper import get
+from main.scraper import RedirectError, get
 
 logger = logging.getLogger(__name__)
 
@@ -348,9 +348,15 @@ def scrape_geekhome_game(url: str) -> dict:
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
-    res = get(url, headers)
-    html = BeautifulSoup(res.text, 'html.parser')
+    try:
+        res = get(url, headers, redirect=False)
+    except RedirectError:
+        return {
+            'price': 0,
+            'status': STOCK_OUT,
+        }
 
+    html = BeautifulSoup(res.text, 'html.parser')
     container = html.find('div', class_='summary entry-summary')
     price_box = container.find('p', class_='price')
     try:

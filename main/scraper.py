@@ -52,12 +52,18 @@ class RequestsError(Exception):
     """SSL error from BGG."""
 
 
+class RedirectError(Exception):
+    """Request requires an unexpected redirect."""
+
+
 sleep_time = 0
 last_url = None
 
 
 @retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60, tries=10)
-def get(url: str, params: dict = None, headers: dict = None) -> requests.Response:
+def get(
+    url: str, params: dict = None, headers: dict = None, redirect: bool = True
+) -> requests.Response:
     """Helper function to do back off fetches with requests."""
     global sleep_time  # noqa PLW0603
     global last_url  # noqa PLW0603
@@ -70,17 +76,22 @@ def get(url: str, params: dict = None, headers: dict = None) -> requests.Respons
     sleep(sleep_time)
 
     try:
-        res = requests.get(url, params=params, headers=headers, timeout=30)
+        res = requests.get(
+            url, params=params, headers=headers, timeout=30, allow_redirects=redirect
+        )
     except Exception as exc:
-        logger.warning(f'Connection error! url={url}')
-        logger.warning(f'Connection error! exc={exc}')
+        logger.error(f'Connection error! url={url}')
+        logger.error(f'Connection error! exc={exc}')
         raise RequestsError() from exc
     if res.status_code == requests.codes.too_many:
-        logger.warning(f'Too many requests! {url}')
+        logger.error(f'Too many requests! {url}')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
-        logger.warning(f'Server error! {url}')
+        logger.error(f'Server error! {url}')
         raise TooManyRequestsError()
+    elif res.status_code >= requests.codes.moved:
+        logger.error(f'Redirect required: {url}')
+        raise RedirectError()
     res.raise_for_status()
     return res
 
