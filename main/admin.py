@@ -20,6 +20,7 @@ from main.constants import (
     SHOP_TIMELESS,
     SHOP_TTG,
 )
+from main.forms import ShopGameForm
 from main.models import Award, Day, Game, Label, Player, PlayerProxy, Price, Review, Shop, ShopGame
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
@@ -177,13 +178,14 @@ class ShopGameAdmin(admin.ModelAdmin):
     list_filter = ['shop__name', 'mia']
     # ordering = [F('mean_saving').desc(nulls_last=True), '-updated_at']
     ordering = ['url_at']
+    form = ShopGameForm
 
-    def save_model(self, request, obj, form, change):
-        """Save model."""
-        if obj.url:
-            obj.url = obj.url.partition('?')[0]
-        obj.url_at = now()
-        super().save_model(request, obj, form, change)
+    # def save_model(self, request, obj, form, change):
+    #     """Save model."""
+    #     if obj.url:
+    #         obj.url = obj.url.partition('?')[0]
+    #     obj.url_at = now()
+    #     super().save_model(request, obj, form, change)
 
     def _response_post_save(self, request, obj):  # noqa PLR0911
         """Response post save."""
