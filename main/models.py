@@ -436,6 +436,7 @@ class ShopGame(Timestamped):
 
     def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
         """Requires price if available."""
+        self.url_at = now()
         if self.current_available is True and self.current_price == 0:
             raise ValueError(f'Cannot be free: {self}')
         super().save(force_insert, force_update, using, update_fields)
