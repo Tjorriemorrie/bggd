@@ -1,6 +1,8 @@
 import logging
 import xml.etree.ElementTree as Et
+from datetime import datetime
 
+import pytz
 from django.db.models import Max
 
 from main.models import Day, Game, Play, Player
@@ -65,12 +67,13 @@ def update_stats_for_plays(player):
         review.num_plays = num_plays
 
         # Get the last datetime of plays for the player and game
-        last_played_at = Play.objects.filter(player=player, game=review.game).aggregate(
-            last_played_at=Max('datetime')
-        )
+        last_played_at = Day.objects.filter(
+            plays__player=player, plays__game=review.game
+        ).aggregate(last_played_at=Max('day'))
         # Check if last_played_at is not None before assigning
         if last_played_at['last_played_at'] is not None:
-            review.last_played_at = last_played_at['last_played_at']
+            dt = last_played_at['last_played_at']
+            review.last_played_at = datetime(dt.year, dt.month, dt.day, tzinfo=pytz.UTC)
         else:
             review.last_played_at = None
         review.save()

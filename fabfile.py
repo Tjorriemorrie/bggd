@@ -164,17 +164,13 @@ def run_command(ctx, cmd):
 
 
 @task
-def tail_log(ctx):
-    """Follows the log file."""
+def download_log(ctx):
+    """Download the log file."""
     conn = get_conn()
-    conn.run(f'tail -100f {DIR}/logs/wsgi.log')
-
-
-@task
-def cat_log(ctx, cmd):
-    """Print out the log file."""
-    conn = get_conn()
-    conn.run(f'cat {DIR}/logs/wsgi.log | tail -n{cmd}', echo=True)
+    conn.run(f'ls -la {DIR}/logs')
+    print('downloading log file...')
+    conn.get(f'{DIR}/logs/wsgi.log', local='logs')
+    conn.local('cat logs/wsgi.log')
 
 
 @task

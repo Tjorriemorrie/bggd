@@ -48,7 +48,7 @@ class Command(BaseCommand):
             scrape_game(game)
 
         if Game.objects.count() > GAME_LIMIT:
-            worst_game = Game.objects.order_by('rank').last()
+            worst_game = Game.objects.last()
             worst_game.delete()
             logger.info(f'Deleted worst game {worst_game}')
         elif now().weekday() == SUNDAY:
