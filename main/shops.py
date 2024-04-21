@@ -33,7 +33,7 @@ def update_game_shop_prices(game: Game):  # noqa PLR0915 PLR0912
     dfs = {}
     for shopgame in game.shopgames.all():
         name = shopgame.shop.name.replace(' ', '').lower()
-        values = shopgame.prices.filter(status=STOCK_IN).values_list('day__day', 'price', 'status')
+        values = shopgame.prices.values_list('day__day', 'price', 'status')
         if not values:
             continue
         df = pd.DataFrame(values, columns=['day', f'{name}_price', f'{name}_status'])
