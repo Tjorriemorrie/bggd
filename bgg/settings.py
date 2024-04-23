@@ -58,7 +58,7 @@ INSTALLED_APPS = [
     'health_check.db',  # stock Django health checkers
     'health_check.contrib.migrations',
     'health_check.contrib.psutil',  # disk and memory utilization; requires psutil
-    # 'django_extensions',
+    'django_extensions',
 ]
 
 MIDDLEWARE = [
@@ -142,8 +142,6 @@ LANGUAGE_CODE = 'en-us'
 TIME_ZONE = 'UTC'
 
 USE_I18N = True
-
-USE_L10N = True
 
 USE_TZ = True
 

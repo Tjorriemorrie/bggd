@@ -60,14 +60,20 @@ SHOP_GEEKHOME = 'GeekHome'
 SHOP_THD = 'The Hidden Den'
 SHOP_TTG = 'Tabletop Guru'
 SHOP_GARGOYLE = 'Grinning Gargoyle'
+SHOP_SWORD_AND_BOARD = 'Sword and Board'
+SHOP_LEVEL_UP = 'Level Up'
 SHOP_NAMES = [
     SHOP_THD,
-    SHOP_MEEPS_AND_VEEPS,
     SHOP_TTG,
     SHOP_GEEKHOME,
     SHOP_GARGOYLE,
     SHOP_TIMELESS,
+    SHOP_LEVEL_UP,
+    SHOP_SWORD_AND_BOARD,
+    SHOP_MEEPS_AND_VEEPS,
 ]
+
+REGEX_BOARD_GAME = r'(?:The\s+)?Board\s+Game'
 
 REVIEW_STATUS_OWN = 'own'
 REVIEW_STATUS_PREV_OWNED = 'prevowned'

@@ -17,7 +17,9 @@ from main.constants import (
     REVIEW_STATUS_CHOICES,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,
+    SHOP_LEVEL_UP,
     SHOP_MEEPS_AND_VEEPS,
+    SHOP_SWORD_AND_BOARD,
     SHOP_THD,
     SHOP_TIMELESS,
     SHOP_TTG,
@@ -407,6 +409,8 @@ class Shop(Timestamped):
         (SHOP_THD, SHOP_THD),
         (SHOP_TTG, SHOP_TTG),
         (SHOP_GARGOYLE, SHOP_GARGOYLE),
+        (SHOP_LEVEL_UP, SHOP_LEVEL_UP),
+        (SHOP_SWORD_AND_BOARD, SHOP_SWORD_AND_BOARD),
     )
     name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
     host = models.CharField(max_length=150, unique=True)
