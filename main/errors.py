@@ -16,3 +16,7 @@ class PlayerRatingUsernameNotFoundError(ScrapeError):
 
 class OutOfTimeError(Exception):
     """Timeout during management commands."""
+
+
+class ShopGameNotFoundError(Exception):
+    """Product page not found for game."""

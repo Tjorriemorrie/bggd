@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 from django.utils.timezone import now
 
 from main.constants import MINIMUM_GAME_PRICE, SHOP_NAMES, STOCK_IN, STOCK_OUT
+from main.errors import ShopGameNotFoundError
 from main.models import Day, Game, GameDay, Price, Shop, ShopGame
 from main.scraper import RedirectError, get
 
@@ -184,19 +185,23 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
             name = shop.name.lower().replace(' ', '_')
             func = globals()[f'scrape_{name}_game']
             data = func(shopgame.url)
-        except Exception as exc:
-            if str(exc).startswith('404'):
-                logger.info(f'Game removed from store: {shopgame}')
-                shopgame.url = None
-                shopgame.url_at = now()
-                shopgame.mia = True
-                shopgame.save()
-                stats['404'] += 1
-                continue
-            logger.exception(f'Could not scrape {shopgame.url}')
+        except ShopGameNotFoundError:
+            shopgame.mark_as_removed()
+            stats['404'] += 1
             if fail_fast:
                 raise
+            continue
+        except Exception as exc:
+            if str(exc).startswith('404'):
+                shopgame.mark_as_removed()
+                stats['404'] += 1
+                if fail_fast:
+                    raise
+                continue
+            logger.exception(f'Could not scrape {shopgame.url}')
             stats['errors'] += 1
+            if fail_fast:
+                raise
             continue
 
         # when price is 0 it is not priced (but still need to save new price that it is oos)
@@ -325,13 +330,19 @@ def scrape_timeless_game(url: str) -> dict:
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
 
+    if 'Product not found.' in html.text:
+        logger.error(f'Product not found for {url}')
+        raise ShopGameNotFoundError()
+
     containers = html.find_all('div', class_='w3-display-container')
     container = containers[-1]
+    price_boxes = container.find_all('span', class_='w3-xxlarge')
+
     try:
-        price_boxes = container.find_all('span', class_='w3-xxlarge')
         price_txt = price_boxes[-1].text
         price_txt = price_txt.replace('R', '').strip()
     except IndexError:
+        # page exists, but price does not show for out of stock games
         price_txt = '0'
 
     status_txt = container.find_all('div')[0].text

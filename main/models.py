@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime
 from typing import Optional
 
@@ -29,6 +30,8 @@ from main.constants import (
     WEIGHT_LIGHT,
     WEIGHT_MEDIUM,
 )
+
+logger = logging.getLogger(__name__)
 
 CHOICES_WEIGHTS = (
     (WEIGHT_HEAVY, WEIGHT_HEAVY),
@@ -444,6 +447,14 @@ class ShopGame(Timestamped):
         if self.current_available is True and self.current_price == 0:
             raise ValueError(f'Cannot be free: {self}')
         super().save(force_insert, force_update, using, update_fields)
+
+    def mark_as_removed(self):
+        """Game is removed from shop."""
+        logger.info(f'Game removed from store: {self}')
+        self.url = None
+        self.url_at = now()
+        self.mia = True
+        self.save()
 
 
 class Price(Timestamped):
