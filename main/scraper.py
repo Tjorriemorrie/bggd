@@ -89,7 +89,7 @@ def get(
     elif res.status_code >= requests.codes.server_error:
         logger.error(f'Server error! {url}')
         raise TooManyRequestsError()
-    elif res.status_code >= requests.codes.moved:
+    elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
         raise RedirectError()
     res.raise_for_status()

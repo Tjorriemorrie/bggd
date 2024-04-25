@@ -15,6 +15,7 @@ from retry import retry
 
 from main.constants import (
     REGEX_BOARD_GAME,
+    REGEX_BRACKETS,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,
     SHOP_LEVEL_UP,
@@ -205,6 +206,10 @@ class ShopGameAdmin(admin.ModelAdmin):
             return redirect('/admin/main/shopgametabletopguru/')
         elif obj.shop.name == SHOP_GARGOYLE:
             return redirect('/admin/main/shopgamegargoyle/')
+        elif obj.shop.name == SHOP_LEVEL_UP:
+            return redirect('/admin/main/shopgamelevelup/')
+        elif obj.shop.name == SHOP_SWORD_AND_BOARD:
+            return redirect('/admin/main/shopgameswordandboard/')
         else:
             return super()._response_post_save(request, obj)
 
@@ -238,7 +243,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         'year',
         'tl_shop',
         'mav_shop',
-        'gargoyle_shop',
+        'gg_shop',
         'thd_shop',
         'ttg_shop',
         'gh_shop',
@@ -304,6 +309,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             .replace('&', '')
         )
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         mav_search = f'https://meepsandveeps.co.za/search?type=product&q={name}'
         # shopgame_mia_url = reverse(
@@ -339,6 +345,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         tl = Shop.objects.get(name=SHOP_TIMELESS)
         name = game.name.replace(':', '').replace("'s", '').replace("'t", '').replace("'", '')
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         params = urlencode(
             {
@@ -381,6 +388,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         gh = Shop.objects.get(name=SHOP_GEEKHOME)
         name = game.name.replace(':', '')  # .replace("'s", '').replace("'t", '').replace("'", '')
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         params = urlencode(
             {
@@ -417,11 +425,12 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
             # f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 
-    def gargoyle_shop(self, game: Game):
-        """Gargoyle shop."""
-        gar = Shop.objects.get(name=SHOP_GARGOYLE)
+    def gg_shop(self, game: Game):
+        """Grinning Gargoyle shop."""
+        gg = Shop.objects.get(name=SHOP_GARGOYLE)
         name = game.name.replace(':', '')  # .replace("'s", '').replace("'t", '').replace("'", '')
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         # search
         params = urlencode(
@@ -431,10 +440,10 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
                 'product_cat': '',
             }
         )
-        search = f'<a href="{gar.host}?{params}" target="_blank">search</a>'
+        search = f'<a href="{gg.host}?{params}" target="_blank">search</a>'
 
         # status
-        shopgame = ShopGame.objects.filter(game=game, shop=gar).first()
+        shopgame = ShopGame.objects.filter(game=game, shop=gg).first()
         if not shopgame:
             status = 'no shop'
         elif shopgame.mia:
@@ -449,7 +458,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
                 f'<a href="/admin/main/shopgame/{shopgame.pk}/change" target="_blank">edit url</a>'
             )
         else:
-            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gar.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
+            shopgame_url = f'<a href="/admin/main/shopgame/add/?shop={gg.id}&game={game.id}" target="_blank">add url</a>'  # noqa E501
 
         # shopgame_mia_url = reverse(
         #   'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': thd.id})
@@ -463,6 +472,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         thd = Shop.objects.get(name=SHOP_THD)
         name = game.name.replace(':', '')  # .replace("'s", '').replace("'t", '').replace("'", '')
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         # search
         params = urlencode(
@@ -503,6 +513,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         ttg = Shop.objects.get(name=SHOP_TTG)
         name = game.name.replace(':', '')  # .replace("'s", '').replace("'t", '').replace("'", '')
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         # search
         params = urlencode(
@@ -543,6 +554,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         sab = Shop.objects.get(name=SHOP_SWORD_AND_BOARD)
         name = game.name.replace(':', '')  # .replace("'s", '').replace("'t", '').replace("'", '')
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         # search
         # https://www.swordandboard.co.za/search?type=product&options%5Bprefix%5D=last&q=foo
@@ -584,6 +596,7 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         lu = Shop.objects.get(name=SHOP_LEVEL_UP)
         name = game.name.replace(':', '')  # .replace("'s", '').replace("'t", '').replace("'", '')
         name = re.sub(REGEX_BOARD_GAME, '', name)
+        name = re.sub(REGEX_BRACKETS, '', name)
 
         # search
         # https://levelupstore.co.za/search?q=dune

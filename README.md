@@ -1,8 +1,7 @@
 # bggd
 BGG data
 
-Python 3.9
-Django 3
+Python 3.10 (for django 5 and scikit-surprise)
 
 ## Install
 

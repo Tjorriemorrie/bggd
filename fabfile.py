@@ -117,7 +117,7 @@ def deploy(ctx):
     systemctl(ctx, 'stop gunicorn')
     cmds = [
         f'cd {DIR}',
-        'source env/bin/activate',
+        'source .venv/bin/activate',
         'pip install -qr requirements.txt',
         'python manage.py migrate --no-input',
         'python manage.py collectstatic --no-input',
@@ -157,7 +157,7 @@ def run_command(ctx, cmd):
     conn = get_conn()
     cmds = [
         f'cd {DIR}',
-        'source env/bin/activate',
+        'source .venv/bin/activate',
         f'./manage.py {cmd}',
     ]
     conn.run(' && '.join(cmds), echo=True)
@@ -179,7 +179,7 @@ def run_cron(ctx):
     conn = get_conn()
     cmds = [
         f'cd {DIR}',
-        'source env/bin/activate',
+        'source .venv/bin/activate',
         './cron.sh',
     ]
     conn.run(' && '.join(cmds), echo=True)
@@ -191,7 +191,7 @@ def upgrade_pip(ctx):
     conn = get_conn()
     cmds = [
         f'cd {DIR}',
-        'source env/bin/activate',
+        'source .venv/bin/activate',
         'python -m pip install -U pip',
     ]
     conn.run(' && '.join(cmds), echo=True)

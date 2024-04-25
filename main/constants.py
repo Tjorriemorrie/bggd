@@ -74,6 +74,7 @@ SHOP_NAMES = [
 ]
 
 REGEX_BOARD_GAME = r'(?:The\s+)?Board\s+Game'
+REGEX_BRACKETS = r'\s*\([^)]*\)$'
 
 REVIEW_STATUS_OWN = 'own'
 REVIEW_STATUS_PREV_OWNED = 'prevowned'

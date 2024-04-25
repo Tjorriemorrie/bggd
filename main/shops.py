@@ -376,3 +376,49 @@ def scrape_geekhome_game(url: str) -> dict:
         'status': status,
         'price': int(float(price_txt)),
     }
+
+
+def scrape_sword_and_board_game(url: str) -> dict:
+    """Scrape Sword and board."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
+    }
+    res = get(url, headers, redirect=False)
+    html = BeautifulSoup(res.text, 'html.parser')
+    container = html.find('div', class_='product-single__meta')
+    price_box = container.find('div', class_='price-product')
+    price_box = price_box.select_one('span[class*=product-price__price]')
+    price_txt = price_box.text
+    price_txt = price_txt.replace('R', '').replace(',', '').strip()
+
+    status_box = container.find('div', id='sold-out')
+    status = STOCK_OUT if status_box else STOCK_IN
+
+    return {
+        'status': status,
+        'price': int(float(price_txt)),
+    }
+
+
+def scrape_level_up_game(url: str) -> dict:
+    """Scrape Level Up."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
+    }
+    res = get(url, headers, redirect=False)
+    html = BeautifulSoup(res.text, 'html.parser')
+    container = html.select_one('div[class*=product-block--price]')
+    status_box = container.find('div', class_='sold_out')
+    if not status_box:
+        status = STOCK_OUT
+        price_txt = 0
+    else:
+        status = STOCK_IN
+        price_box = container.select_one('span[class*=price]')
+        price_txt = price_box.text
+        price_txt = price_txt.replace('R', '').replace(',', '').strip()
+
+    return {
+        'status': status,
+        'price': int(float(price_txt)),
+    }
