@@ -106,7 +106,7 @@ DATABASES = {
 }
 
 # Local Memory Cache
-CACHE_DURATION = DEVELOPER and 1 or 60 * 60 * 4
+CACHE_DURATION = env.int('CACHE_DURATION')
 CACHES = {
     'default': {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',

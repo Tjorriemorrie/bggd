@@ -361,11 +361,9 @@ def scrape_geekhome_game(url: str) -> dict:
     }
     try:
         res = get(url, headers, redirect=False)
-    except RedirectError:
-        return {
-            'price': 0,
-            'status': STOCK_OUT,
-        }
+    except RedirectError as exc:
+        logger.error(f'Product not found for {url}')
+        raise ShopGameNotFoundError() from exc
 
     html = BeautifulSoup(res.text, 'html.parser')
     container = html.find('div', class_='summary entry-summary')
