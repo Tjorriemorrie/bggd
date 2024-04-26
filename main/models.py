@@ -1,9 +1,11 @@
 import logging
+import re
 from datetime import datetime
 from typing import Optional
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.http import urlencode
 from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 
@@ -15,6 +17,8 @@ from main.constants import (
     LABEL_FAMILY,
     LABEL_MECHANIC,
     LABEL_SUBDOMAIN,
+    REGEX_BOARD_GAME,
+    REGEX_BRACKETS,
     REVIEW_STATUS_CHOICES,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,
@@ -420,6 +424,55 @@ class Shop(Timestamped):
 
     def __str__(self) -> str:
         return f'{self.name}'
+
+    def get_search_url(self, game: Game) -> str:  # noqa PLR0911
+        """Get search url."""
+        name = re.sub(REGEX_BOARD_GAME, '', game.name)
+        name = re.sub(REGEX_BRACKETS, '', name)
+        name = name.replace(':', '')
+
+        if self.name == SHOP_MEEPS_AND_VEEPS:
+            # https://meepsandveeps.co.za/search?type=product&q=dune
+            params = urlencode({'type': 'product', 'q': name})
+            return f'{self.host}search?{params}'
+
+        elif self.name == SHOP_TIMELESS:
+            # https://www.timelessboardgames.co.za/online-shop/?filter=&filter_product_name=dune
+            params = urlencode({'filter': '', 'filter_product_name': name})
+            return f'{self.host}online-shop/?{params}'
+
+        elif self.name == SHOP_GEEKHOME:
+            # https://www.geekhome.co.za/?s=dune&post_type=product
+            params = urlencode({'post_type': 'product', 's': name})
+            return f'{self.host}?{params}'
+
+        elif self.name == SHOP_THD:
+            # https://thehiddenden.co.za/?s=dune&post_type=product
+            params = urlencode({'post_type': 'product', 's': name})
+            return f'{self.host}?{params}'
+
+        elif self.name == SHOP_TTG:
+            # https://tabletopguru.co.za/search?type=product&q=dune
+            params = urlencode({'post_type': 'product', 'q': name})
+            return f'{self.host}/search?{params}'
+
+        elif self.name == SHOP_GARGOYLE:
+            # https://grinning-gargoyle.co.za/?s=detective&post_type=product&product_cat=
+            params = urlencode({'post_type': 'product', 's': name, 'product_cat': ''})
+            return f'{self.host}?{params}'
+
+        elif self.name == SHOP_SWORD_AND_BOARD:
+            # https://www.swordandboard.co.za/search?type=product&options%5Bprefix%5D=last&q=foo
+            params = urlencode({'type': 'product', 'q': name})
+            return f'{self.host}search?{params}'
+
+        elif self.name == SHOP_LEVEL_UP:
+            # https://levelupstore.co.za/search?q=dune
+            params = urlencode({'q': name})
+            return f'{self.host}search?{params}'
+
+        else:
+            raise ValueError(f'Unhandled price search for {self}')
 
 
 class ShopGame(Timestamped):
