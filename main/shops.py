@@ -308,7 +308,14 @@ def scrape_the_hidden_den_game(url: str) -> dict:
 
 def scrape_tabletop_guru_game(url: str) -> dict:
     """Scrape tabletop guru."""
-    res = get(url)
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
+    }
+    try:
+        res = get(url, headers, redirect=False)
+    except RedirectError as exc:
+        logger.error(f'Product not found for {url}')
+        raise ShopGameNotFoundError() from exc
     html = BeautifulSoup(res.text, 'html.parser')
 
     script = html.find('script', id='ProductJson-product-template')

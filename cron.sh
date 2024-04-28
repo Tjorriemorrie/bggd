@@ -7,9 +7,15 @@ function main() {
   end=$((SECONDS+duration))
 
   cd /home/django/bggd
-  source env/bin/activate
+  source .venv/bin/activate
 
-  python manage.py update_game_stats
+  # Check if the current day is Sunday or if the date is before the 6th of the month
+  day_of_week=$(date +'%u')  # Get the day of the week (1-7, 1 being Monday)
+  day_of_month=$(date +'%d') # Get the day of the month
+
+  if [ "$day_of_week" -eq 7 ] || [ "$day_of_month" -lt 6 ]; then
+    python manage.py update_game_stats
+  fi
 
   python manage.py scrape_games
 

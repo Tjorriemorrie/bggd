@@ -252,29 +252,10 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
     search_fields = ('name',)
     actions = [shopgames_updated_at_cmd]
 
-    def __getattr__(self, name):
-        """Get shop dynamically."""
-        if name.endswith('_shop'):
-            shop_short, _ = name.split('_')
-            index = {
-                'tl': SHOP_TIMELESS,
-                'mav': SHOP_MEEPS_AND_VEEPS,
-                'gg': SHOP_GARGOYLE,
-                'thd': SHOP_THD,
-                'ttg': SHOP_TTG,
-                'gh': SHOP_GEEKHOME,
-                'sab': SHOP_SWORD_AND_BOARD,
-                'lu': SHOP_LEVEL_UP,
-            }
-            shop_name = index[shop_short]
-            shop = Shop.objects.get(name=shop_name)
-            return lambda game: self.format_shop(game, shop)
-        return
-
     @admin.display(ordering=F('name'))
-    def title(self, obj: Game):
+    def title(self, game: Game):
         """Title."""
-        return format_html(f'<p>{obj.name}<br/><img height="60" src="{obj.img}"/></p>')
+        return format_html(f'<p>{game.name}<br/><img height="60" src="{game.img}"/></p>')
 
     @admin.display(ordering=F('priority').desc(nulls_first=True))
     def priority(self, game: Game) -> str:
@@ -313,6 +294,53 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         return qs
 
     @admin.display()
+    def tl_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_TIMELESS)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def mav_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def gg_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_GARGOYLE)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def thd_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_THD)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def ttg_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_TTG)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def gh_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_GEEKHOME)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def sab_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_SWORD_AND_BOARD)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def lu_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_LEVEL_UP)
+        return self.format_shop(game, shop)
+
     def format_shop(self, game: Game, shop: Shop) -> str:
         """Format shop."""
         shopgame = ShopGame.objects.filter(game=game, shop=shop).first()
