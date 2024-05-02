@@ -424,8 +424,8 @@ def scrape_level_up_game(url: str) -> dict:
     res = get(url, headers, redirect=False)
     html = BeautifulSoup(res.text, 'html.parser')
     container = html.select_one('div[class*=product-block--price]')
-    status_box = container.find('div', class_='sold_out')
-    if not status_box:
+    sold_out_tag = container.find('span', text='Sold Out')
+    if sold_out_tag:
         status = STOCK_OUT
         price_txt = 0
     else:

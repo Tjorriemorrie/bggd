@@ -1,7 +1,9 @@
 import logging
 import pickle
+from contextlib import suppress
+from datetime import timedelta
 from operator import itemgetter
-from typing import Tuple, List, Optional
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -11,12 +13,20 @@ from retry import retry
 from scipy import stats
 from sklearn.metrics.pairwise import cosine_similarity
 from sortedcontainers import SortedDict, SortedList
-from surprise import Reader, Dataset, SVD, AlgoBase, dump
+from surprise import SVD, AlgoBase, Dataset, Reader, dump
 
 from bgg.settings import BASE_DIR
-from main.constants import REC_MIN_CUTOFF, REC_MAX_CUTOFF, LABEL_CATEGORY, \
-    LABEL_FAMILY, IGNORE_FAMILIES, SOME_YEARS_AGO
-from main.models import Review, Player, Game, Rec, Label, LABEL_MECHANIC
+from main.constants import (
+    IGNORE_FAMILIES,
+    LABEL_CATEGORY,
+    LABEL_FAMILY,
+    REC_MAX_CUTOFF,
+    REC_MIN_CUTOFF,
+    SOME_YEARS_AGO,
+)
+from main.errors import PlayerRatingNewGameError, PlayerRatingUsernameNotFoundError
+from main.models import LABEL_MECHANIC, Game, Label, Player, Rec, Review
+from main.scraper import scrape_player_ratings
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +38,7 @@ _sim_algo = None
 
 
 def get_rec_algo() -> AlgoBase:
+    """Get recommendation model."""
     global _rec_algo
     if not _rec_algo:
         logger.info('loading recommendation algorithm...')
@@ -37,26 +48,31 @@ def get_rec_algo() -> AlgoBase:
 
 
 def get_sim_algo() -> AlgoBase:
-    global _sim_algo
+    """Get similar model."""
+    global _sim_algo  # noqa PLW0603
     if not _sim_algo:
         logger.info('loading similarity algorithm...')
-        with open(FILE_SIM_MODEL, 'r+b') as fp:
-            _sim_algo = pickle.load(fp)
+        with Path.open(FILE_SIM_MODEL, 'r+b') as fp:
+            _sim_algo = pickle.load(fp)  # noqa S301
         logger.info('loaded')
     return _sim_algo
 
 
 def train_rec_model():
+    """Train recommendation model."""
     logger.info('Training recommendations model...')
 
-    logger.info(f'Loading players (min {REC_MIN_CUTOFF} to max {REC_MAX_CUTOFF} ratings per player)...')
+    logger.info(
+        f'Loading players (min {REC_MIN_CUTOFF} to max {REC_MAX_CUTOFF} ratings per player)...'
+    )
     player_ids = Player.objects.filter(
-        reviews_cnt__gte=REC_MIN_CUTOFF,
-        reviews_cnt__lte=REC_MAX_CUTOFF
+        reviews_cnt__gte=REC_MIN_CUTOFF, reviews_cnt__lte=REC_MAX_CUTOFF
     ).values_list('id', flat=True)
 
     logger.info(f'Loading the reviews from the {len(player_ids):,} players found.')
-    values = Review.objects.filter(player__in=player_ids).values_list('player_id', 'game_id', 'rating')
+    values = Review.objects.filter(player__in=player_ids).values_list(
+        'player_id', 'game_id', 'rating'
+    )
     logger.info(f'Found {len(values):,} ratings from those players')
 
     logger.info('Creating dataset...')
@@ -79,9 +95,39 @@ def train_rec_model():
     dump.dump(FILE_REC_MODEL, algo)
 
 
+def load_next_and_predict():
+    """Load next player to predict."""
+    ten_min_ago = now() - timedelta(minutes=10)
+    player = (
+        Player.objects.filter(redo_requested_at__isnull=False)
+        .exclude(redo_started_at__gt=ten_min_ago)
+        .first()
+    )
+    if not player:
+        logger.info('No player requested prediction redo')
+        return
+    player.redo_started_at = now()
+    player.redo_completed_at = None
+    player.save()
+
+    # first refresh ratings
+    logger.info(f'Refreshing ratings for {player}')
+    with suppress(TypeError, KeyError, PlayerRatingNewGameError, PlayerRatingUsernameNotFoundError):
+        scrape_player_ratings(player)
+
+    # then redo prediction
+    game_ids = Game.objects.values_list('id', flat=True)
+    predict_player(player, game_ids)
+    player.redo_requested_at = None
+    player.redo_completed_at = now()
+    player.save()
+    logger.info(f'Finished predicting for {player}')
+
+
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)
-def predict_player(
-        player: Player, game_ids: List[id]) -> Optional[List[Tuple[float, int]]]:
+def predict_player(player: Player, game_ids: list[id]) -> list[tuple[float, int]] | None:
+    """Predict games for player."""
+    logger.info(f'Predicting for {player}')
     algo = get_rec_algo()
     reviews = player.reviews.all()
     player.reviews_cnt = len(reviews)
@@ -92,7 +138,7 @@ def predict_player(
     # clear player recs, to remove games out of stock in spots not getting replaced.
     Rec.objects.filter(player=player).delete()
 
-    if player.reviews_cnt < 3:
+    if player.reviews_cnt < 3:  # noqa PLR2004
         player.save()
         return
 
@@ -128,9 +174,10 @@ def predict_player(
             rec_at=now(),
             is_primary=bool(cnt == 0),
             weight_tag=game.weight_tag,
-            best_players=cnt)
+            best_players=cnt,
+        )
         cnt += 1
-        if cnt >= 10:
+        if cnt >= 10:  # noqa PLR2004
             break
 
     # score player
@@ -145,6 +192,7 @@ def predict_player(
 
 
 def train_sim_model():
+    """Train similar games model."""
     logger.info('Training similarity model on value...')
 
     # logger.info('Clearing existing groupings...')
@@ -155,14 +203,14 @@ def train_sim_model():
     categories = Label.objects.filter(type=LABEL_CATEGORY).all()
     logger.info(f'Loaded {len(categories)} categories')
     families = Label.objects.filter(type=LABEL_FAMILY).all()
-    families = [
-        f for f in families if not
-        any(ig in f.name for ig in IGNORE_FAMILIES)]
+    families = [f for f in families if not any(ig in f.name for ig in IGNORE_FAMILIES)]
     logger.info(f'Loaded {len(families)} families')
 
-    games = Game.objects.prefetch_related(
-        'mechanics', 'families', 'categories'
-    ).exclude(scraped_at__isnull=True).all()
+    games = (
+        Game.objects.prefetch_related('mechanics', 'families', 'categories')
+        .exclude(scraped_at__isnull=True)
+        .all()
+    )
     logger.info(f'Loaded {len(games)} games')
 
     logger.info('Building dataset...')
@@ -179,8 +227,8 @@ def train_sim_model():
     logger.info(f'Calculating cosine similarity on {len(data)} dataset...')
     cos_sim_mtx = cosine_similarity(data, data)
     avgs_at_co = [
-        sorted(list(enumerate(r)), key=itemgetter(1), reverse=True)[7][1]
-        for r in cos_sim_mtx]
+        sorted(list(enumerate(r)), key=itemgetter(1), reverse=True)[7][1] for r in cos_sim_mtx
+    ]
     avg_at_co = sum(avgs_at_co) / len(avgs_at_co)
     logger.info(f'Avg score for 5 sims is {avg_at_co}')
 
@@ -191,9 +239,9 @@ def train_sim_model():
         scores_sorted = sorted(scores, key=itemgetter(1), reverse=True)
         sim_games = []
         for score_ix, score in scores_sorted:
-            if len(sim_games) >= 3 and score < avg_at_co:
+            if len(sim_games) >= 3 and score < avg_at_co:  # noqa PLR2004
                 break
-            if len(sim_games) >= 9:
+            if len(sim_games) >= 9:  # noqa PLR2004
                 break
             sim_game = games[score_ix]
             if sim_game == game:

@@ -6,8 +6,10 @@ from operator import attrgetter, itemgetter
 
 import pandas as pd
 import plotly.express as px
+from django.core.handlers.wsgi import WSGIRequest
 from django.db.models import Avg, Count, F, Min, Q, QuerySet
 from django.db.models.functions import TruncMonth
+from django.http import HttpResponse
 from django.shortcuts import redirect
 from django.utils.decorators import method_decorator
 from django.utils.timezone import make_aware, now
@@ -29,6 +31,7 @@ from main.models import (
     Shop,
     ShopGame,
 )
+from main.recommendations import load_next_and_predict
 
 logger = logging.getLogger(__name__)
 
@@ -111,9 +114,9 @@ class AboutView(CachedTemplateViewGet):
         player_turnover = (now() - oldest_rec).days
 
         # game added
-        one_month = now() - timedelta(days=30)
-        first_game = Game.objects.filter(created_at__gte=one_month).order_by('created_at').first()
-        total_games = Game.objects.filter(created_at__gte=one_month).count()
+        one_year = now() - timedelta(days=365)
+        first_game = Game.objects.filter(created_at__gte=one_year).order_by('created_at').first()
+        total_games = Game.objects.filter(created_at__gte=one_year).count()
         game_days = (now() - first_game.created_at).days
         game_added = total_games // game_days
 
@@ -747,20 +750,11 @@ class ShopView(CachedTemplateViewGet):
         df_data = []
         for shop_name in c.SHOP_NAMES:
             shop = Shop.objects.get(name=shop_name)
-            for inv in ['MIA', 'Out of Stock', 'In Stock']:
-                qs = ShopGame.objects.filter(shop=shop)
-                if inv == 'MIA':
-                    qs = qs.filter(mia=True)
-                elif inv == 'In Stock':
-                    qs = qs.filter(mia=False, url__isnull=False, current_available=True)
-                    df_data.append({'shop': shop_name, 'in stock': qs.count()})
-                elif inv == 'Out of Stock':
-                    qs = qs.filter(mia=False, url__isnull=False, current_available=False)
-                # df_data.append({'shop': shop_name, 'inventory': inv, 'count': qs.count()})
+            qs = ShopGame.objects.filter(shop=shop).filter(
+                mia=False, url__isnull=False, current_available=True
+            )
+            df_data.append({'shop': shop_name, 'in stock': qs.count()})
         df = pd.DataFrame(df_data)
-        # fig_shop_size = px.bar(
-        #     df, x='shop', y='count', color='inventory',
-        #     title='Shop size', color_discrete_sequence=['#bfbfbf', '#f72572', '#3af725'])
         fig_shop_size = px.bar(df, x='shop', y='in stock', title='Shop size')
 
         # shop price heatmap
@@ -818,3 +812,9 @@ class ShopView(CachedTemplateViewGet):
             'graph_shop_price': fig_shop_price.to_html(full_html=False),
         }
         return ctx
+
+
+def redo_prediction_view(request: WSGIRequest):
+    """Redo next prediction."""
+    load_next_and_predict()
+    return HttpResponse('Success!', status=200)

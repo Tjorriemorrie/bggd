@@ -47,8 +47,8 @@ REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 # 11/220: 1.TI4 2.nemesis 3.inis 4.cloud 5.dimperium 7.eclipse
 
 # memory limits
-REC_MIN_CUTOFF = 12
-REC_MAX_CUTOFF = 170
+REC_MIN_CUTOFF = 20
+REC_MAX_CUTOFF = 100
 
 
 STOCK_IN = 'In Stock'
@@ -63,14 +63,14 @@ SHOP_GARGOYLE = 'Grinning Gargoyle'
 SHOP_SWORD_AND_BOARD = 'Sword and Board'
 SHOP_LEVEL_UP = 'Level Up'
 SHOP_NAMES = [
-    SHOP_TTG,
-    SHOP_LEVEL_UP,
-    SHOP_THD,
     SHOP_TIMELESS,
-    SHOP_SWORD_AND_BOARD,
-    SHOP_GARGOYLE,
     SHOP_MEEPS_AND_VEEPS,
+    SHOP_TTG,
     SHOP_GEEKHOME,
+    SHOP_GARGOYLE,
+    SHOP_THD,
+    SHOP_SWORD_AND_BOARD,
+    SHOP_LEVEL_UP,
 ]
 
 REGEX_BOARD_GAME = r'(?:The\s+)?Board\s+Game'
