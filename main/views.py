@@ -114,14 +114,12 @@ class AboutView(CachedTemplateViewGet):
         player_turnover = (now() - oldest_rec).days
 
         # game added
-        one_year = now() - timedelta(days=365)
-        first_game = Game.objects.filter(created_at__gte=one_year).order_by('created_at').first()
+        days = 365
+        one_year = now() - timedelta(days=days)
         total_games = Game.objects.filter(created_at__gte=one_year).count()
-        game_days = (now() - first_game.created_at).days
-        game_added = total_games // game_days
 
         ctx = {
-            'game_added': game_added,
+            'total_games': total_games,
             'player_turnover': player_turnover,
             'min_used': c.REC_MIN_CUTOFF,
             'max_used': c.REC_MAX_CUTOFF,
