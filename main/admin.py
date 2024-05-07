@@ -12,6 +12,7 @@ from django.utils.timezone import now
 from retry import retry
 
 from main.constants import (
+    SHOP_AMAZON,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,
     SHOP_LEVEL_UP,
@@ -206,6 +207,8 @@ class ShopGameAdmin(admin.ModelAdmin):
             return redirect('/admin/main/shopgamelevelup/')
         elif obj.shop.name == SHOP_SWORD_AND_BOARD:
             return redirect('/admin/main/shopgameswordandboard/')
+        elif obj.shop.name == SHOP_AMAZON:
+            return redirect('/admin/main/shopgameamazon/')
         else:
             return super()._response_post_save(request, obj)
 
@@ -238,13 +241,14 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
         'title',
         'year',
         'tl_shop',
-        'ttg_shop',
-        'gg_shop',
+        'lu_shop',
+        'gh_shop',
         'thd_shop',
         'mav_shop',
-        'gh_shop',
+        'gg_shop',
+        'ttg_shop',
         'sab_shop',
-        'lu_shop',
+        'amz_shop',
         'priority',
         'oldest_updated_at',
         'created_at',
@@ -339,6 +343,12 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
     def lu_shop(self, game: Game):
         """Show shop."""
         shop = Shop.objects.get(name=SHOP_LEVEL_UP)
+        return self.format_shop(game, shop)
+
+    @admin.display()
+    def amz_shop(self, game: Game):
+        """Show shop."""
+        shop = Shop.objects.get(name=SHOP_AMAZON)
         return self.format_shop(game, shop)
 
     def format_shop(self, game: Game, shop: Shop) -> str:
@@ -759,6 +769,62 @@ class ShopGameLevelUpAdmin(admin.ModelAdmin):
         return format_html(
             f'<a href="{search_url}" target="_blank">search {lu}</a><br/><br/>'
             f'<a href="/admin/main/shopgame/add/?shop={lu.id}&game={obj.id}">add url</a><br/><br/>'
+            f'<a href="{shopgame_mia_url}">mark as MIA</a>'
+        )
+
+    def hotness_fmt(self, obj: Game):
+        """Format hotness."""
+        hotness = int(obj.hotness) if obj.hotness else 0
+        return format_html(f'{hotness}')
+
+
+class ShopGameAmazon(Game):
+    class Meta:
+        proxy = True
+        verbose_name = 'Shop Amazon'
+        verbose_name_plural = 'Shop Amazon'
+
+
+@admin.action(description='Mark Amazon shopgames as MIA')
+def mark_mia_amazon_cmd(modeladmin, request, queryset):
+    """Mark Amazon MIA command."""
+    shop = Shop.objects.get(name=SHOP_AMAZON)
+    for game in queryset:
+        shopgame, _ = ShopGame.objects.update_or_create(
+            game=game,
+            shop=shop,
+            defaults={
+                'url_at': now(),
+                'url': None,
+                'mia': True,
+            },
+        )
+
+
+@admin.register(ShopGameAmazon)
+class ShopGameAmazonAdmin(admin.ModelAdmin):
+    list_display = ('amz', 'title', 'year', 'hotness_fmt')
+    ordering = ('year', 'hotness')
+    actions = (mark_mia_amazon_cmd,)
+
+    def get_queryset(self, request):
+        """Get level up query."""
+        return Game.objects.exclude(shopgames__shop__name=SHOP_AMAZON)
+
+    def title(self, obj: Game):
+        """Title property."""
+        return format_html(f'<p>{obj.name}<br/><img height="100" src="{obj.img}"/></p>')
+
+    def amz(self, obj: Game):
+        """Amazon shop."""
+        amz = Shop.objects.get(name=SHOP_AMAZON)
+        search_url = amz.get_search_url(obj)
+        shopgame_mia_url = reverse(
+            'admin:shopgame_mia', kwargs={'game_id': obj.id, 'shop_id': amz.id}
+        )
+        return format_html(
+            f'<a href="{search_url}" target="_blank">search {amz}</a><br/><br/>'
+            f'<a href="/admin/main/shopgame/add/?shop={amz.id}&game={obj.id}">add url</a><br/><br/>'
             f'<a href="{shopgame_mia_url}">mark as MIA</a>'
         )
 

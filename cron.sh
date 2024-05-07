@@ -34,6 +34,7 @@ function main() {
   python manage.py scrape_shop gargoyle
   python manage.py scrape_shop swordandboard
   python manage.py scrape_shop levelup
+  python manage.py scrape_shop amazon
   python manage.py scrape_shop outdated
 }
 

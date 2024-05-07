@@ -438,3 +438,23 @@ def scrape_level_up_game(url: str) -> dict:
         'status': status,
         'price': int(float(price_txt)),
     }
+
+
+def scrape_amazon_game(url: str) -> dict:
+    """Scrape Amazon."""
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
+    }
+    res = get(url, headers)
+    html = BeautifulSoup(res.text, 'html.parser')
+    container = html.find('form', id='addToCart')
+
+    price_txt = container.find('span', class_='a-price-whole').text
+    price_txt = price_txt.replace('R', '').replace(',', '').strip()
+
+    status = STOCK_OUT if 'out of stock' in container.text else STOCK_IN
+
+    return {
+        'status': status,
+        'price': int(float(price_txt)),
+    }

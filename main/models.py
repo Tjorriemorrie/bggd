@@ -20,6 +20,7 @@ from main.constants import (
     REGEX_BOARD_GAME,
     REGEX_BRACKETS,
     REVIEW_STATUS_CHOICES,
+    SHOP_AMAZON,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,
     SHOP_LEVEL_UP,
@@ -418,6 +419,7 @@ class Shop(Timestamped):
         (SHOP_GARGOYLE, SHOP_GARGOYLE),
         (SHOP_LEVEL_UP, SHOP_LEVEL_UP),
         (SHOP_SWORD_AND_BOARD, SHOP_SWORD_AND_BOARD),
+        (SHOP_AMAZON, SHOP_AMAZON),
     )
     name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
     host = models.CharField(max_length=150, unique=True)
@@ -470,6 +472,11 @@ class Shop(Timestamped):
             # https://levelupstore.co.za/search?q=dune
             params = urlencode({'q': name})
             return f'{self.host}search?{params}'
+
+        elif self.name == SHOP_AMAZON:
+            # https://www.amazon.co.za/s?k=nemesis&i=toys
+            params = urlencode({'k': name, 'rh': 'n:28002628031'})
+            return f'{self.host}s?{params}'
 
         else:
             raise ValueError(f'Unhandled price search for {self}')

@@ -62,6 +62,7 @@ SHOP_TTG = 'Tabletop Guru'
 SHOP_GARGOYLE = 'Grinning Gargoyle'
 SHOP_SWORD_AND_BOARD = 'Sword and Board'
 SHOP_LEVEL_UP = 'Level Up'
+SHOP_AMAZON = 'Amazon'
 SHOP_NAMES = [
     SHOP_TIMELESS,
     SHOP_MEEPS_AND_VEEPS,
@@ -71,6 +72,7 @@ SHOP_NAMES = [
     SHOP_THD,
     SHOP_SWORD_AND_BOARD,
     SHOP_LEVEL_UP,
+    SHOP_AMAZON,
 ]
 
 REGEX_BOARD_GAME = r'(?:The\s+)?Board\s+Game'
