@@ -66,16 +66,16 @@ SHOP_AMAZON = 'Amazon'
 SHOP_NAMES = [
     SHOP_TIMELESS,
     SHOP_MEEPS_AND_VEEPS,
-    SHOP_TTG,
-    SHOP_GEEKHOME,
+    SHOP_LEVEL_UP,
     SHOP_GARGOYLE,
+    SHOP_GEEKHOME,
+    SHOP_TTG,
     SHOP_THD,
     SHOP_SWORD_AND_BOARD,
-    SHOP_LEVEL_UP,
     SHOP_AMAZON,
 ]
 
-REGEX_BOARD_GAME = r'(?:The\s+)?Board\s+Game'
+REGEX_BOARD_GAME = r'(?:The\s*)?Board\s*Game'
 REGEX_BRACKETS = r'\s*\([^)]*\)$'
 
 REVIEW_STATUS_OWN = 'own'

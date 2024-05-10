@@ -286,10 +286,14 @@ def scrape_the_hidden_den_game(url: str) -> dict:
     """Scrape the hidden den."""
     res = get(url)
     html = BeautifulSoup(res.text, 'html.parser')
-
     scripts = html.find_all('script')
     scripts = [s for s in scripts if s.get('type', '') == 'application/ld+json']
     details = json.loads(scripts[-1].contents[0])
+
+    # price sometimes #N/A with no stock given
+    if '@graph' not in details:
+        raise ShopGameNotFoundError(f'No graph in details for {url}')
+
     price = int(float(details['@graph'][-1]['offers'][-1]['price']))
     if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_IN

@@ -83,8 +83,9 @@ def get(
         logger.error(f'Connection error! url={url}')
         logger.error(f'Connection error! exc={exc}')
         raise RequestsError() from exc
-    if res.status_code == requests.codes.too_many:
-        logger.error(f'Too many requests! {url}')
+
+    if res.status_code in [requests.codes.too_many, 430]:
+        logger.error(f'Too many requests: {res.content} for {url}')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
         logger.error(f'Server error! {url}')
@@ -92,6 +93,7 @@ def get(
     elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
         raise RedirectError()
+
     res.raise_for_status()
     return res
 

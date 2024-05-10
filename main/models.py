@@ -429,9 +429,9 @@ class Shop(Timestamped):
 
     def get_search_url(self, game: Game) -> str:  # noqa PLR0911
         """Get search url."""
-        name = re.sub(REGEX_BOARD_GAME, '', game.name)
+        name = re.sub(REGEX_BOARD_GAME, '', game.name, flags=re.I)
         name = re.sub(REGEX_BRACKETS, '', name)
-        name = name.replace(':', '')
+        name = name.replace(':', '').strip()
 
         if self.name == SHOP_MEEPS_AND_VEEPS:
             # https://meepsandveeps.co.za/search?type=product&q=dune
