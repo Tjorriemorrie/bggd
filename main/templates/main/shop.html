@@ -26,10 +26,37 @@
                 {% endif %}
             </div>
             <div class="col-6">
-                {# Shop prices graph #}
-                {% if graph_shop_price %}
-                    {{ graph_shop_price|safe }}
-                {% endif %}
+                {# Shop comp #}
+                <h4>Shop comparisons.</h4>
+                <p>Where shops have the same game, the difference in pricing is averaged.
+                <br/>The higher the value the lower the prices are in the shop.</p>
+                <table class="table">
+                    <thead>
+                    <tr>
+                        <th scope="col">Shop</th>
+                        <th scope="col">Tml</th>
+                        <th scope="col">MaV</th>
+                        <th scope="col">LU</th>
+                        <th scope="col">GG</th>
+                        <th scope="col">GH</th>
+                        <th scope="col">TTG</th>
+                        <th scope="col">THD</th>
+                        <th scope="col">SaB</th>
+                        <th scope="col">Amz</th>
+                        <th scope="col">Summed</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for name, val in shop_comp.items %}
+                    <tr>
+                        <th scope="row">{{ name }}</th>
+                        {% for i in val %}
+                        <td>{% if i %}{{ i|floatformat:0 }}{% else %}&mdash;{% endif %}</td>
+                        {% endfor %}
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
             </div>
         </div>
 

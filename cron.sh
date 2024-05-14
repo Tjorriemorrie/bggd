@@ -26,10 +26,10 @@ function main() {
 
   python manage.py train_models sim
 
+  python manage.py scrape_shop thd
   python manage.py scrape_shop mav
   python manage.py scrape_shop timeless
   python manage.py scrape_shop geekhome
-  python manage.py scrape_shop thd
   python manage.py scrape_shop ttg
   python manage.py scrape_shop gargoyle
   python manage.py scrape_shop swordandboard

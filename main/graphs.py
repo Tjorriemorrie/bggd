@@ -1,12 +1,15 @@
 import logging
 from datetime import datetime
+from itertools import combinations
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
+from django.db.models import Q
 
-from main.constants import STOCK_OUT
-from main.models import Day, Game
+from main.constants import SHOP_NAMES, STOCK_OUT
+from main.models import Day, Game, Shop, ShopGame
 
 logger = logging.getLogger(__name__)
 
@@ -47,3 +50,65 @@ def get_game_prices_bar(game: Game):
         title='Prices from Shops', xaxis_title='Date', yaxis_title='Price', legend_title='Shop Name'
     )
     return fig
+
+
+def get_shop_sizes():
+    """Get shop sizes graph."""
+    df_data = []
+    for shop_name in SHOP_NAMES:
+        shop = Shop.objects.get(name=shop_name)
+        qs = ShopGame.objects.filter(shop=shop).filter(
+            mia=False, url__isnull=False, current_available=True
+        )
+        df_data.append({'shop': shop_name, 'in stock': qs.count()})
+    df = pd.DataFrame(df_data)
+    fig_shop_size = px.bar(df, x='shop', y='in stock', title='Shop size')
+    return fig_shop_size
+
+
+def get_shop_comparison():
+    """Get shop prices comparison."""
+    data = {}
+    combs = list(combinations(SHOP_NAMES, 2))
+    for name1, name2 in combs:
+        if name1 not in data:
+            data[name1] = {}
+        if name2 not in data:
+            data[name2] = {}
+
+        shopgames_1 = (
+            ShopGame.objects.filter(shop__name=name1)
+            .exclude(Q(current_available=False) | Q(mia=True))
+            .values_list('game', flat=True)
+        )
+        shopgames_2 = (
+            ShopGame.objects.filter(shop__name=name2)
+            .exclude(Q(current_available=False) | Q(mia=True))
+            .values_list('game', flat=True)
+        )
+        game_ids = set(shopgames_1) & set(shopgames_2)
+        logger.info(f'Found {len(game_ids)} between {name1} and {name2}')
+
+        if not game_ids:
+            data[name1][name2] = 0
+            data[name2][name1] = 0
+            continue
+
+        shop_1_diffs = []
+        shop_2_diffs = []
+        for game_id in game_ids:
+            shopgame_1 = ShopGame.objects.get(shop__name=name1, game__id=game_id)
+            shopgame_2 = ShopGame.objects.get(shop__name=name2, game__id=game_id)
+            shop_1_diffs.append(shopgame_2.current_price - shopgame_1.current_price)
+            shop_2_diffs.append(shopgame_1.current_price - shopgame_2.current_price)
+        shop_1 = sum(shop_1_diffs) / len(shop_1_diffs)
+        shop_2 = sum(shop_2_diffs) / len(shop_2_diffs)
+        data[name1][name2] = shop_1
+        data[name2][name1] = shop_2
+
+    formatted = {}
+    for name in SHOP_NAMES:
+        formatted[name] = [data[name].get(s, 0) for s in SHOP_NAMES]
+        formatted[name].append(sum(formatted[name]))
+
+    return formatted

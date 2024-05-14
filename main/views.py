@@ -1,13 +1,12 @@
 import logging
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta
-from itertools import combinations
 from operator import attrgetter, itemgetter
 
 import pandas as pd
 import plotly.express as px
 from django.core.handlers.wsgi import WSGIRequest
-from django.db.models import Avg, Count, F, Min, Q, QuerySet
+from django.db.models import Count, F, Min, Q, QuerySet
 from django.db.models.functions import TruncMonth
 from django.http import HttpResponse
 from django.shortcuts import redirect
@@ -19,7 +18,7 @@ from pytube import Search
 
 import main.constants as c
 from bgg.settings import CACHE_DURATION
-from main.graphs import get_game_prices_bar
+from main.graphs import get_game_prices_bar, get_shop_comparison, get_shop_sizes
 from main.models import (
     AWARD_GAME_OF_THE_MONTH,
     AWARD_GAME_OF_THE_YEAR,
@@ -28,8 +27,6 @@ from main.models import (
     Game,
     Player,
     Review,
-    Shop,
-    ShopGame,
 )
 from main.recommendations import load_next_and_predict
 
@@ -744,70 +741,14 @@ class ShopView(CachedTemplateViewGet):
             .all()[:20]
         )
 
-        # shop sizes
-        df_data = []
-        for shop_name in c.SHOP_NAMES:
-            shop = Shop.objects.get(name=shop_name)
-            qs = ShopGame.objects.filter(shop=shop).filter(
-                mia=False, url__isnull=False, current_available=True
-            )
-            df_data.append({'shop': shop_name, 'in stock': qs.count()})
-        df = pd.DataFrame(df_data)
-        fig_shop_size = px.bar(df, x='shop', y='in stock', title='Shop size')
-
-        # shop price heatmap
-        heat_data = {}
-        combs = list(combinations(c.SHOP_NAMES, 2))
-        for name1, name2 in combs:
-            if name1 not in heat_data:
-                heat_data[name1] = {n: 0 for n in c.SHOP_NAMES}
-            if name2 not in heat_data:
-                heat_data[name2] = {n: 0 for n in c.SHOP_NAMES}
-
-            shopgames_1 = (
-                ShopGame.objects.filter(shop__name=name1)
-                .exclude(Q(current_available=False) | Q(mia=True))
-                .values_list('game', flat=True)
-            )
-            shopgames_2 = (
-                ShopGame.objects.filter(shop__name=name2)
-                .exclude(Q(current_available=False) | Q(mia=True))
-                .values_list('game', flat=True)
-            )
-            game_ids = set(shopgames_1) & set(shopgames_2)
-            logger.info(f'Found {len(game_ids)} between {name1} and {name2}')
-
-            price_1 = (
-                ShopGame.objects.filter(shop__name=name1, game__id__in=game_ids)
-                .all()
-                .aggregate(Avg('current_price'))['current_price__avg']
-            )
-            price_2 = (
-                ShopGame.objects.filter(shop__name=name2, game__id__in=game_ids)
-                .all()
-                .aggregate(Avg('current_price'))['current_price__avg']
-            )
-            if price_1 is None or price_2 is None:
-                heat_data[name1][name2] = 0
-                heat_data[name2][name1] = 0
-                logger.info(f'No avg price for {name1} {price_1} or {name2} {price_2}')
-                continue
-            diff = price_2 - price_1
-            heat_data[name1][name2] = diff
-            heat_data[name2][name1] = -diff
-
-        heat_raw = [list(p.values()) for p in heat_data.values()]
-        fig_shop_price = px.imshow(
-            heat_raw,
-            x=c.SHOP_NAMES,
-            y=c.SHOP_NAMES,
-            title='Avg price war of same games in stock<br><sup>higher is cheaper</sup>',
-        )
+        fig_shop_size = get_shop_sizes()
+        shop_comp_data = get_shop_comparison()
 
         ctx = {
+            'shop_names': c.SHOP_NAMES,
             'games': games,
             'graph_shop_size': fig_shop_size.to_html(full_html=False),
-            'graph_shop_price': fig_shop_price.to_html(full_html=False),
+            'shop_comp': shop_comp_data,
         }
         return ctx
 
