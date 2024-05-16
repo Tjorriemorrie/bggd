@@ -1,12 +1,12 @@
 import logging
 from datetime import datetime
 from itertools import combinations
+from statistics import mean
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-from django.db.models import Q
 
 from main.constants import SHOP_NAMES, STOCK_OUT
 from main.models import Day, Game, Shop, ShopGame
@@ -76,15 +76,11 @@ def get_shop_comparison():
         if name2 not in data:
             data[name2] = {}
 
-        shopgames_1 = (
-            ShopGame.objects.filter(shop__name=name1)
-            .exclude(Q(current_available=False) | Q(mia=True))
-            .values_list('game', flat=True)
+        shopgames_1 = ShopGame.objects.filter(shop__name=name1, current_available=True).values_list(
+            'game', flat=True
         )
-        shopgames_2 = (
-            ShopGame.objects.filter(shop__name=name2)
-            .exclude(Q(current_available=False) | Q(mia=True))
-            .values_list('game', flat=True)
+        shopgames_2 = ShopGame.objects.filter(shop__name=name2, current_available=True).values_list(
+            'game', flat=True
         )
         game_ids = set(shopgames_1) & set(shopgames_2)
         logger.info(f'Found {len(game_ids)} between {name1} and {name2}')
@@ -101,14 +97,12 @@ def get_shop_comparison():
             shopgame_2 = ShopGame.objects.get(shop__name=name2, game__id=game_id)
             shop_1_diffs.append(shopgame_2.current_price - shopgame_1.current_price)
             shop_2_diffs.append(shopgame_1.current_price - shopgame_2.current_price)
-        shop_1 = sum(shop_1_diffs) / len(shop_1_diffs)
-        shop_2 = sum(shop_2_diffs) / len(shop_2_diffs)
-        data[name1][name2] = shop_1
-        data[name2][name1] = shop_2
+        data[name1][name2] = mean(shop_1_diffs)
+        data[name2][name1] = mean(shop_2_diffs)
 
     formatted = {}
     for name in SHOP_NAMES:
         formatted[name] = [data[name].get(s, 0) for s in SHOP_NAMES]
-        formatted[name].append(sum(formatted[name]))
+        formatted[name].append(mean(formatted[name]))
 
     return formatted
