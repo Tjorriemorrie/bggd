@@ -18,12 +18,18 @@ from pytube import Search
 
 import main.constants as c
 from bgg.settings import CACHE_DURATION
-from main.graphs import get_game_prices_bar, get_shop_comparison, get_shop_sizes
+from main.graphs import (
+    get_game_prices_bar,
+    get_reviews_count_per_player,
+    get_reviews_daily_count_graph,
+    get_reviews_histogram_ratings,
+    get_shop_comparison,
+    get_shop_sizes,
+)
 from main.models import (
     AWARD_GAME_OF_THE_MONTH,
     AWARD_GAME_OF_THE_YEAR,
     Award,
-    Day,
     Game,
     Player,
     Review,
@@ -688,44 +694,14 @@ class ReviewView(CachedTemplateViewGet):
         """Get review graphs."""
         data = super().get_context_data(**kwargs)
 
-        # rating histogram graph
-        histogram = Review.objects.values('rating').annotate(cnt=Count('rating'))
-        df_rating = pd.DataFrame(list(histogram))
-        fig_rating = px.histogram(
-            df_rating,
-            x='rating',
-            y='cnt',
-            histfunc='sum',
-            range_x=(0, 10),
-            labels={'rating': 'Rating value', 'cnt': 'count'},
-            title='Histogram of ratings',
-        )
-        fig_rating.update_traces(nbinsx=20, autobinx=False)
+        fig_daily = get_reviews_daily_count_graph()
+        data['graph_day'] = fig_daily.to_html(full_html=False)
+
+        fig_cnt = get_reviews_count_per_player()
+        data['graph_reviews_cnt'] = fig_cnt.to_html(full_html=False)
+
+        fig_rating = get_reviews_histogram_ratings()
         data['graph_rating'] = fig_rating.to_html(full_html=False)
-
-        # graph of daily ratings
-        days = Day.objects.order_by('-day').all()[:90]
-        data_day = [{'Date': d.day, 'Ratings': d.reviews_cnt} for d in days]
-        df = pd.DataFrame(data_day)
-        fig_day = px.bar(
-            df,
-            x='Date',
-            y='Ratings',
-            labels={'Ratings': '# of ratings'},
-            title='Ratings past quarter',
-        )
-        data['graph_day'] = fig_day.to_html(full_html=False)
-
-        reviews_cnts = Player.objects.filter(reviews_cnt__gte=3, reviews_cnt__lte=100).values_list(
-            'reviews_cnt', flat=True
-        )
-        cntr = Counter(reviews_cnts)
-        df = pd.DataFrame(cntr.items())
-        fig = px.histogram(
-            x=df[0], y=df[1], nbins=100, labels={'x': 'number of reviews', 'y': 'players'}
-        )
-        # fig.update_yaxes(tick0=1, dtick=1)
-        data['graph_reviews_cnt'] = fig.to_html(full_html=False)
 
         return data
 

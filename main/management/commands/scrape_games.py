@@ -55,7 +55,7 @@ class Command(BaseCommand):
                 worst_game.delete()
 
         # scrape new game once a week
-        if now().weekday() == SUNDAY:
+        if reviews_count < 19_000_000 or now().weekday() == SUNDAY:  # noqa PLR2004
             logger.info(''.join(['='] * 99))
             logger.info('No more new games, will scrape for next one...')
             scrape_rankings()

@@ -1,4 +1,5 @@
 import logging
+from collections import Counter
 from datetime import datetime
 from itertools import combinations
 from statistics import mean
@@ -7,9 +8,10 @@ import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
+from django.db.models import Count
 
 from main.constants import SHOP_NAMES, STOCK_OUT
-from main.models import Day, Game, Shop, ShopGame
+from main.models import Day, Game, Player, Review, Shop, ShopGame
 
 logger = logging.getLogger(__name__)
 
@@ -106,3 +108,63 @@ def get_shop_comparison():
         formatted[name].append(mean(formatted[name]))
 
     return formatted
+
+
+def get_reviews_daily_count_graph():
+    """Get reviews of daily count in graph."""
+    days = Day.objects.order_by('-day').all()[:90]
+    data_day = [{'Date': d.day, 'Ratings': d.reviews_cnt} for d in days]
+    df = pd.DataFrame(data_day)
+    df['Date'] = pd.to_datetime(df['Date'])
+    fig = px.bar(
+        df,
+        x='Date',
+        y='Ratings',
+        labels={'Ratings': '# of ratings'},
+        title='Ratings past quarter',
+    )
+    return fig
+
+
+def get_reviews_histogram_ratings():
+    """Get reviews histogram ratings."""
+    histogram = Review.objects.values('rating').annotate(cnt=Count('rating'))
+    df = pd.DataFrame(list(histogram))
+    fig = px.histogram(
+        df,
+        x='rating',
+        y='cnt',
+        histfunc='sum',
+        range_x=(1, 10),
+        labels={'rating': 'Rating value', 'cnt': 'count'},
+        title='Histogram of ratings',
+    )
+
+    # Update traces to specify the bin settings
+    fig.update_traces(
+        xbins=dict(
+            start=1,  # Start at the lowest rating
+            end=10,  # End at the highest rating
+            size=1,  # Bin size of 1 to align with integer values
+        )
+    )
+
+    return fig
+
+
+def get_reviews_count_per_player():
+    """Get reviews count per player histogram."""
+    reviews_cnts = Player.objects.filter(reviews_cnt__gte=3, reviews_cnt__lte=100).values_list(
+        'reviews_cnt', flat=True
+    )
+    cntr = Counter(reviews_cnts)
+    df = pd.DataFrame(cntr.items())
+    fig = px.histogram(
+        x=df[0],
+        y=df[1],
+        nbins=100,
+        labels={'x': 'number of reviews', 'y': 'players'},
+        title='Number of players with number of reviews',
+    )
+    # fig.update_yaxes(tick0=1, dtick=1)
+    return fig

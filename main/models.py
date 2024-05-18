@@ -272,7 +272,10 @@ class Day(Timestamped):
     is_outdated = models.BooleanField(db_index=True, default=False)
 
     def __str__(self) -> str:
-        return f'<Day {self.day:"%y-%m-%d} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
+        try:
+            return f'<Day {self.day:"%y-%m-%d} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
+        except ValueError:
+            return f'<Day {self.day} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
 
     @staticmethod
     def get_today() -> 'Day':
