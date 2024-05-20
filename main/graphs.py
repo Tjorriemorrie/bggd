@@ -2,7 +2,7 @@ import logging
 from collections import Counter
 from datetime import datetime
 from itertools import combinations
-from statistics import mean
+from statistics import mean, median
 
 import numpy as np
 import pandas as pd
@@ -64,7 +64,7 @@ def get_shop_sizes():
         )
         df_data.append({'shop': shop_name, 'in stock': qs.count()})
     df = pd.DataFrame(df_data)
-    fig_shop_size = px.bar(df, x='shop', y='in stock', title='Shop size')
+    fig_shop_size = px.bar(df, x='shop', y='in stock', title='Shop size', height=600)
     return fig_shop_size
 
 
@@ -105,9 +105,11 @@ def get_shop_comparison():
     formatted = {}
     for name in SHOP_NAMES:
         formatted[name] = [data[name].get(s, 0) for s in SHOP_NAMES]
-        formatted[name].append(mean(formatted[name]))
+        formatted[name].append(median(formatted[name]))
 
-    return formatted
+    sorted_formatted = dict(sorted(formatted.items(), key=lambda item: item[1][-1], reverse=True))
+
+    return sorted_formatted
 
 
 def get_reviews_daily_count_graph():
