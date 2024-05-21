@@ -18,7 +18,7 @@ from main.constants import (
     ROWS_TABLE_HEADERS,
     SCRAPE_REVIEWS_EXISTING_BUFFER,
 )
-from main.errors import PlayerRatingUsernameNotFoundError, PlayerScrapeError
+from main.errors import NoRowsFoundError, PlayerRatingUsernameNotFoundError, PlayerScrapeError
 from main.models import (
     LABEL_CATEGORY,
     LABEL_FAMILY,
@@ -98,6 +98,7 @@ def get(
     return res
 
 
+@retry(NoRowsFoundError, tries=3)
 def scrape_rankings() -> list[Game]:
     """Scrape the ranking from boardgamegeek."""
     logger.info('Scraping rankings...')
@@ -114,7 +115,7 @@ def scrape_rankings() -> list[Game]:
         logger.info(f'Found {len(rows)} rows for page {page}...')
         if not rows:
             logger.error(f'No rows for {res.text}')
-            raise ValueError(f'Could not scrape games at {URL_RANKINGS}{page}')
+            raise NoRowsFoundError(f'Could not scrape games at {URL_RANKINGS}{page}')
 
         for row in rows:
             tds = row.find_all('td')

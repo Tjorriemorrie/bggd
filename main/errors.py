@@ -2,6 +2,10 @@ class ScrapeError(Exception):
     """Base scraping error."""
 
 
+class NoRowsFoundError(ScrapeError):
+    """No rows found."""
+
+
 class PlayerScrapeError(ScrapeError):
     """Player scrape error."""
 
