@@ -101,6 +101,8 @@
                                     {% endfor %}
                                     {% if prices_graph %}
                                         {{ prices_graph|safe }}
+                                    {% else %}
+                                        <p>No prices, at all, ever.</p>
                                     {% endif %}
                                     </p>
                                 </div>
