@@ -18,7 +18,7 @@ from main.constants import (
     ROWS_TABLE_HEADERS,
     SCRAPE_REVIEWS_EXISTING_BUFFER,
 )
-from main.errors import NoRowsFoundError, PlayerRatingUsernameNotFoundError, PlayerScrapeError
+from main.errors import PlayerRatingUsernameNotFoundError, PlayerScrapeError
 from main.models import (
     LABEL_CATEGORY,
     LABEL_FAMILY,
@@ -33,6 +33,8 @@ from main.stats import outdate_gameday_by_review
 
 logger = logging.getLogger(__name__)
 
+URL_LOGIN = 'https://boardgamegeek.com/login/api/v1'
+URL_CURRENT = 'https://boardgamegeek.com/api/accounts/current'
 URL_RANKINGS = r'https://www.boardgamegeek.com/browse/boardgame/page/'
 URL_GAME = r'https://www.boardgamegeek.com/boardgame/{bgg_id}'
 URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'  # noqa: E501
@@ -67,6 +69,7 @@ def get(
     """Helper function to do back off fetches with requests."""
     global sleep_time  # noqa PLW0603
     global last_url  # noqa PLW0603
+
     if last_url == url:
         sleep_time = round(sleep_time + 0.5, 3)
         logger.info(f'Increased sleep time to {sleep_time}')
@@ -98,7 +101,6 @@ def get(
     return res
 
 
-@retry(NoRowsFoundError, tries=3)
 def scrape_rankings() -> list[Game]:
     """Scrape the ranking from boardgamegeek."""
     logger.info('Scraping rankings...')
@@ -109,13 +111,13 @@ def scrape_rankings() -> list[Game]:
     page = 0
     while not created:
         page += 1
-        res = get(f'{URL_RANKINGS}{page}')
+        rankings_url = f'{URL_RANKINGS}{page}'
+        res = get(rankings_url)
         html = BeautifulSoup(res.text, 'html.parser')
         rows = html.find_all('tr', id='row_')
         logger.info(f'Found {len(rows)} rows for page {page}...')
         if not rows:
-            logger.error(f'No rows for {res.text}')
-            raise NoRowsFoundError(f'Could not scrape games at {URL_RANKINGS}{page}')
+            return
 
         for row in rows:
             tds = row.find_all('td')
