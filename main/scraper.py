@@ -18,7 +18,12 @@ from main.constants import (
     ROWS_TABLE_HEADERS,
     SCRAPE_REVIEWS_EXISTING_BUFFER,
 )
-from main.errors import BadDateError, PlayerRatingUsernameNotFoundError, PlayerScrapeError
+from main.errors import (
+    BadDateError,
+    NotBoardGameTypeError,
+    PlayerRatingUsernameNotFoundError,
+    PlayerScrapeError,
+)
 from main.models import (
     LABEL_CATEGORY,
     LABEL_FAMILY,
@@ -36,6 +41,8 @@ logger = logging.getLogger(__name__)
 URL_LOGIN = 'https://boardgamegeek.com/login/api/v1'
 URL_CURRENT = 'https://boardgamegeek.com/api/accounts/current'
 URL_RANKINGS = r'https://www.boardgamegeek.com/browse/boardgame/page/'
+URL_HOTNESS = r'https://boardgamegeek.com/xmlapi2/hot?boardgame'
+URL_THING = r'https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}'
 URL_GAME = r'https://www.boardgamegeek.com/boardgame/{bgg_id}'
 URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'  # noqa: E501
 URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'  # noqa: E501
@@ -107,10 +114,7 @@ def scrape_rankings() -> list[Game]:
     games = []
     name_pattern = re.compile(r'(.*)\s\((-?\d+)\)')
     id_pattern = re.compile(r'/(?:boardgame|boardgameexpansion)/(\d+)/')
-    created = False
-    page = 0
-    while not created:
-        page += 1
+    for page in range(1, 11):
         rankings_url = f'{URL_RANKINGS}{page}'
         res = get(rankings_url)
         html = BeautifulSoup(res.text, 'html.parser')
@@ -153,6 +157,51 @@ def scrape_rankings() -> list[Game]:
                 break
     logger.info('Finished scraping rankings')
     return games
+
+
+def scrape_hotness() -> list[Game]:
+    """Scrape boardgamegeek api hotness."""
+    logger.info('Scraping hotness...')
+    games = []
+    res = requests.get(URL_HOTNESS, timeout=30)
+    soup = BeautifulSoup(res.content, 'xml')
+    items = soup.find_all('item')
+    for item in items:
+        bgg_id = item['id']
+        rank = item['rank']
+        name = item.find('name')['value']
+        year = item.find('yearpublished')['value']
+        try:
+            scrape_thing(bgg_id)
+        except NotBoardGameTypeError:
+            logger.info(f'#{rank} {name} [{year}] is not a boardgame')
+            continue
+        game, created = Game.objects.update_or_create(
+            bgg_id=bgg_id,
+            defaults={
+                'rank': int(rank),
+                'url': f'/boardgame/{bgg_id}',
+                'name': name,
+                'year': year,
+            },
+        )
+        logger.info(f'{created and "Created" or "Updated"} {game}')
+        games.append(game)
+        if created:
+            logger.info(f'New game! Stopping with {game}')
+            break
+    logger.info('Finished scraping hotness!')
+    return games
+
+
+def scrape_thing(bgg_id: int):
+    """Scrape boardgamegeek thing api endpoint."""
+    res = requests.get(URL_THING.format(bgg_id=bgg_id), timeout=30)
+    soup = BeautifulSoup(res.content, 'xml')
+    item = soup.find('item')
+    if item['type'] != 'boardgame':
+        raise NotBoardGameTypeError()
+    return item
 
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)

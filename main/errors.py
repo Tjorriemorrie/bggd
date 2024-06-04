@@ -28,3 +28,7 @@ class ShopGameNotFoundError(Exception):
 
 class BadDateError(Exception):
     """Bad date error."""
+
+
+class NotBoardGameTypeError(Exception):
+    """Not a boardgame."""

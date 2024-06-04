@@ -5,6 +5,7 @@ django_extensions==3.2.3
 django-health-check==3.18.1
 environs==11.0.0
 invoke==2.2.0
+lxml==5.2.2
 numpy==1.26.4
 pandas==2.2.2
 plotly==5.21.0
