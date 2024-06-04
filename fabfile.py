@@ -202,3 +202,15 @@ def restart_svc(ctx):
     """Restart web server."""
     systemctl(ctx, 'restart nginx')
     systemctl(ctx, 'restart gunicorn')
+
+
+@task
+def cat_log(ctx):
+    """Echo out the log on server."""
+    conn = get_conn()
+    cmds = [
+        f'cd {DIR}',
+        'source .venv/bin/activate',
+        'cat logs/wsgi.log',
+    ]
+    conn.run(' && '.join(cmds), echo=True)

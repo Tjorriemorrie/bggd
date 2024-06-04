@@ -2,7 +2,7 @@ import json
 import logging
 import re
 from contextlib import suppress
-from datetime import datetime
+from datetime import datetime, timedelta
 from time import sleep
 
 import requests
@@ -18,7 +18,7 @@ from main.constants import (
     ROWS_TABLE_HEADERS,
     SCRAPE_REVIEWS_EXISTING_BUFFER,
 )
-from main.errors import PlayerRatingUsernameNotFoundError, PlayerScrapeError
+from main.errors import BadDateError, PlayerRatingUsernameNotFoundError, PlayerScrapeError
 from main.models import (
     LABEL_CATEGORY,
     LABEL_FAMILY,
@@ -232,7 +232,10 @@ def scrape_game_reviews(game: Game):
             break
 
         for item in res['items']:
-            review, created = parse_game_review(game, item)
+            try:
+                review, created = parse_game_review(game, item)
+            except BadDateError:
+                continue
             existing += not bool(created)
             # logger.info(f'{created and "Created" or "Updated"} {review}')
 
@@ -253,7 +256,10 @@ def scrape_game_reviews(game: Game):
                 break
 
             for item in res['items']:
-                review, created = parse_game_review(game, item)
+                try:
+                    review, created = parse_game_review(game, item)
+                except BadDateError:
+                    continue
                 reviews_cnt += bool(created)
                 # logger.info(f'{created and "Created" or "Updated"} {review}')
 
@@ -265,7 +271,7 @@ def scrape_game_reviews(game: Game):
     logger.info(f'Finished scraping reviews for {game}!')
 
 
-def parse_game_review(game: Game, item: dict) -> tuple[Review, bool]:
+def parse_game_review(game: Game, item: dict) -> tuple[Review, bool]:  # noqa PLR0912
     """Parse game review from html."""
     item['rating'] = round(float(item['rating']), 1)
     item['rating'] = max([1.0, item['rating']])
@@ -283,6 +289,9 @@ def parse_game_review(game: Game, item: dict) -> tuple[Review, bool]:
         raise
     tstamp = item['review_tstamp'] or item['tstamp']
     reviewed_at = make_aware(datetime.strptime(tstamp, '%Y-%m-%d %H:%M:%S'))
+    twenty_years_ago = now() - timedelta(weeks=1_040)
+    if twenty_years_ago > reviewed_at > now():
+        raise BadDateError('reviewed_at')
     try:
         review, created = Review.objects.get_or_create(
             bgg_id=item['collid'],

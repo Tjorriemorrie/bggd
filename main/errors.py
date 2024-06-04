@@ -24,3 +24,7 @@ class OutOfTimeError(Exception):
 
 class ShopGameNotFoundError(Exception):
     """Product page not found for game."""
+
+
+class BadDateError(Exception):
+    """Bad date error."""

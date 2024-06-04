@@ -4,6 +4,7 @@ from datetime import datetime
 
 import pytz
 from django.db.models import Max
+from django.utils.timezone import now
 
 from main.models import Day, Game, Play, Player
 from main.scraper import get
@@ -44,6 +45,8 @@ def scrape_plays(player: Player):
                 else None
             )
             day = Day.get_day_at(play_elem.attrib['date'])
+            if day > now():
+                day = now()
             play, created = Play.objects.update_or_create(
                 bgg_id=bgg_id,
                 defaults={

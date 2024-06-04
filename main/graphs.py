@@ -30,13 +30,15 @@ def get_game_prices_bar(game: Game):
         df['day'] = pd.to_datetime(df['day'])
         df = df.set_index('day')
         dfs[name] = df
+    if not dfs.values():
+        return
     df = None
     for df_shop in dfs.values():
         if df is None:
             df = df_shop
         else:
             df = pd.merge(df, df_shop, how='outer', left_index=True, right_index=True)
-    if not df:
+    if df.empty:
         return
     today = Day.get_today()
     date_range = pd.date_range(
