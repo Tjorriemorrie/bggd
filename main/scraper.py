@@ -23,6 +23,7 @@ from main.errors import (
     NotBoardGameTypeError,
     PlayerRatingUsernameNotFoundError,
     PlayerScrapeError,
+    ScrapeError,
 )
 from main.models import (
     LABEL_CATEGORY,
@@ -163,12 +164,12 @@ def scrape_hotness() -> list[Game]:
     """Scrape boardgamegeek api hotness."""
     logger.info('Scraping hotness...')
     games = []
-    res = requests.get(URL_HOTNESS, timeout=30)
+    res = get(URL_HOTNESS)
     soup = BeautifulSoup(res.content, 'xml')
     items = soup.find_all('item')
     for item in items:
         bgg_id = item['id']
-        rank = item['rank']
+        rank = 1_000 + int(item['rank'])
         name = item.find('name')['value']
         year = item.find('yearpublished')['value']
         try:
@@ -196,7 +197,7 @@ def scrape_hotness() -> list[Game]:
 
 def scrape_thing(bgg_id: int):
     """Scrape boardgamegeek thing api endpoint."""
-    res = requests.get(URL_THING.format(bgg_id=bgg_id), timeout=30)
+    res = get(URL_THING.format(bgg_id=bgg_id))
     soup = BeautifulSoup(res.content, 'xml')
     item = soup.find('item')
     if item['type'] != 'boardgame':
@@ -204,17 +205,17 @@ def scrape_thing(bgg_id: int):
     return item
 
 
-@retry(OperationalError, delay=3, jitter=3, max_delay=30)
+@retry((OperationalError, ScrapeError), delay=3, jitter=3, max_delay=30)
 def scrape_game(game: Game):
     """Scrape the game from boardgamegeek."""
     logger.info(f'Scraping {game}')
-    res = requests.get(URL_GAME.format(bgg_id=game.bgg_id), timeout=30)
-    res.raise_for_status()
+    res = get(URL_GAME.format(bgg_id=game.bgg_id))
     matches = re.search(r'GEEK\.geekitemPreload\s=\s(.*)GEEK\.geekitemSettings', res.text, re.S)
     json_match = matches.groups()[0]
     preload = json.loads(json_match.strip().rstrip(';'))
 
     # basic details
+    game.rank = int(preload['item']['rankinfo'][0]['rank'])
     game.min_players = preload['item']['minplayers']
     game.max_players = preload['item']['maxplayers']
     game.min_play_time = preload['item']['minplaytime']
@@ -234,8 +235,8 @@ def scrape_game(game: Game):
     if polls['userplayers']['best']:
         game.best_min_players = polls['userplayers']['best'][0]['min']
         game.best_max_players = polls['userplayers']['best'][0]['max'] or 8
-    game.rec_min_age = polls['playerage'].rstrip('+').partition('–')[0]
-    game.weight_avg = polls['boardgameweight']['averageweight']
+    with suppress(ValueError):
+        game.rec_min_age = int(polls['playerage'].rstrip('+').partition('–')[0])
 
     # labels
     game_links_labels = {

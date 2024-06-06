@@ -45,7 +45,7 @@ def scrape_plays(player: Player):
                 else None
             )
             day = Day.get_day_at(play_elem.attrib['date'])
-            if day > now():
+            if day.day > now().date():
                 day = now()
             play, created = Play.objects.update_or_create(
                 bgg_id=bgg_id,
