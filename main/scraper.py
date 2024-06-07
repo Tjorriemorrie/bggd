@@ -86,9 +86,15 @@ def get(
     last_url = url
     sleep(sleep_time)
 
+    headers_default = {
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
+    }
+    if headers:
+        headers_default.update(headers)
+
     try:
         res = requests.get(
-            url, params=params, headers=headers, timeout=30, allow_redirects=redirect
+            url, params=params, headers=headers_default, timeout=30, allow_redirects=redirect
         )
     except Exception as exc:
         logger.error(f'Connection error! url={url}')

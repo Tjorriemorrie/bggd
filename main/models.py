@@ -21,6 +21,7 @@ from main.constants import (
     REGEX_BRACKETS,
     REVIEW_STATUS_CHOICES,
     SHOP_AMAZON,
+    SHOP_BGBSA,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,
     SHOP_LEVEL_UP,
@@ -423,6 +424,7 @@ class Shop(Timestamped):
         (SHOP_LEVEL_UP, SHOP_LEVEL_UP),
         (SHOP_SWORD_AND_BOARD, SHOP_SWORD_AND_BOARD),
         (SHOP_AMAZON, SHOP_AMAZON),
+        (SHOP_BGBSA, SHOP_BGBSA),
     )
     name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
     host = models.CharField(max_length=150, unique=True)

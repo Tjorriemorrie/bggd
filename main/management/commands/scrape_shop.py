@@ -6,6 +6,7 @@ from retry import retry
 
 from main.constants import (
     SHOP_AMAZON,
+    SHOP_BGBSA,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,
     SHOP_LEVEL_UP,
@@ -60,6 +61,9 @@ class Command(BaseCommand):
                 scrape_site(shop, fail_fast=options.get('fail_fast'))
             elif shop_name.lower() == 'amazon':
                 shop = Shop.objects.get(name=SHOP_AMAZON)
+                scrape_site(shop, fail_fast=options.get('fail_fast'))
+            elif shop_name.lower() == 'bgbsa':
+                shop = Shop.objects.get(name=SHOP_BGBSA)
                 scrape_site(shop, fail_fast=options.get('fail_fast'))
 
             elif shop_name.lower() == 'validate':

@@ -1,13 +1,14 @@
 import json
 import logging
-from datetime import datetime
+import re
+from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
 from django.utils.timezone import now
 
-from main.constants import MINIMUM_GAME_PRICE, SHOP_NAMES, STOCK_IN, STOCK_OUT
+from main.constants import MINIMUM_GAME_PRICE, SHOP_BGBSA, SHOP_NAMES, STOCK_IN, STOCK_OUT
 from main.errors import ShopGameNotFoundError
 from main.models import Day, Game, GameDay, Price, Shop, ShopGame
 from main.scraper import RedirectError, get
@@ -155,7 +156,7 @@ def validate_shopgames():
 ######################################################################################
 
 
-def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = False):
+def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = False):  # noqa PLR0912
     """Scrape a site."""
     logger.info(f'Scraping {shop}')
     stats = {
@@ -166,10 +167,14 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
         'no change': 0,
         'errors': 0,
     }
-    if not shopgames:
+
+    if shop.name == SHOP_BGBSA:
+        return scrape_bgbsa()
+    elif not shopgames:
         shopgames = shop.shopgames.all()
     else:
         assert all(sg.shop == shop for sg in shopgames)  # noqa S101
+
     for ix, shopgame in enumerate(shopgames):
         # logger.info(f'Progress {ix}/{len(shopgames)}: {shopgame.game}')
 
@@ -462,3 +467,68 @@ def scrape_amazon_game(url: str) -> dict:
         'status': status,
         'price': int(float(price_txt)),
     }
+
+
+def scrape_bgbsa():
+    """Scrape BGBSA."""
+    logger.info('Scraping BGBSA...')
+    stats = {
+        'no url': 0,
+        '404': 0,
+        'no price': 0,
+        'new': 0,
+        'no change': 0,
+        'errors': 0,
+    }
+    shop = Shop.objects.get(name=SHOP_BGBSA)
+    res = get(shop.host)
+    html = BeautifulSoup(res.text, 'html.parser')
+    container = html.find('div', id='fbody')
+    items = container.find_all('div', class_='card')
+    total = len(items)
+    for ix, item in enumerate(items):
+        stoid = item.get('stoid')
+        url = f'https://www.bgbsa.co.za/contactbuy.php?id={stoid}'
+        res_detail = get(url)
+        html_detail = BeautifulSoup(res_detail.text, 'html.parser')
+
+        pattern_url = re.compile(r'https://boardgamegeek.com/boardgame/.*')
+        tag_with_url = html_detail.find_all(string=pattern_url)[0]
+        bgg_id = int(tag_with_url.text.split('/')[-1])
+        try:
+            game = Game.objects.get(bgg_id=bgg_id)
+        except Game.DoesNotExist:
+            logger.info(f'{ix}/{total}: [{stoid}] game not found')
+            stats['404'] += 1
+            continue
+
+        pattern_price = re.compile(r'R\s*[\d,.]+')
+        tag_with_price = html_detail.find_all(string=pattern_price)[0]
+        price_cleaned = re.sub(r'[^\d.]', '', tag_with_price.text)
+        price = int(float(price_cleaned))
+        if price < MINIMUM_GAME_PRICE:
+            stats['no price'] += 1
+            continue
+
+        shopgame, _ = ShopGame.objects.update_or_create(
+            shop=shop,
+            game=game,
+            defaults={
+                'url': url,
+                'url_at': now(),
+            },
+        )
+        data = {
+            'price': price,
+            'status': STOCK_IN,
+        }
+        upsert_new_price(ix, shopgame, items, data, stats)
+
+    # update shopgames as out of stock when not found (url would be timestamped)
+    two_days = now() - timedelta(days=2)
+    shopgames_outdated = ShopGame.objects.filter(shop=shop, url_at__lt=two_days).all()
+    for ix, outdated in enumerate(shopgames_outdated):
+        data = {'price': 0, 'status': STOCK_OUT}
+        upsert_new_price(ix, outdated, shopgames_outdated, data, stats)
+
+    logger.info(f'Finished scraping {shop}: {stats}')
