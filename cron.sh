@@ -21,6 +21,7 @@ function main() {
 
   python manage.py train_models sim
 
+  python manage.py scrape_shop bgbsa
   python manage.py scrape_shop thd
   python manage.py scrape_shop mav
   python manage.py scrape_shop timeless

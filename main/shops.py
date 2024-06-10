@@ -326,7 +326,9 @@ def scrape_tabletop_guru_game(url: str) -> dict:
         logger.error(f'Product not found for {url}')
         raise ShopGameNotFoundError() from exc
     html = BeautifulSoup(res.text, 'html.parser')
-
+    if '404 Page Not Found' in html.text:
+        logger.error(f'Product not found for {url}')
+        raise ShopGameNotFoundError('404 text on page')
     script = html.find('script', id='ProductJson-product-template')
     details = json.loads(script.contents[0])
 

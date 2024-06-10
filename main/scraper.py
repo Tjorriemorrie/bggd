@@ -175,7 +175,7 @@ def scrape_hotness() -> list[Game]:
     items = soup.find_all('item')
     for item in items:
         bgg_id = item['id']
-        rank = 1_000 + int(item['rank'])
+        rank = 10_000 + int(item['rank'])
         name = item.find('name')['value']
         year = item.find('yearpublished')['value']
         try:
@@ -221,7 +221,7 @@ def scrape_game(game: Game):
     preload = json.loads(json_match.strip().rstrip(';'))
 
     # basic details
-    game.rank = int(preload['item']['rankinfo'][0]['rank'])
+    game.rank = int(preload['item']['rankinfo'][0]['rank']) or 10_000
     game.min_players = preload['item']['minplayers']
     game.max_players = preload['item']['maxplayers']
     game.min_play_time = preload['item']['minplaytime']
