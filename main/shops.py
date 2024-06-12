@@ -332,10 +332,12 @@ def scrape_tabletop_guru_game(url: str) -> dict:
     script = html.find('script', id='ProductJson-product-template')
     details = json.loads(script.contents[0])
 
+    status = STOCK_IN if details['available'] else STOCK_OUT
+
     price = details['price'] // 100
     if 'ORDER BY' in details['title']:
         price /= 0.30
-    status = STOCK_IN if details['available'] else STOCK_OUT
+        status = STOCK_OUT
 
     return {
         'status': status,

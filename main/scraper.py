@@ -8,11 +8,12 @@ from time import sleep
 import requests
 from bs4 import BeautifulSoup
 from django.db import IntegrityError, OperationalError
-from django.db.models import Avg
+from django.db.models import Avg, Count
 from django.utils.timezone import make_aware, now
 from retry import retry
 
 from main.constants import (
+    REVIEW_COUNT_LIMIT,
     REVIEW_STATUS_CHOICES,
     REVIEW_STATUS_NONE,
     ROWS_TABLE_HEADERS,
@@ -209,6 +210,50 @@ def scrape_thing(bgg_id: int):
     if item['type'] != 'boardgame':
         raise NotBoardGameTypeError()
     return item
+
+
+def delete_most_insignificant_game():
+    """Delete games to reduce reviews count."""
+    total_reviews_cnt = Review.objects.count()
+    if total_reviews_cnt < REVIEW_COUNT_LIMIT:
+        logger.info(f'Not enough reviews to delete games: {total_reviews_cnt}')
+        return
+
+    # Calculate the date one year ago from today
+    one_year_ago = now() - timedelta(days=365)
+    two_year_ago = now() - timedelta(days=365 * 2)
+
+    # Fetch games that didn't have a review in the past year
+    games_without_recent_reviews = Game.objects.filter(created_at__lt=two_year_ago).exclude(
+        reviews__reviewed_at__gte=one_year_ago
+    )
+    logger.info(f'Games without recent reviews: {len(games_without_recent_reviews)}')
+
+    # Query to find the game with the fewest reviews in the past year
+    game_with_fewest_reviews = (
+        Review.objects.filter(game__created_at__lt=two_year_ago, reviewed_at__gt=one_year_ago)
+        .values('game')
+        .annotate(review_count=Count('id'))
+        .order_by('review_count')
+        .first()
+    )
+    game = Game.objects.get(id=game_with_fewest_reviews['game'])
+    game.delete()
+    total_reviews_cnt_after = Review.objects.count()
+    logger.info(f'Deleting {game}: cleared {total_reviews_cnt - total_reviews_cnt_after} reviews')
+
+
+def update_game_details_and_reviews():
+    """Updating games."""
+    logger.info('Updating already scraped games...')
+    days_ago = 5
+    total_game_cnt = Game.objects.count()
+    daily_cut = total_game_cnt // days_ago
+    time_ago = now() - timedelta(days=days_ago)
+    games = Game.objects.filter(scraped_at__lt=time_ago).all()[:daily_cut]
+    for ix, game in enumerate(games):
+        logger.info(f'Progress {ix}/{len(games)}')
+        scrape_game(game)
 
 
 @retry((OperationalError, ScrapeError), delay=3, jitter=3, max_delay=30)

@@ -1,3 +1,4 @@
+import contextlib
 import logging
 
 from django.core.management import BaseCommand
@@ -12,4 +13,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Run the scraping games command."""
-        scrape_hotness()
+        with contextlib.suppress(Exception):
+            logger.info(''.join(['='] * 99))
+            scrape_hotness()
