@@ -7,7 +7,7 @@ from retry import retry
 
 from main.models import Game
 from main.scraper import (
-    delete_most_insignificant_game,
+    delete_most_insignificant_games,
     scrape_game,
     update_game_details_and_reviews,
 )
@@ -31,7 +31,7 @@ class Command(BaseCommand):
         update_game_details_and_reviews()
 
         logger.info(''.join(['='] * 99))
-        delete_most_insignificant_game()
+        delete_most_insignificant_games()
 
         logger.info(''.join(['='] * 50) + ' scraping done ' + ''.join(['='] * 50))
 

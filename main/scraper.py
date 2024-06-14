@@ -184,7 +184,7 @@ def scrape_hotness() -> list[Game]:
         except NotBoardGameTypeError:
             logger.info(f'#{rank} {name} [{year}] is not a boardgame')
             continue
-        game, created = Game.objects.update_or_create(
+        game, created = Game.objects.get_or_create(
             bgg_id=bgg_id,
             defaults={
                 'rank': int(rank),
@@ -193,7 +193,7 @@ def scrape_hotness() -> list[Game]:
                 'year': year,
             },
         )
-        logger.info(f'{created and "Created" or "Updated"} {game}')
+        logger.info(f'{created and "Created" or "Existing"} {game}')
         games.append(game)
         if created:
             logger.info(f'New game! Stopping with {game}')
@@ -212,7 +212,7 @@ def scrape_thing(bgg_id: int):
     return item
 
 
-def delete_most_insignificant_game():
+def delete_most_insignificant_games():
     """Delete games to reduce reviews count."""
     total_reviews_cnt = Review.objects.count()
     if total_reviews_cnt < REVIEW_COUNT_LIMIT:
@@ -230,17 +230,21 @@ def delete_most_insignificant_game():
     logger.info(f'Games without recent reviews: {len(games_without_recent_reviews)}')
 
     # Query to find the game with the fewest reviews in the past year
-    game_with_fewest_reviews = (
+    games_with_fewest_reviews = (
         Review.objects.filter(game__created_at__lt=two_year_ago, reviewed_at__gt=one_year_ago)
         .values('game')
         .annotate(review_count=Count('id'))
         .order_by('review_count')
-        .first()
+        .all()[:10]
     )
-    game = Game.objects.get(id=game_with_fewest_reviews['game'])
-    game.delete()
-    total_reviews_cnt_after = Review.objects.count()
-    logger.info(f'Deleting {game}: cleared {total_reviews_cnt - total_reviews_cnt_after} reviews')
+    for game_info in games_with_fewest_reviews:
+        game = Game.objects.get(id=game_info['game'])
+        game.delete()
+        total_reviews_cnt_after = Review.objects.count()
+        logger.info(
+            f'Deleting {game}: cleared {total_reviews_cnt - total_reviews_cnt_after} reviews'
+        )
+        total_reviews_cnt = total_reviews_cnt_after
 
 
 def update_game_details_and_reviews():
