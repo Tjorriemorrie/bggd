@@ -386,6 +386,10 @@ def scrape_geekhome_game(url: str) -> dict:
         raise ShopGameNotFoundError() from exc
 
     html = BeautifulSoup(res.text, 'html.parser')
+    if 'It looks like nothing was found at this location' in html.text:
+        logger.error(f'Product not found for {url}')
+        raise ShopGameNotFoundError('404 text on page')
+
     container = html.find('div', class_='summary entry-summary')
     price_box = container.find('p', class_='price')
     try:
@@ -460,6 +464,10 @@ def scrape_amazon_game(url: str) -> dict:
     }
     res = get(url, headers)
     html = BeautifulSoup(res.text, 'html.parser')
+    if 'No featured offers available' in html.text:
+        logger.error(f'Product has no prices for {url}')
+        raise ShopGameNotFoundError('No offers text on page')
+
     container = html.find('form', id='addToCart')
 
     price_txt = container.find('span', class_='a-price-whole').text
