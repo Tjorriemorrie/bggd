@@ -274,7 +274,9 @@ def scrape_grinning_gargoyle_game(url: str) -> dict:
     scripts = [s for s in scripts if s.get('type', '') == 'application/ld+json']
     details = json.loads(scripts[-1].contents[0])
     price = int(float(details['@graph'][-1]['offers'][-1]['price']))
-    if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
+    if any(
+        t in details['@graph'][-1]['offers'][-1]['availability'] for t in ['InStock', 'BackOrder']
+    ):
         status = STOCK_IN
     elif 'OutOfStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_OUT
@@ -464,16 +466,16 @@ def scrape_amazon_game(url: str) -> dict:
     }
     res = get(url, headers)
     html = BeautifulSoup(res.text, 'html.parser')
-    if 'No featured offers available' in html.text:
-        logger.error(f'Product has no prices for {url}')
-        raise ShopGameNotFoundError('No offers text on page')
 
-    container = html.find('form', id='addToCart')
+    if any(t in html.text for t in ['No featured offers available', 'Currently unavailable']):
+        price_txt = '0'
+        status = STOCK_OUT
 
-    price_txt = container.find('span', class_='a-price-whole').text
-    price_txt = price_txt.replace('R', '').replace(',', '').strip()
-
-    status = STOCK_OUT if 'out of stock' in container.text else STOCK_IN
+    else:
+        container = html.find('form', id='addToCart')
+        price_txt = container.find('span', class_='a-price-whole').text
+        price_txt = price_txt.replace('R', '').replace(',', '').strip()
+        status = STOCK_OUT if 'out of stock' in container.text else STOCK_IN
 
     return {
         'status': status,

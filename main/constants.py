@@ -74,8 +74,8 @@ SHOP_NAMES = [
     SHOP_GARGOYLE,
     SHOP_TTG,
     SHOP_THD,
-    SHOP_AMAZON,
     SHOP_SWORD_AND_BOARD,
+    SHOP_AMAZON,
 ]
 
 REGEX_BOARD_GAME = r'(?:The\s*)?Board\s*Game'

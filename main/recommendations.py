@@ -222,7 +222,7 @@ def train_sim_model():
         try:
             weight_flags = [game.weight_avg / 5]
         except TypeError:
-            weight_flags = 5
+            weight_flags = [5]
         row = mec_flags + cat_flags + fam_flags + weight_flags
         data.append(row)
 

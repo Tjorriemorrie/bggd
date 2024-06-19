@@ -10,10 +10,16 @@ function main() {
   source .venv/bin/activate
 
   python manage.py scrapehotness
+  python manage.py scrape_games
 
   python manage.py update_game_stats
-
   python manage.py train_models sim
+
+
+  while [ $SECONDS -lt $end ];
+  do
+    python manage.py scrape_players
+  done
 
   python manage.py scrape_shop bgbsa
   python manage.py scrape_shop thd
@@ -27,13 +33,20 @@ function main() {
   python manage.py scrape_shop amazon
   python manage.py scrape_shop outdated
 
-  python manage.py scrape_games
-
-  while [ $SECONDS -lt $end ];
-  do
-    python manage.py scrape_players
-  done
-
 }
 
 main
+
+
+[
+{
+  '@type': 'Offer', 'price': '700', 'priceValidUntil': '2025-12-31', 'priceSpecification':
+  {
+    'price': '700', 'priceCurrency': 'ZAR', 'valueAddedTaxIncluded': 'false'
+    },
+    'priceCurrency': 'ZAR', 'availability': 'http://schema.org/BackOrder', 'url': 'https://grinning-gargoyle.co.za/product/arcs-pre-order-deposit-required-pre-order-by-13-6-2024/', 'seller':
+    {
+      '@type': 'Organization', 'name': 'Grinning Gargoyle Gaming', 'url': 'https://grinning-gargoyle.co.za'
+    }
+    }
+]
