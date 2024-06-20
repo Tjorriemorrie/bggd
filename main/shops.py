@@ -1,12 +1,16 @@
+import concurrent
 import json
 import logging
 import re
+import time
 from datetime import datetime, timedelta
 
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
+from django.db import OperationalError
 from django.utils.timezone import now
+from retry import retry
 
 from main.constants import MINIMUM_GAME_PRICE, SHOP_BGBSA, SHOP_NAMES, STOCK_IN, STOCK_OUT
 from main.errors import ShopGameNotFoundError
@@ -218,6 +222,7 @@ def scrape_site(shop: Shop, shopgames: list[ShopGame] = None, fail_fast: bool = 
     logger.info(f'Finished scraping {shop}: {stats}')
 
 
+@retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
 def upsert_new_price(
     ix: int, shopgame: ShopGame, shopgames: list[ShopGame], data: dict, stats: dict
 ):
@@ -499,44 +504,66 @@ def scrape_bgbsa():
     html = BeautifulSoup(res.text, 'html.parser')
     container = html.find('div', id='fbody')
     items = container.find_all('div', class_='card')
-    total = len(items)
-    for ix, item in enumerate(items):
-        stoid = item.get('stoid')
-        url = f'https://www.bgbsa.co.za/contactbuy.php?id={stoid}'
-        res_detail = get(url)
-        html_detail = BeautifulSoup(res_detail.text, 'html.parser')
+    stoids = [i.get('stoid') for i in items]
+    started_at = time.time()
 
-        pattern_url = re.compile(r'https://boardgamegeek.com/boardgame/.*')
-        tag_with_url = html_detail.find_all(string=pattern_url)[0]
-        bgg_id = int(tag_with_url.text.split('/')[-1])
-        try:
-            game = Game.objects.get(bgg_id=bgg_id)
-        except Game.DoesNotExist:
-            logger.info(f'{ix}/{total}: [{stoid}] game not found')
-            stats['404'] += 1
-            continue
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [
+            executor.submit(bgbsa_worker, ix, stoids, stoid, stats)
+            for ix, stoid in enumerate(stoids)
+        ]
+        for future in concurrent.futures.as_completed(futures):
+            try:
+                future.result()
+            except Exception:
+                logger.exception(f'Worker failed for {future}')
 
-        pattern_price = re.compile(r'R\s*[\d,.]+')
-        tag_with_price = html_detail.find_all(string=pattern_price)[0]
-        price_cleaned = re.sub(r'[^\d.]', '', tag_with_price.text)
-        price = int(float(price_cleaned))
-        if price < MINIMUM_GAME_PRICE:
-            stats['no price'] += 1
-            continue
+    ended_at = time.time()
+    logger.info(f'total time = {(ended_at - started_at):.0f}')
+    # 2 = 295
+    # 4 = 155
+    # 6 = 105
+    # 8 = 90
+    # 10 = bgbgsa error
 
-        shopgame, _ = ShopGame.objects.update_or_create(
-            shop=shop,
-            game=game,
-            defaults={
-                'url': url,
-                'url_at': now(),
-            },
-        )
-        data = {
-            'price': price,
-            'status': STOCK_IN,
-        }
-        upsert_new_price(ix, shopgame, items, data, stats)
+    # total = len(items)
+    # for ix, item in enumerate(items):
+    #     stoid = item.get('stoid')
+    #     url = f'https://www.bgbsa.co.za/contactbuy.php?id={stoid}'
+    #     res_detail = get(url)
+    #     html_detail = BeautifulSoup(res_detail.text, 'html.parser')
+    #
+    #     pattern_url = re.compile(r'https://boardgamegeek.com/boardgame/.*')
+    #     tag_with_url = html_detail.find_all(string=pattern_url)[0]
+    #     bgg_id = int(tag_with_url.text.split('/')[-1])
+    #     try:
+    #         game = Game.objects.get(bgg_id=bgg_id)
+    #     except Game.DoesNotExist:
+    #         logger.info(f'{ix}/{total}: [{stoid}] game not found')
+    #         stats['404'] += 1
+    #         continue
+    #
+    #     pattern_price = re.compile(r'R\s*[\d,.]+')
+    #     tag_with_price = html_detail.find_all(string=pattern_price)[0]
+    #     price_cleaned = re.sub(r'[^\d.]', '', tag_with_price.text)
+    #     price = int(float(price_cleaned))
+    #     if price < MINIMUM_GAME_PRICE:
+    #         stats['no price'] += 1
+    #         continue
+    #
+    #     shopgame, _ = ShopGame.objects.update_or_create(
+    #         shop=shop,
+    #         game=game,
+    #         defaults={
+    #             'url': url,
+    #             'url_at': now(),
+    #         },
+    #     )
+    #     data = {
+    #         'price': price,
+    #         'status': STOCK_IN,
+    #     }
+    #     upsert_new_price(ix, shopgame, items, data, stats)
 
     # update shopgames as out of stock when not found (url would be timestamped)
     two_days = now() - timedelta(days=2)
@@ -546,3 +573,59 @@ def scrape_bgbsa():
         upsert_new_price(ix, outdated, shopgames_outdated, data, stats)
 
     logger.info(f'Finished scraping {shop}: {stats}')
+
+
+def bgbsa_worker(ix: int, items: list, stoid: int, stats: dict):
+    """Threading worker for bgbsa."""
+    total = len(items)
+    url = f'https://www.bgbsa.co.za/contactbuy.php?id={stoid}'
+    res_detail = get(url)
+    logger.debug(f'{ix}/{total}: [{stoid}] Page fetched for {stoid}')
+    html_detail = BeautifulSoup(res_detail.text, 'html.parser')
+
+    pattern_url = re.compile(r'https://boardgamegeek.com/boardgame/.*')
+    tag_with_url = html_detail.find_all(string=pattern_url)[0]
+    bgg_id = int(tag_with_url.text.split('/')[-1])
+
+    try:
+        game = get_game(bgg_id)
+    except Game.DoesNotExist:
+        logger.info(f'{ix}/{total}: [{stoid}] game not found')
+        stats['404'] += 1
+        return
+
+    pattern_price = re.compile(r'R\s*[\d,.]+')
+    tag_with_price = html_detail.find_all(string=pattern_price)[0]
+    price_cleaned = re.sub(r'[^\d.]', '', tag_with_price.text)
+    price = int(float(price_cleaned))
+    if price < MINIMUM_GAME_PRICE:
+        stats['no price'] += 1
+        return
+
+    shopgame = upsert_shopgame(game, url)
+    data = {
+        'price': price,
+        'status': STOCK_IN,
+    }
+    upsert_new_price(ix, shopgame, items, data, stats)
+
+
+@retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
+def get_game(bgg_id: int) -> Game:
+    """Get game with retries."""
+    return Game.objects.get(bgg_id=bgg_id)
+
+
+@retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
+def upsert_shopgame(game: Game, url: str) -> ShopGame:
+    """Upsert shopgame with retries."""
+    shop = Shop.objects.get(name=SHOP_BGBSA)
+    shopgame, _ = ShopGame.objects.update_or_create(
+        shop=shop,
+        game=game,
+        defaults={
+            'url': url,
+            'url_at': now(),
+        },
+    )
+    return shopgame
