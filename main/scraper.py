@@ -68,7 +68,7 @@ class RedirectError(Exception):
 
 
 sleep_time = 0
-last_url = None
+last_url = ''
 
 
 @retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60, tries=10)
@@ -79,7 +79,7 @@ def get(
     global sleep_time  # noqa PLW0603
     global last_url  # noqa PLW0603
 
-    if last_url == url:
+    if url == last_url:
         sleep_time = round(sleep_time + 0.5, 3)
         logger.info(f'Increased sleep time to {sleep_time}')
     elif sleep_time:
@@ -100,6 +100,7 @@ def get(
     except Exception as exc:
         logger.error(f'Connection error! url={url}')
         logger.error(f'Connection error! exc={exc}')
+        sleep(5)
         raise RequestsError() from exc
 
     if res.status_code in [requests.codes.too_many, 430]:

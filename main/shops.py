@@ -279,10 +279,15 @@ def scrape_grinning_gargoyle_game(url: str) -> dict:
     scripts = [s for s in scripts if s.get('type', '') == 'application/ld+json']
     details = json.loads(scripts[-1].contents[0])
     price = int(float(details['@graph'][-1]['offers'][-1]['price']))
-    if any(
-        t in details['@graph'][-1]['offers'][-1]['availability'] for t in ['InStock', 'BackOrder']
-    ):
+    if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_IN
+    if 'BackOrder' in details['@graph'][-1]['offers'][-1]['availability']:
+        status = STOCK_IN
+        price_tag = html.find(text=re.compile(r'Estimate RRP: R\d+(\.\d{2})?'))
+        if price_tag:
+            match = re.search(r'R(\d+(\.\d{2})?)', price_tag.text)
+            if match:
+                price = float(match.group(1))
     elif 'OutOfStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_OUT
     else:
@@ -507,7 +512,7 @@ def scrape_bgbsa():
     stoids = [i.get('stoid') for i in items]
     started_at = time.time()
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as executor:
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
         futures = [
             executor.submit(bgbsa_worker, ix, stoids, stoid, stats)
             for ix, stoid in enumerate(stoids)

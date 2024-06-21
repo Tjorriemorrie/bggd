@@ -36,17 +36,3 @@ function main() {
 }
 
 main
-
-
-[
-{
-  '@type': 'Offer', 'price': '700', 'priceValidUntil': '2025-12-31', 'priceSpecification':
-  {
-    'price': '700', 'priceCurrency': 'ZAR', 'valueAddedTaxIncluded': 'false'
-    },
-    'priceCurrency': 'ZAR', 'availability': 'http://schema.org/BackOrder', 'url': 'https://grinning-gargoyle.co.za/product/arcs-pre-order-deposit-required-pre-order-by-13-6-2024/', 'seller':
-    {
-      '@type': 'Organization', 'name': 'Grinning Gargoyle Gaming', 'url': 'https://grinning-gargoyle.co.za'
-    }
-    }
-]
