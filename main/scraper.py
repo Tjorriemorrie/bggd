@@ -13,6 +13,7 @@ from django.utils.timezone import make_aware, now
 from retry import retry
 
 from main.constants import (
+    DAILY_DELETE_LIMIT,
     REVIEW_COUNT_LIMIT,
     REVIEW_STATUS_CHOICES,
     REVIEW_STATUS_NONE,
@@ -236,16 +237,23 @@ def delete_most_insignificant_games():
         .values('game')
         .annotate(review_count=Count('id'))
         .order_by('review_count')
-        .all()[:10]
+        .all()[:20]
     )
+    del_cnt = 0
     for game_info in games_with_fewest_reviews:
         game = Game.objects.get(id=game_info['game'])
+        if game.shop_available:
+            logger.info(f'{game} is still available.')
+            continue
         game.delete()
         total_reviews_cnt_after = Review.objects.count()
         logger.info(
             f'Deleting {game}: cleared {total_reviews_cnt - total_reviews_cnt_after} reviews'
         )
         total_reviews_cnt = total_reviews_cnt_after
+        del_cnt += 1
+        if del_cnt >= DAILY_DELETE_LIMIT:
+            break
 
 
 def update_game_details_and_reviews():

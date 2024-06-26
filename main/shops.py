@@ -281,7 +281,7 @@ def scrape_grinning_gargoyle_game(url: str) -> dict:
     price = int(float(details['@graph'][-1]['offers'][-1]['price']))
     if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_IN
-    if 'BackOrder' in details['@graph'][-1]['offers'][-1]['availability']:
+    elif 'BackOrder' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_IN
         price_tag = html.find(text=re.compile(r'Estimate RRP: R\d+(\.\d{2})?'))
         if price_tag:
