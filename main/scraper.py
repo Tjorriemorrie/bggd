@@ -8,7 +8,7 @@ from time import sleep
 import requests
 from bs4 import BeautifulSoup
 from django.db import IntegrityError, OperationalError
-from django.db.models import Avg, Count
+from django.db.models import Avg, Count, Q
 from django.utils.timezone import make_aware, now
 from retry import retry
 
@@ -108,7 +108,7 @@ def get(
         logger.error(f'Too many requests: {res.content} for {url}')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
-        logger.error(f'Server error! {url}')
+        logger.error(f'Server error! {url}: {res.text}')
         raise TooManyRequestsError()
     elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
@@ -269,6 +269,15 @@ def update_game_details_and_reviews():
         scrape_game(game)
 
 
+def scrape_new_games():
+    """Newly added games need to get scraped."""
+    logger.info('Scraping new games...')
+    games = Game.objects.filter(Q(scraped_at__isnull=True) | Q(weight_avg__isnull=True)).all()
+    for ix, game in enumerate(games):
+        logger.info(f'Progress {ix}/{len(games)}')
+        scrape_game(game)
+
+
 @retry((OperationalError, ScrapeError), delay=3, jitter=3, max_delay=30)
 def scrape_game(game: Game):
     """Scrape the game from boardgamegeek."""
@@ -280,6 +289,7 @@ def scrape_game(game: Game):
 
     # basic details
     game.rank = int(preload['item']['rankinfo'][0]['rank']) or 10_000
+    game.weight_avg = float(preload['item']['polls']['boardgameweight']['averageweight'])
     game.min_players = preload['item']['minplayers']
     game.max_players = preload['item']['maxplayers']
     game.min_play_time = preload['item']['minplaytime']

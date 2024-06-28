@@ -483,8 +483,12 @@ def scrape_amazon_game(url: str) -> dict:
 
     else:
         container = html.find('form', id='addToCart')
-        price_txt = container.find('span', class_='a-price-whole').text
-        price_txt = price_txt.replace('R', '').replace(',', '').strip()
+        if not container:
+            raise ValueError('Could not find form #addToCart')
+        price_tag = container.find('span', class_='a-price-whole')
+        if not price_tag:
+            raise ValueError('Could not find price span.a-price-whole')
+        price_txt = price_tag.text.replace('R', '').replace(',', '').strip()
         status = STOCK_OUT if 'out of stock' in container.text else STOCK_IN
 
     return {

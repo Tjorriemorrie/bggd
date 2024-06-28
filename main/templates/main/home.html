@@ -40,7 +40,12 @@
                   <h5 class="card-title">{{ lat.name }}</h5>
                   <p class="card-text">
                       {{ lat.year }}
+                      {% if lat.weight_avg %}
                       <br/><span class="card-text text-muted">{{ lat.weight_tag }} Game</span>
+                      {% endif %}
+                      {% if lat.hotness %}
+                      <br/><span class="card-text text-muted">Score: {{ lat.hotness|floatformat:0|intcomma }}</span>
+                      {% endif %}
                   </p>
                   <p class="card-text">#{{ lat.rank }}</p>
                 </div>

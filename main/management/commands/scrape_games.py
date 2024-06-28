@@ -5,10 +5,9 @@ from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
-from main.models import Game
 from main.scraper import (
     delete_most_insignificant_games,
-    scrape_game,
+    scrape_new_games,
     update_game_details_and_reviews,
 )
 
@@ -21,11 +20,7 @@ class Command(BaseCommand):
     @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
     def _main(self, *args, **options):
         logger.info(''.join(['='] * 99))
-        logger.info('Scraping new games...')
-        games = Game.objects.filter(scraped_at__isnull=True).all()
-        for ix, game in enumerate(games):
-            logger.info(f'Progress {ix}/{len(games)}')
-            scrape_game(game)
+        scrape_new_games()
 
         logger.info(''.join(['='] * 99))
         update_game_details_and_reviews()

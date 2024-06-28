@@ -39,6 +39,8 @@ def download_db(ctx):
 
     db_backup = 'db.sqlite3.bck'
     conn.run(f'cp {DIR}/db.sqlite3 {DIR}/{db_backup}', echo=True)
+    # conn.run(f'cp {DIR}/db.sqlite3-shm {DIR}/db.sqlite3-shm.bck', echo=True)
+    # conn.run(f'cp {DIR}/db.sqlite3-wal {DIR}/db.sqlite3-wal.bck', echo=True)
 
     print('zipping files...')
     zip_file = 'data.tar.gz'
@@ -54,11 +56,13 @@ def download_db(ctx):
 
     print('backing up local data...')
     today = datetime.utcnow().strftime('%y%m%d')
-    conn.local(f'cp .\\db.sqlite3 .\\backups\\db.sqlite3.{today}', echo=True)
+    conn.local(f'cp ./db.sqlite3 ./backups/db.sqlite3.{today}', echo=True)
+    # conn.local(f'cp ./db.sqlite3-shm ./backups/db.sqlite3-shm.{today}', echo=True)
+    # conn.local(f'cp ./db.sqlite3-wal ./backups/db.sqlite3-wal.{today}', echo=True)
 
     print('unpacking zip file locally...')
     conn.local('tar -xvf data.tar.gz', echo=True)
-    conn.local('mv -f .\\db.sqlite3.bck .\\db.sqlite3', echo=True)
+    conn.local('mv -f ./db.sqlite3.bck ./db.sqlite3', echo=True)
     print('done')
 
 
