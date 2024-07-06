@@ -550,3 +550,55 @@ class Play(Timestamped):
 
     def __str__(self):
         return f'<Play bggid={self.bgg_id} {self.game.name} by {self.player.nick} {self.day.day}>'
+
+
+class CronSchedule(Timestamped):
+    day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='cron_schedules')
+    hotness = models.TextField(null=True)
+    hotness_dur = models.FloatField(null=True)
+    scrape_games = models.TextField(null=True)
+    scrape_games_dur = models.FloatField(null=True)
+    update_game_stats = models.TextField(null=True)
+    update_game_stats_dur = models.FloatField(null=True)
+    train_models_sim = models.TextField(null=True)
+    train_models_sim_dur = models.FloatField(null=True)
+    scrape_players = models.TextField(null=True)
+    scrape_players_dur = models.FloatField(null=True)
+    scrape_shop_bgbsa = models.TextField(null=True)
+    scrape_shop_bgbsa_dur = models.FloatField(null=True)
+    scrape_shop_thd = models.TextField(null=True)
+    scrape_shop_thd_dur = models.FloatField(null=True)
+    scrape_shop_mav = models.TextField(null=True)
+    scrape_shop_mav_dur = models.FloatField(null=True)
+    scrape_shop_tl = models.TextField(null=True)
+    scrape_shop_tl_dur = models.FloatField(null=True)
+    scrape_shop_gh = models.TextField(null=True)
+    scrape_shop_gh_dur = models.FloatField(null=True)
+    scrape_shop_ttg = models.TextField(null=True)
+    scrape_shop_ttg_dur = models.FloatField(null=True)
+    scrape_shop_gg = models.TextField(null=True)
+    scrape_shop_gg_dur = models.FloatField(null=True)
+    scrape_shop_sab = models.TextField(null=True)
+    scrape_shop_sab_dur = models.FloatField(null=True)
+    scrape_shop_lu = models.TextField(null=True)
+    scrape_shop_lu_dur = models.FloatField(null=True)
+    scrape_shop_amz = models.TextField(null=True)
+    scrape_shop_amz_dur = models.FloatField(null=True)
+    scrape_shop_out = models.TextField(null=True)
+    scrape_shop_out_dur = models.FloatField(null=True)
+
+    def __str__(self):
+        hotness_fmt = self.hotness_dur if self.hotness == 'OK' else self.hotness
+        return f'<Cron {self.day.day} hotness={hotness_fmt}>'
+
+    @staticmethod
+    def upart(data):
+        """Partial update on current cron."""
+        today = Day.get_today()
+        cs, _ = CronSchedule.objects.get_or_create(day=today)
+        for key, value in data.items():
+            setattr(cs, key, value)
+
+        cs.save()
+        logger.info(f'Cron now: {data}')
+        return cs

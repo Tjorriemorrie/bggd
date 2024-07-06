@@ -23,7 +23,19 @@ from main.constants import (
     SHOP_TTG,
 )
 from main.forms import ShopGameForm
-from main.models import Award, Day, Game, Label, Player, PlayerProxy, Price, Review, Shop, ShopGame
+from main.models import (
+    Award,
+    CronSchedule,
+    Day,
+    Game,
+    Label,
+    Player,
+    PlayerProxy,
+    Price,
+    Review,
+    Shop,
+    ShopGame,
+)
 from main.recommendations import predict_player
 from main.scraper import scrape_game, scrape_player
 from main.shops import scrape_site, update_game_shop_prices
@@ -840,6 +852,51 @@ class PriceAdmin(admin.ModelAdmin):
     ordering = ['-day']
     search_fields = ['shopgame__game__name']
     list_filter = ['shopgame__shop__name', 'status']
+
+
+@admin.register(CronSchedule)
+class CronScheduleAdmin(admin.ModelAdmin):
+    list_display = [
+        'day_fmt',
+        'hotness',
+        'hotness_dur',
+        'scrape_games',
+        'scrape_games_dur',
+        'update_game_stats',
+        'update_game_stats_dur',
+        'train_models_sim',
+        'train_models_sim_dur',
+        'scrape_players',
+        'scrape_players_dur',
+        'scrape_shop_bgbsa',
+        'scrape_shop_bgbsa_dur',
+        'scrape_shop_thd',
+        'scrape_shop_thd_dur',
+        'scrape_shop_mav',
+        'scrape_shop_mav_dur',
+        'scrape_shop_tl',
+        'scrape_shop_tl_dur',
+        'scrape_shop_gh',
+        'scrape_shop_gh_dur',
+        'scrape_shop_ttg',
+        'scrape_shop_ttg_dur',
+        'scrape_shop_gg',
+        'scrape_shop_gg_dur',
+        'scrape_shop_sab',
+        'scrape_shop_sab_dur',
+        'scrape_shop_lu',
+        'scrape_shop_lu_dur',
+        'scrape_shop_amz',
+        'scrape_shop_amz_dur',
+        'scrape_shop_out',
+        'scrape_shop_out_dur',
+    ]
+    # ordering = ['-day_fmt']
+
+    @admin.display(ordering=F('day').desc())
+    def day_fmt(self, cs: CronSchedule) -> str:
+        """Return day from Day."""
+        return f'{cs.day.day}'
 
 
 @retry(OperationalError, delay=3, jitter=3, max_delay=30)

@@ -1,10 +1,11 @@
-import contextlib
 import logging
+import time
 
 from django.core.management import BaseCommand
 from django.db import OperationalError
 from retry import retry
 
+from main.models import CronSchedule
 from main.scraper import (
     delete_most_insignificant_games,
     scrape_new_games,
@@ -32,5 +33,16 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Run the scraping games command."""
-        with contextlib.suppress(Exception):
+        msg = 'OK'
+        start_at = time.time()
+        try:
             self._main(*args, **options)
+        except Exception as exc:
+            msg = str(exc)
+        dur = time.time() - start_at
+        CronSchedule.upart(
+            {
+                'scrape_games': msg,
+                'scrape_games_dur': round(dur / 60, 1),
+            }
+        )

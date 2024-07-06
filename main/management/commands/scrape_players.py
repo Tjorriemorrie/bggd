@@ -1,6 +1,6 @@
 import logging
+import time
 from contextlib import suppress
-from time import time
 
 from django.core.management import BaseCommand
 from django.db import OperationalError
@@ -15,7 +15,7 @@ from main.errors import (
     PlayerRatingUsernameNotFoundError,
     PlayerScrapeError,
 )
-from main.models import Game, Player
+from main.models import CronSchedule, Game, Player
 from main.plays import scrape_plays
 from main.recommendations import predict_player
 from main.scraper import scrape_player, scrape_player_ratings
@@ -30,13 +30,13 @@ class Command(BaseCommand):
     def __init__(self, *args, **kwargs):
         """Set start at and count and prefix params."""
         super().__init__(*args, **kwargs)
-        self.start_at = time()
+        self.start_at = time.time()
         self.count = 0
         self.prefix = ''
 
     def _check_watch(self):
         self.count += 1
-        duration = time() - self.start_at
+        duration = time.time() - self.start_at
         if duration > self.timeout:
             raise OutOfTimeError()
         else:
@@ -218,10 +218,19 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Run command."""
+        logger.info(''.join(['='] * 99))
+        msg = 'OK'
+        start_at = time.time()
         try:
             self._loader(*args, **options)
         except OutOfTimeError:
             logger.info(''.join(['='] * 40) + ' outta time ' + ''.join(['='] * 40))
-        except Exception:
-            logger.exception('Error during scraping players!')
-            raise
+        except Exception as exc:
+            msg = str(exc)
+        dur = time.time() - start_at
+        CronSchedule.upart(
+            {
+                'scrape_players': msg,
+                'scrape_players_dur': round(dur / 60, 1),
+            }
+        )

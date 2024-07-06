@@ -21,9 +21,9 @@ function main() {
     python manage.py scrape_players
   done
 
-  python manage.py scrape_shop bgbsa thd mav timeless geekhome
-  python manage.py scrape_shop ttg gargoyle swordandboard levelup amazon
-  python manage.py scrape_shop outdated
+  python manage.py scrape_shop bgbsa thd mav tl gh
+  python manage.py scrape_shop ttg gg sab lu amz
+  python manage.py scrape_shop out
 
 }
 
