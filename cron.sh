@@ -21,8 +21,10 @@ function main() {
     python manage.py scrape_players
   done
 
-  python manage.py scrape_shop bgbsa thd mav tl gh
-  python manage.py scrape_shop ttg gg sab lu amz
+  python manage.py scrape_shop bgbsa
+  python manage.py scrape_shop ttg mav gh
+  python manage.py scrape_shop gg sab lu
+  python manage.py scrape_shop amz tl thd
   python manage.py scrape_shop out
 
 }

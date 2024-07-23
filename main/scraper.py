@@ -72,7 +72,7 @@ sleep_time = 0
 last_url = ''
 
 
-@retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60, tries=10)
+@retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60, tries=2)
 def get(
     url: str, params: dict = None, headers: dict = None, redirect: bool = True
 ) -> requests.Response:
@@ -176,7 +176,7 @@ def scrape_hotness() -> list[Game]:
     res = get(URL_HOTNESS)
     soup = BeautifulSoup(res.content, 'xml')
     items = soup.find_all('item')
-    for item in items:
+    for item in items[:10]:
         bgg_id = item['id']
         rank = 10_000 + int(item['rank'])
         name = item.find('name')['value']

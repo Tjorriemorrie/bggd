@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 from bs4 import BeautifulSoup
+from django.conf import settings
 from django.db import OperationalError
 from django.utils.timezone import now
 from retry import retry
@@ -282,7 +283,7 @@ def scrape_grinning_gargoyle_game(url: str) -> dict:
     if 'InStock' in details['@graph'][-1]['offers'][-1]['availability']:
         status = STOCK_IN
     elif 'BackOrder' in details['@graph'][-1]['offers'][-1]['availability']:
-        status = STOCK_IN
+        status = STOCK_OUT
         price_tag = html.find(text=re.compile(r'Estimate RRP: R\d+(\.\d{2})?'))
         if price_tag:
             match = re.search(r'R(\d+(\.\d{2})?)', price_tag.text)
@@ -472,12 +473,18 @@ def scrape_level_up_game(url: str) -> dict:
 def scrape_amazon_game(url: str) -> dict:
     """Scrape Amazon."""
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa: E501
     }
     res = get(url, headers)
     html = BeautifulSoup(res.text, 'html.parser')
 
-    if any(t in html.text for t in ['No featured offers available', 'Currently unavailable']):
+    if 'The Web address you entered is not a functioning page on our site' in html.text:
+        raise ShopGameNotFoundError('Product page missing')
+
+    if any(
+        t in html.text
+        for t in ['No featured offers available', 'Currently unavailable', 'See All Buying Options']
+    ):  # noqa: E501
         price_txt = '0'
         status = STOCK_OUT
 
@@ -509,17 +516,17 @@ def scrape_bgbsa():
         'errors': 0,
     }
     shop = Shop.objects.get(name=SHOP_BGBSA)
-    res = get(shop.host)
+    res = get(f'{shop.host}listings')
     html = BeautifulSoup(res.text, 'html.parser')
-    container = html.find('div', id='fbody')
-    items = container.find_all('div', class_='card')
-    stoids = [i.get('stoid') for i in items]
-    started_at = time.time()
+    container = html.find('main')
+    items = container.find_all('a', class_='border rounded-md text-center')
+    hrefs = [i.get('href') for i in items]
 
-    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as executor:
+    started_at = time.time()
+    max_workers = 1 if settings.DEBUG else 6
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(bgbsa_worker, ix, stoids, stoid, stats)
-            for ix, stoid in enumerate(stoids)
+            executor.submit(bgbsa_worker, ix, hrefs, href, stats) for ix, href in enumerate(hrefs)
         ]
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -529,50 +536,6 @@ def scrape_bgbsa():
 
     ended_at = time.time()
     logger.info(f'total time = {(ended_at - started_at):.0f}')
-    # 2 = 295
-    # 4 = 155
-    # 6 = 105
-    # 8 = 90
-    # 10 = bgbgsa error
-
-    # total = len(items)
-    # for ix, item in enumerate(items):
-    #     stoid = item.get('stoid')
-    #     url = f'https://www.bgbsa.co.za/contactbuy.php?id={stoid}'
-    #     res_detail = get(url)
-    #     html_detail = BeautifulSoup(res_detail.text, 'html.parser')
-    #
-    #     pattern_url = re.compile(r'https://boardgamegeek.com/boardgame/.*')
-    #     tag_with_url = html_detail.find_all(string=pattern_url)[0]
-    #     bgg_id = int(tag_with_url.text.split('/')[-1])
-    #     try:
-    #         game = Game.objects.get(bgg_id=bgg_id)
-    #     except Game.DoesNotExist:
-    #         logger.info(f'{ix}/{total}: [{stoid}] game not found')
-    #         stats['404'] += 1
-    #         continue
-    #
-    #     pattern_price = re.compile(r'R\s*[\d,.]+')
-    #     tag_with_price = html_detail.find_all(string=pattern_price)[0]
-    #     price_cleaned = re.sub(r'[^\d.]', '', tag_with_price.text)
-    #     price = int(float(price_cleaned))
-    #     if price < MINIMUM_GAME_PRICE:
-    #         stats['no price'] += 1
-    #         continue
-    #
-    #     shopgame, _ = ShopGame.objects.update_or_create(
-    #         shop=shop,
-    #         game=game,
-    #         defaults={
-    #             'url': url,
-    #             'url_at': now(),
-    #         },
-    #     )
-    #     data = {
-    #         'price': price,
-    #         'status': STOCK_IN,
-    #     }
-    #     upsert_new_price(ix, shopgame, items, data, stats)
 
     # update shopgames as out of stock when not found (url would be timestamped)
     two_days = now() - timedelta(days=2)
@@ -584,34 +547,31 @@ def scrape_bgbsa():
     logger.info(f'Finished scraping {shop}: {stats}')
 
 
-def bgbsa_worker(ix: int, items: list, stoid: int, stats: dict):
+def bgbsa_worker(ix: int, items: list, href: str, stats: dict):
     """Threading worker for bgbsa."""
     total = len(items)
-    url = f'https://www.bgbsa.co.za/contactbuy.php?id={stoid}'
-    res_detail = get(url)
-    logger.debug(f'{ix}/{total}: [{stoid}] Page fetched for {stoid}')
+    res_detail = get(href)
+    logger.debug(f'{ix}/{total}: Page fetched for {href}')
     html_detail = BeautifulSoup(res_detail.text, 'html.parser')
 
-    pattern_url = re.compile(r'https://boardgamegeek.com/boardgame/.*')
-    tag_with_url = html_detail.find_all(string=pattern_url)[0]
-    bgg_id = int(tag_with_url.text.split('/')[-1])
+    items = html_detail.find_all('a', attrs={'data-boardgamegeek-id': True})
+    bgg_id = int(items[0].get('data-boardgamegeek-id').split('/')[-1])
 
     try:
         game = get_game(bgg_id)
     except Game.DoesNotExist:
-        logger.info(f'{ix}/{total}: [{stoid}] game not found')
+        logger.info(f'{ix}/{total}: [{href}] game not found')
         stats['404'] += 1
         return
 
-    pattern_price = re.compile(r'R\s*[\d,.]+')
-    tag_with_price = html_detail.find_all(string=pattern_price)[0]
-    price_cleaned = re.sub(r'[^\d.]', '', tag_with_price.text)
-    price = int(float(price_cleaned))
+    price_tag = html_detail.find('td', attrs={'data-listing-price': True})
+    price_txt = price_tag.get('data-listing-price')
+    price = int(float(price_txt))
     if price < MINIMUM_GAME_PRICE:
         stats['no price'] += 1
         return
 
-    shopgame = upsert_shopgame(game, url)
+    shopgame = upsert_shopgame(game, href)
     data = {
         'price': price,
         'status': STOCK_IN,
