@@ -516,8 +516,7 @@ def scrape_bgbsa():
         'errors': 0,
     }
     shop = Shop.objects.get(name=SHOP_BGBSA)
-    '"Authorization: Bearer L5g1PFtaHiVMuDj9MwW7" https://www.bgbsa.co.za/api/all.json '
-    headers = {'Authorization': 'Bearer L5g1PFtaHiVMuDj9MwW7'}
+    headers = {'Authorization': f'Bearer {settings.BGBSA_BEARER}'}
     res = get(f'{shop.host}api/all.json', headers=headers)
     data = res.json()['listings']
 
