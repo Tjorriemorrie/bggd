@@ -516,17 +516,16 @@ def scrape_bgbsa():
         'errors': 0,
     }
     shop = Shop.objects.get(name=SHOP_BGBSA)
-    res = get(f'{shop.host}listings')
-    html = BeautifulSoup(res.text, 'html.parser')
-    container = html.find('main')
-    items = container.find_all('a', class_='border rounded-md text-center')
-    hrefs = [i.get('href') for i in items]
+    '"Authorization: Bearer L5g1PFtaHiVMuDj9MwW7" https://www.bgbsa.co.za/api/all.json '
+    headers = {'Authorization': 'Bearer L5g1PFtaHiVMuDj9MwW7'}
+    res = get(f'{shop.host}api/all.json', headers=headers)
+    data = res.json()['listings']
 
     started_at = time.time()
     max_workers = 1 if settings.DEBUG else 6
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = [
-            executor.submit(bgbsa_worker, ix, hrefs, href, stats) for ix, href in enumerate(hrefs)
+            executor.submit(bgbsa_worker, ix, data, item, stats) for ix, item in enumerate(data)
         ]
         for future in concurrent.futures.as_completed(futures):
             try:
@@ -547,36 +546,28 @@ def scrape_bgbsa():
     logger.info(f'Finished scraping {shop}: {stats}')
 
 
-def bgbsa_worker(ix: int, items: list, href: str, stats: dict):
+def bgbsa_worker(ix: int, data: list, item: str, stats: dict):
     """Threading worker for bgbsa."""
-    total = len(items)
-    res_detail = get(href)
-    logger.debug(f'{ix}/{total}: Page fetched for {href}')
-    html_detail = BeautifulSoup(res_detail.text, 'html.parser')
-
-    items = html_detail.find_all('a', attrs={'data-boardgamegeek-id': True})
-    bgg_id = int(items[0].get('data-boardgamegeek-id').split('/')[-1])
-
+    total = len(data)
     try:
-        game = get_game(bgg_id)
+        game = get_game(item['games'][0]['bgg_id'])
     except Game.DoesNotExist:
-        logger.info(f'{ix}/{total}: [{href}] game not found')
+        logger.info(f'{ix}/{total}: [{item}] game not found')
         stats['404'] += 1
         return
 
-    price_tag = html_detail.find('td', attrs={'data-listing-price': True})
-    price_txt = price_tag.get('data-listing-price')
-    price = int(float(price_txt))
+    price = float(item['price'])
     if price < MINIMUM_GAME_PRICE:
         stats['no price'] += 1
         return
 
-    shopgame = upsert_shopgame(game, href)
-    data = {
+    shopgame = upsert_shopgame(game, item['url'])
+    values = {
         'price': price,
-        'status': STOCK_IN,
+        'status': STOCK_IN if item['state'] == 'active' else STOCK_OUT,
     }
-    upsert_new_price(ix, shopgame, items, data, stats)
+    upsert_new_price(ix, shopgame, data, values, stats)
+    logger.info(f'{ix}/{total}: [{game.name} @ {item["price"]}] game done')
 
 
 @retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
