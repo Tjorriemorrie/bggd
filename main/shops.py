@@ -302,7 +302,12 @@ def scrape_grinning_gargoyle_game(url: str) -> dict:
 
 def scrape_the_hidden_den_game(url: str) -> dict:
     """Scrape the hidden den."""
-    res = get(url)
+    try:
+        res = get(url, redirect=False)
+    except RedirectError as exc:
+        logger.error(f'Product not found for {url}')
+        raise ShopGameNotFoundError() from exc
+
     html = BeautifulSoup(res.text, 'html.parser')
     scripts = html.find_all('script')
     scripts = [s for s in scripts if s.get('type', '') == 'application/ld+json']
