@@ -276,7 +276,10 @@ class ShopGameRenewAdmin(admin.ModelAdmin):
     @admin.display(ordering=F('priority').desc(nulls_first=True))
     def priority(self, game: Game) -> str:
         """Priority."""
-        return f'{int(game.priority * 1000)}'
+        if game.priority:
+            return f'{int(game.priority * 1000)}'
+        else:
+            return '0'
 
     @admin.display(ordering=F('oldest_updated_at').asc(nulls_first=True))
     def oldest_updated_at(self, game: Game) -> str:
