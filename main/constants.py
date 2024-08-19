@@ -46,7 +46,7 @@ REC_COMBOS = set(product(WEIGHTS, PLAYERS_SIZES))
 # 12/240: 1.nemesis 2.dune 3.kemet 4.TI4 5.eclipse
 # 11/220: 1.TI4 2.nemesis 3.inis 4.cloud 5.dimperium 7.eclipse
 
-DAILY_DELETE_LIMIT = 10
+DAILY_DELETE_LIMIT = 100
 
 # memory limits
 REC_MIN_CUTOFF = 20
@@ -69,8 +69,8 @@ SHOP_AMAZON = 'Amazon'
 SHOP_BGBSA = 'BGBSA'
 SHOP_NAMES = [
     SHOP_TIMELESS,
-    SHOP_MEEPS_AND_VEEPS,
     SHOP_BGBSA,
+    SHOP_MEEPS_AND_VEEPS,
     SHOP_LEVEL_UP,
     SHOP_GARGOYLE,
     SHOP_GEEKHOME,

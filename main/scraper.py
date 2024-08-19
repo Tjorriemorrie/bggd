@@ -8,7 +8,7 @@ from time import sleep
 import requests
 from bs4 import BeautifulSoup
 from django.db import IntegrityError, OperationalError
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Q
 from django.utils.timezone import make_aware, now
 from retry import retry
 
@@ -216,6 +216,7 @@ def scrape_thing(bgg_id: int):
 
 def delete_most_insignificant_games():
     """Delete games to reduce reviews count."""
+    logger.info('Deleting oldest games...')
     total_reviews_cnt = Review.objects.count()
     if total_reviews_cnt < REVIEW_COUNT_LIMIT:
         logger.info(f'Not enough reviews to delete games: {total_reviews_cnt}')
@@ -223,36 +224,20 @@ def delete_most_insignificant_games():
 
     # Calculate the date one year ago from today
     one_year_ago = now() - timedelta(days=365)
-    two_year_ago = now() - timedelta(days=365 * 2)
-
-    # Fetch games that didn't have a review in the past year
-    games_without_recent_reviews = Game.objects.filter(created_at__lt=two_year_ago).exclude(
-        reviews__reviewed_at__gte=one_year_ago
-    )
-    logger.info(f'Games without recent reviews: {len(games_without_recent_reviews)}')
+    # two_year_ago = now() - timedelta(days=365 * 2)
 
     # Query to find the game with the fewest reviews in the past year
-    games_with_fewest_reviews = (
-        Review.objects.filter(game__created_at__lt=two_year_ago, reviewed_at__gt=one_year_ago)
-        .values('game')
-        .annotate(review_count=Count('id'))
-        .order_by('review_count')
-        .all()[:20]
-    )
-    del_cnt = 0
-    for game_info in games_with_fewest_reviews:
-        game = Game.objects.get(id=game_info['game'])
-        if game.shop_available:
-            logger.info(f'{game} is still available.')
-            continue
+    games_with_fewest_reviews = Game.objects.filter(
+        created_at__lt=one_year_ago, reviews_cnt__isnull=False, shop_available=False
+    ).order_by('reviews_cnt')
+    for ix, game in enumerate(games_with_fewest_reviews):
         game.delete()
         total_reviews_cnt_after = Review.objects.count()
         logger.info(
             f'Deleting {game}: cleared {total_reviews_cnt - total_reviews_cnt_after} reviews'
         )
         total_reviews_cnt = total_reviews_cnt_after
-        del_cnt += 1
-        if del_cnt >= DAILY_DELETE_LIMIT:
+        if ix >= DAILY_DELETE_LIMIT:
             break
 
 
