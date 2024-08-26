@@ -412,6 +412,22 @@ def mark_mia_thd_cmd(modeladmin, request, queryset):
         )
 
 
+@admin.action(description='Mark Meeps and Veeps shopgames as MIA')
+def mark_mia_mav_cmd(modeladmin, request, queryset):
+    """Mark MaV MIA command."""
+    shop = Shop.objects.get(name=SHOP_MEEPS_AND_VEEPS)
+    for game in queryset:
+        shopgame, _ = ShopGame.objects.update_or_create(
+            game=game,
+            shop=shop,
+            defaults={
+                'url_at': now(),
+                'url': None,
+                'mia': True,
+            },
+        )
+
+
 class ShopGameMav(Game):
     class Meta:
         proxy = True
@@ -423,6 +439,7 @@ class ShopGameMav(Game):
 class ShopGameMavAdmin(admin.ModelAdmin):
     list_display = ('mav', 'title', 'year', 'hotness_fmt')
     ordering = ('year', 'hotness')
+    actions = (mark_mia_mav_cmd,)
 
     def get_queryset(self, request):
         """Get MaV query."""
@@ -451,6 +468,22 @@ class ShopGameMavAdmin(admin.ModelAdmin):
         return format_html(f'{hotness}')
 
 
+@admin.action(description='Mark Timeless shopgames as MIA')
+def mark_mia_tl_cmd(modeladmin, request, queryset):
+    """Mark THD MIA command."""
+    shop = Shop.objects.get(name=SHOP_TIMELESS)
+    for game in queryset:
+        shopgame, _ = ShopGame.objects.update_or_create(
+            game=game,
+            shop=shop,
+            defaults={
+                'url_at': now(),
+                'url': None,
+                'mia': True,
+            },
+        )
+
+
 class ShopGameTimeless(Game):
     class Meta:
         proxy = True
@@ -462,6 +495,7 @@ class ShopGameTimeless(Game):
 class ShopGameTimelessAdmin(admin.ModelAdmin):
     list_display = ('timeless', 'title', 'year', 'hotness_fmt')
     ordering = ('year', 'hotness')
+    actions = (mark_mia_tl_cmd,)
 
     def get_queryset(self, request):
         """Get timeless query."""
@@ -490,6 +524,22 @@ class ShopGameTimelessAdmin(admin.ModelAdmin):
         return format_html(f'{hotness}')
 
 
+@admin.action(description='Mark GeekHome shopgames as MIA')
+def mark_mia_gh_cmd(modeladmin, request, queryset):
+    """Mark GH MIA command."""
+    shop = Shop.objects.get(name=SHOP_GEEKHOME)
+    for game in queryset:
+        shopgame, _ = ShopGame.objects.update_or_create(
+            game=game,
+            shop=shop,
+            defaults={
+                'url_at': now(),
+                'url': None,
+                'mia': True,
+            },
+        )
+
+
 class ShopGameGeekhome(Game):
     class Meta:
         proxy = True
@@ -501,6 +551,7 @@ class ShopGameGeekhome(Game):
 class ShopGameGeekhomeAdmin(admin.ModelAdmin):
     list_display = ('geekhome', 'title', 'year', 'hotness_fmt')
     ordering = ('year', 'hotness')
+    actions = (mark_mia_gh_cmd,)
 
     def get_queryset(self, request):
         """Get Geekhome query."""

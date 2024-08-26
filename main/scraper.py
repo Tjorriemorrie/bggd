@@ -171,6 +171,7 @@ def scrape_rankings() -> list[Game]:
 
 def scrape_hotness() -> list[Game]:
     """Scrape boardgamegeek api hotness."""
+    return
     logger.info('Scraping hotness...')
     games = []
     res = get(URL_HOTNESS)

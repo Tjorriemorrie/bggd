@@ -9,7 +9,6 @@ function main() {
   cd /home/django/bggd
   source .venv/bin/activate
 
-  #python manage.py scrapehotness
   python manage.py scraperankings
   python manage.py scrape_games
 
