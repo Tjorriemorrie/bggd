@@ -31,10 +31,15 @@ jobs:
       - name: Add DigitalOcean host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
-          # Output known_hosts to confirm it's added
+          ssh-keyscan -H ${{ secrets.SERVER_HOST }} > ~/.ssh/known_hosts
+          chmod 600 ~/.ssh/known_hosts
+          echo "Known hosts file contents:"
           cat ~/.ssh/known_hosts
+
+      - name: Debug SSH connection (optional)
+        run: |
+          ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'echo SSH connection successful!'
 
       - name: Deploy to DigitalOcean
         run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' < ./scripts/deploy.sh
+          ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' < ./scripts/deploy.sh
