@@ -25,7 +25,10 @@ echo "Collecting static files..." | tee -a "$logfile"
 python3 manage.py collectstatic --noinput >> "$logfile" 2>&1
 
 echo "Restarting Gunicorn..." | tee -a "$logfile"
-sudo systemctl restart gunicorn >> "$logfile" 2>&1
+sudo /usr/bin/systemctl restart gunicorn >> "$logfile" 2>&1 || {
+    echo "Failed to restart Gunicorn" | tee -a "$logfile"
+    exit 1
+}
 
 # Optional: Restart Nginx if needed
 # echo "Restarting Nginx..." | tee -a "$logfile"
