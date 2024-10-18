@@ -551,3 +551,28 @@ jobs:
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
 ```
+
+
+Solution: Allow passwordless sudo for restarting Gunicorn
+
+    Edit the sudoers file for your user (bgg) to allow passwordless execution of the systemctl restart gunicorn command:
+
+        SSH into your server.
+
+        Run the following command to edit the sudoers file for your user:
+
+        bash
+
+sudo visudo
+
+Add the following line to the end of the file, which allows the bgg user to restart Gunicorn without needing to enter a password:
+
+bash
+
+    bgg ALL=(ALL) NOPASSWD: /bin/systemctl restart gunicorn
+
+Update the deploy script: Now, the sudo command will no longer ask for a password when restarting Gunicorn. Your deploy script can remain the same:
+
+bash
+
+sudo systemctl restart gunicorn

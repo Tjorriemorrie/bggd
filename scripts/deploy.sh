@@ -15,7 +15,7 @@ python3 manage.py migrate --noinput
 python3 manage.py collectstatic --noinput
 
 # Restart Gunicorn
-sudo systemctl restart gunicorn
+systemctl restart gunicorn
 
 # Optional: Restart Nginx if needed
 #sudo systemctl restart nginx
