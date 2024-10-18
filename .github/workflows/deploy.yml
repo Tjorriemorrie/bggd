@@ -42,4 +42,4 @@ jobs:
 
       - name: Deploy to DigitalOcean
         run: |
-          ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' < ./scripts/deploy.sh >> /home/bgg/deploy.log 2>&1
+          ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' < ./scripts/deploy.sh
