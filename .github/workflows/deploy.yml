@@ -30,7 +30,10 @@ jobs:
 
       - name: Add DigitalOcean host to known_hosts
         run: |
+          mkdir -p ~/.ssh
           ssh-keyscan -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts
+          # Output known_hosts to confirm it's added
+          cat ~/.ssh/known_hosts
 
       - name: Deploy to DigitalOcean
         run: |
