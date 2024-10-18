@@ -1,4 +1,5 @@
 set -e
+set -x  # Enable debugging
 
 # Navigate to your project directory
 cd /home/bgg/bggd
@@ -30,8 +31,9 @@ echo "collectstatic exit code: $?" | tee -a "$logfile"
 
 # Restart Gunicorn using the password from SERVER_PWD
 echo "Restarting Gunicorn..." | tee -a "$logfile"
-if echo "$SERVER_PWD" | sudo -S systemctl restart gunicorn >> "$logfile" 2>&1; then
-    echo "Gunicorn restarted successfully." | tee -a "$logfile"
+if sudo systemctl status gunicorn; then
+    echo "Gunicorn is running." | tee -a "$logfile"
 else
-    echo "Failed to restart Gunicorn" | tee -a "$logfile"
+    echo "Gunicorn failed to start." | tee -a "$logfile"
+    exit 1  # Exit with an error code if Gunicorn is not running
 fi
