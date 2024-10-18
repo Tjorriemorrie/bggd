@@ -37,3 +37,4 @@ else
     echo "Gunicorn failed to start." | tee -a "$logfile"
     exit 1  # Exit with an error code if Gunicorn is not running
 fi
+echo "gunicorn exit code: $?" | tee -a "$logfile"
