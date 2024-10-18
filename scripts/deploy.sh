@@ -26,7 +26,7 @@ python3 manage.py collectstatic --noinput >> "$logfile" 2>&1
 
 # Restart Gunicorn using the password from SERVER_PWD
 echo "Restarting Gunicorn..." | tee -a "$logfile"
-echo "Server password: $SERVER_PWD"
+echo "Server password: $SERVER_PWD" | tee -a "$logfile"
 echo "$SERVER_PWD" | sudo -S systemctl restart gunicorn >> "$logfile" 2>&1
 
 # Optional: Restart Nginx if needed
