@@ -24,11 +24,13 @@ python3 manage.py migrate --noinput >> "$logfile" 2>&1
 echo "Collecting static files..." | tee -a "$logfile"
 python3 manage.py collectstatic --noinput >> "$logfile" 2>&1
 
+# Restart Gunicorn using the password from SERVER_PWD
 echo "Restarting Gunicorn..." | tee -a "$logfile"
-sudo /usr/bin/systemctl restart gunicorn >> "$logfile" 2>&1 || {
+if echo "$SERVER_PWD" | sudo -S systemctl restart gunicorn >> "$logfile" 2>&1; then
+    echo "Gunicorn restarted successfully." | tee -a "$logfile"
+else
     echo "Failed to restart Gunicorn" | tee -a "$logfile"
-    exit 1
-}
+fi
 
 # Optional: Restart Nginx if needed
 # echo "Restarting Nginx..." | tee -a "$logfile"
