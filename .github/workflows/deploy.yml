@@ -1,50 +1,33 @@
-name: Deploy Django Application
+name: Deploy to DigitalOcean
 
 on:
   push:
     tags:
-      - 'v*'  # Trigger deployment when a tag starting with 'v' is pushed (e.g., v1.0, v1.1)
+      - 'v*'  # Trigger on tags that start with "v"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
 
     steps:
-      # Checkout the code
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
 
-      # Set up Python 3.12
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v2
         with:
           python-version: '3.12'
 
-      # Deploy via SSH
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@v0.1.7
+      - name: Install dependencies
+        run: |
+          python3 -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Set up SSH
+        uses: webfactory/ssh-agent@v0.5.3
         with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: ${{ secrets.SERVER_USER }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          script: |
-            # Navigate to your project directory on the server
-            cd /home/bgg/bggd
+          ssh-private-key: ${{ secrets.SERVER_SSH_KEY }}
 
-            # Pull the latest changes
-            git pull origin main
-
-            # Activate virtual environment
-            source /home/bgg/bggd/.venv/bin/activate
-
-            # Install dependencies
-            pip install -r requirements.txt
-
-            # Apply migrations
-            python manage.py migrate --noinput
-
-            # Collect static files
-            python manage.py collectstatic --noinput
-
-            # Restart the application (assuming you're using Gunicorn)
-#            sudo systemctl restart gunicorn  # Adjust this to your specific WSGI server if different (e.g., uwsgi)
+      - name: Deploy to DigitalOcean
+        run: |
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} 'bash -s' < ./scripts/deploy.sh

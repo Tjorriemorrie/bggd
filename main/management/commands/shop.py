@@ -20,11 +20,11 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         """Scrape shops."""
+        logger.info('Scraping shops...')
+        time.sleep(3)
+
         name_param = options['shop_name']
-        if name_param == 'all':
-            names = shop_names
-        else:
-            names = [name_param]
+        names = shop_names if name_param == 'all' else [name_param]
 
         for name in names:
             msg = 'OK'

@@ -50,6 +50,7 @@ def base_scrape(worker):
 
 
 def strip_query_params(url: str) -> str:
+    """Strip query params."""
     # Parse the URL into components
     parsed_url = urlparse(url)
     # Rebuild the URL without query parameters (empty query part)
@@ -58,6 +59,7 @@ def strip_query_params(url: str) -> str:
 
 
 def verify_image_url(url: str) -> bool:
+    """Verify the image url."""
     try:
         response = get(url)
     except requests.RequestException as exc:
@@ -83,14 +85,14 @@ def parse_price(price_txt) -> float:
 
 @retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
 def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> Listing:
-    """update/create and store the listing in the db"""
+    """Update/create and store the listing in the db."""
     href = strip_query_params(href)
     img_src = strip_query_params(img_src)
     listing, created = Listing.objects.update_or_create(
         shop=shop,
-        name=name,
         url=href,
         defaults={
+            'name': name,
             'slug': slugify(unidecode(name)),
             'img': img_src,
             'scraped_at': timezone.now(),
