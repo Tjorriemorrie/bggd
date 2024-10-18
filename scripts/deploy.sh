@@ -24,14 +24,8 @@ python3 manage.py migrate --noinput >> "$logfile" 2>&1
 echo "Collecting static files..." | tee -a "$logfile"
 python3 manage.py collectstatic --noinput >> "$logfile" 2>&1
 
-# Check if SERVER_PWD is set
-if [ -z "$SERVER_PWD" ]; then
-    echo "Error: SERVER_PWD is not set." | tee -a "$logfile"
-    exit 1
-else
-    echo "Using the provided server password to restart Gunicorn." | tee -a "$logfile"
-    echo "$SERVER_PWD" | sudo -S systemctl restart gunicorn >> "$logfile" 2>&1
-fi
+echo "Restarting Gunicorn..." | tee -a "$logfile"
+sudo systemctl restart gunicorn >> "$logfile" 2>&1
 
 # Optional: Restart Nginx if needed
 # echo "Restarting Nginx..." | tee -a "$logfile"

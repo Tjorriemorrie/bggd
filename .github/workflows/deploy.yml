@@ -43,5 +43,3 @@ jobs:
       - name: Deploy to DigitalOcean
         run: |
           ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' < ./scripts/deploy.sh
-        env:
-          SERVER_PWD: ${{ secrets.SERVER_PWD }}
