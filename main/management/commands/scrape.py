@@ -3,8 +3,8 @@ import time
 
 from django.core.management import BaseCommand
 
+from main.games import scrape_hotness
 from main.models import CronSchedule
-from main.scraper import scrape_hotness
 
 logger = logging.getLogger(__name__)
 

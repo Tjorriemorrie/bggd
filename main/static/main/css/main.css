@@ -1,30 +1,61 @@
-*, body {
-    font-family: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui, helvetica neue, helvetica, Cantarell, Ubuntu, roboto, noto, arial, sans-serif;
+a {
+    text-decoration: none;
+    color: #333;
+}
+
+a:hover {
+    color: #000;
+}
+
+.out-of-stock-txt {
+    color: #666;
+}
+
+
+.out-of-stock-img {
+    filter: grayscale(100%);
+    opacity: 0.5;
+}
+
+/************************* GAME CARD GROUP **********************************/
+
+.card {
+    width: 100%;
 }
 
 .card-img-top {
-    width: 100%;
-    height: 20vh;
-    object-fit: cover;
-}
-
-.card-img-top-4 {
-    height: 30vh;
+    height: 18em;
+    object-fit: contain;
 }
 
 
-.video-container {
-    position: relative;
-    padding-bottom: 56.25%;
-    padding-top: 30px;
-    height: 0;
-    overflow: hidden;
+.card-title a {
+    text-decoration: none;
+    font-style: normal;
+    color: #222;
 }
 
-.video-container iframe, .video-container object, .video-container embed {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
+.card-title-oos {
+    text-decoration: line-through;
+}
+
+/************************* LIST **********************************/
+
+.list-img {
+    height: 4em;
+    width: auto;
+    padding: 0 2em 0;
+}
+
+/************************* LISTING DETAIL **********************************/
+
+.container-listing-detail img {
+    width: 10em;
+}
+
+
+/************************* FILTERING FORM **********************************/
+
+.filtering-form .form-control {
+    margin-top: 1em;
 }

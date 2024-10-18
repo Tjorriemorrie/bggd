@@ -1,154 +1,16 @@
 {% extends 'main/base.html' %}
+
 {% load humanize %}
 
 {% block content %}
-  <div class="container">
+    <div class="row mt-5">
+        <div class="col">
 
-    {% include 'main/navbar.html' with nav=nav %}
+            {% if savings %}
+                <h3>Best savings on games!</h3>
+                {% include 'main/snippet_game_group.html' with games=savings %}
+            {% endif %}
 
-    <br/>
-    <div class="row">
-      <div class="col text-center">
-        <h3>Games</h3>
-        <h5>{{ game_cnt|intcomma }}</h5>
-      </div>
-      <div class="col text-center">
-        <h3>Players</h3>
-        <h5>{{ player_cnt|intcomma }}</h5>
-      </div>
-      <div class="col text-center">
-        <h3>Ratings</h3>
-        <h5>{{ reviews_cnt|intcomma }}</h5>
-      </div>
-    </div>
-
-
-    <br/>
-    <div class="row">
-      <h4>Recently added!</h4>
-      <p class="text-muted"><small>Latest games scraped this past quarter.</small></p>
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <div class="card-group">
-          {% for lat in latest %}
-            <div class="card border-dark">
-              <a href="{% url 'game_detail' lat.id %}" class="text-reset text-decoration-none">
-                <img src="{{ lat.img }}" class="card-img-top card-img-top-4"/>
-                <div class="card-body">
-                  <h5 class="card-title">{{ lat.name }}</h5>
-                  <p class="card-text">
-                      {{ lat.year }}
-                      {% if lat.weight_avg %}
-                      <br/><span class="card-text text-muted">{{ lat.weight_tag }} Game</span>
-                      {% endif %}
-                      {% if lat.hotness %}
-                      <br/><span class="card-text text-muted">Score: {{ lat.hotness|floatformat:0|intcomma }}</span>
-                      {% endif %}
-                  </p>
-                  <p class="card-text">#{{ lat.rank }}</p>
-                </div>
-              </a>
-            </div>
-          {% endfor %}
         </div>
-      </div>
     </div>
-
-
-    <br/>
-    <div class="row">
-      <h4>What's hot!</h4>
-      <p class="text-muted"><small>Most rated games this past month.</small></p>
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <div class="card-group">
-          {% for hot in hotness|slice:':4' %}
-            <div class="card border-dark">
-              <a href="{% url 'game_detail' hot.id %}" class="text-reset text-decoration-none">
-                <img src="{{ hot.img }}" class="card-img-top card-img-top-4"/>
-                <div class="card-body">
-                  <h5 class="card-title">{{ hot.name }}</h5>
-                  <p class="card-text">
-                    <small class="text-muted">Score: {{ hot.hotness|floatformat:0|intcomma }}</small>
-                  </p>
-                </div>
-              </a>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <div class="card-group">
-          {% for hot in hotness|slice:'4:' %}
-            <div class="card border-dark">
-              <a href="{% url 'game_detail' hot.id %}" class="text-reset text-decoration-none">
-                <img src="{{ hot.img }}" class="card-img-top"/>
-                <div class="card-body">
-                  <h5 class="card-title">{{ hot.name }}</h5>
-                  <p class="card-text">
-                    <small class="text-muted">Score: {{ hot.hotness|floatformat:0|intcomma }}</small>
-                  </p>
-                </div>
-              </a>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
-    <br/>
-    <div class="row">
-      <h4>Turn your eye to these hidden gems!</h4>
-      <p class="text-muted"><small>These games are highly recommended in contrast
-      to the number of ratings received!</small></p>
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <div class="card-group">
-          {% for upc in upcoming|slice:':4' %}
-            <div class="card border-dark">
-              <a href="{% url 'game_detail' upc.id %}" class="text-reset text-decoration-none">
-                <img src="{{ upc.img }}" class="card-img-top card-img-top-4"/>
-                <div class="card-body">
-                  <h5 class="card-title">{{ upc.name }}</h5>
-                  <p class="card-text">
-                    <small class="text-muted">Score: {{ upc.score|floatformat:0|intcomma }}</small>
-                  </p>
-                </div>
-              </a>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
-    <div class="row">
-      <div class="col">
-        <div class="card-group">
-          {% for upc in upcoming|slice:'4:' %}
-            <div class="card border-dark">
-              <a href="{% url 'game_detail' upc.id %}" class="text-reset text-decoration-none">
-                <img src="{{ upc.img }}" class="card-img-top"/>
-                <div class="card-body">
-                  <h5 class="card-title">{{ upc.name }}</h5>
-                  <p class="card-text">
-                    <small class="text-muted">Score: {{ upc.score|floatformat:0|intcomma }}</small>
-                  </p>
-                </div>
-              </a>
-            </div>
-          {% endfor %}
-        </div>
-      </div>
-    </div>
-
-  </div>
 {% endblock %}

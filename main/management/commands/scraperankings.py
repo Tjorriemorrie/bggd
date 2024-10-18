@@ -2,7 +2,7 @@ import logging
 
 from django.core.management import BaseCommand
 
-from main.scraper import scrape_rankings
+from main.games import scrape_rankings
 
 logger = logging.getLogger(__name__)
 

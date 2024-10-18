@@ -25,8 +25,8 @@ from main.constants import (
     SOME_YEARS_AGO,
 )
 from main.errors import PlayerRatingNewGameError, PlayerRatingUsernameNotFoundError
+from main.games import scrape_player_ratings
 from main.models import LABEL_MECHANIC, Game, Label, Player, Rec, Review
-from main.scraper import scrape_player_ratings
 
 logger = logging.getLogger(__name__)
 
@@ -203,7 +203,7 @@ def train_sim_model():
     categories = Label.objects.filter(type=LABEL_CATEGORY).all()
     logger.info(f'Loaded {len(categories)} categories')
     families = Label.objects.filter(type=LABEL_FAMILY).all()
-    families = [f for f in families if not any(ig in f.name for ig in IGNORE_FAMILIES)]
+    families = [f for f in families if not any(ig in f.shop_name for ig in IGNORE_FAMILIES)]
     logger.info(f'Loaded {len(families)} families')
 
     games = (

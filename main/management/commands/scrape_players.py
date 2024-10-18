@@ -15,10 +15,10 @@ from main.errors import (
     PlayerRatingUsernameNotFoundError,
     PlayerScrapeError,
 )
+from main.games import scrape_player, scrape_player_ratings
 from main.models import CronSchedule, Game, Player
 from main.plays import scrape_plays
 from main.recommendations import predict_player
-from main.scraper import scrape_player, scrape_player_ratings
 
 logger = logging.getLogger(__name__)
 

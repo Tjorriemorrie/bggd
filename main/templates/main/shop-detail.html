@@ -1,0 +1,18 @@
+{% extends 'main/base.html' %}
+
+{% block content %}
+    <div class="row container-shop-detail">
+        <div class="col">
+            <h1>Shop:
+                {{ shop.name }}
+                <a href="{{ shop.host }}" target="_blank" class="ms-3"><i class="bi bi-box-arrow-up-right"></i></a>
+            </h1>
+
+            <dl>
+                <dt>Listings</dt>
+                <dd>{{ shop.listings.count }}</dd>
+            </dl>
+            <sub><small class="text-muted">Created at: {{ shop.created_at }}</small></sub>
+        </div>
+    </div>
+{% endblock %}

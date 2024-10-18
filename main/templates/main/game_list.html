@@ -1,13 +1,13 @@
 {% extends 'main/base.html' %}
 {% load humanize %}
 {% load params %}
-{% load shops %}
+{% load fmt %}
 
 {% block title %}Games - {{ block.super }}{% endblock %}
 
 {% block content %}
   <div class="container">
-    {% include 'main/navbar.html' with nav='games' %}
+    {% include 'main/snippet_navbar.html' with nav='games' %}
 
     <br/>
     <div class="row">

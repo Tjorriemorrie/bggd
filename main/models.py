@@ -1,49 +1,15 @@
 import logging
-import re
-from datetime import datetime
-from typing import Optional
 
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.utils.http import urlencode
-from django.utils.safestring import mark_safe
+from django.urls import reverse
 from django.utils.timezone import now
+from unidecode import unidecode
 
-from main.constants import (
-    AWARD_GAME_OF_THE_MONTH,
-    AWARD_GAME_OF_THE_YEAR,
-    IGNORE_FAMILIES,
-    LABEL_CATEGORY,
-    LABEL_FAMILY,
-    LABEL_MECHANIC,
-    LABEL_SUBDOMAIN,
-    REGEX_BOARD_GAME,
-    REGEX_BRACKETS,
-    REVIEW_STATUS_CHOICES,
-    SHOP_AMAZON,
-    SHOP_BGBSA,
-    SHOP_GARGOYLE,
-    SHOP_GEEKHOME,
-    SHOP_LEVEL_UP,
-    SHOP_MEEPS_AND_VEEPS,
-    SHOP_SWORD_AND_BOARD,
-    SHOP_THD,
-    SHOP_TIMELESS,
-    SHOP_TTG,
-    STOCK_IN,
-    STOCK_OUT,
-    WEIGHT_HEAVY,
-    WEIGHT_LIGHT,
-    WEIGHT_MEDIUM,
-)
+from main.constants import CHOICES_LABELS, CHOICES_WEIGHTS
+from main.managers import ListingManager
 
 logger = logging.getLogger(__name__)
-
-CHOICES_WEIGHTS = (
-    (WEIGHT_HEAVY, WEIGHT_HEAVY),
-    (WEIGHT_MEDIUM, WEIGHT_MEDIUM),
-    (WEIGHT_LIGHT, WEIGHT_LIGHT),
-)
 
 
 class Timestamped(models.Model):
@@ -54,19 +20,30 @@ class Timestamped(models.Model):
         abstract = True
 
 
+class Shop(Timestamped):
+    name = models.CharField(max_length=50)
+    slug = models.SlugField()
+
+    def __str__(self) -> str:
+        return unidecode(f'{self.name}')
+
+    def get_absolute_url(self):
+        """Get detail url."""
+        return reverse('shop-detail-slug', kwargs={'pk': self.pk, 'slug': self.slug})
+
+    @property
+    def host(self):
+        from main.shops import shop_hosts
+
+        return shop_hosts[self.name]
+
+
 class Label(Timestamped):
-    CHOICES_LABELS = (
-        (LABEL_CATEGORY, LABEL_CATEGORY),
-        (LABEL_MECHANIC, LABEL_MECHANIC),
-        (LABEL_FAMILY, LABEL_FAMILY),
-        (LABEL_SUBDOMAIN, LABEL_SUBDOMAIN),
-    )
-    bgg_id = models.PositiveIntegerField()
-    name = models.CharField(max_length=256)
-    type = models.CharField(max_length=256, choices=CHOICES_LABELS)
+    name = models.CharField(max_length=255)
+    type = models.CharField(max_length=50, choices=CHOICES_LABELS)
 
     def __str__(self):
-        return f'<Label-{self.bgg_id} {self.type} {self.name}>'
+        return unidecode(f'<Label-{self.id} [{self.type}] {self.name}>')
 
 
 class Game(Timestamped):
@@ -75,13 +52,15 @@ class Game(Timestamped):
     families = models.ManyToManyField(Label, related_name='fam_games', blank=True)
     subdomains = models.ManyToManyField(Label, related_name='dom_games', blank=True)
 
-    bgg_id = models.PositiveIntegerField(db_index=True)
     name = models.CharField(max_length=250)
+    slug = models.SlugField()
+    label = models.CharField(max_length=50)
     year = models.IntegerField(
         validators=[MinValueValidator(-2500), MaxValueValidator(now().year + 1)]
     )
     url = models.CharField(max_length=250)
-    rank = models.PositiveIntegerField()
+    rank = models.PositiveIntegerField(null=True, blank=True)
+    rating = models.FloatField(null=True, blank=True)
 
     # details
     scraped_at = models.DateTimeField(null=True, blank=True)
@@ -101,504 +80,248 @@ class Game(Timestamped):
     best_min_players = models.PositiveSmallIntegerField(null=True, blank=True)
     best_max_players = models.PositiveSmallIntegerField(null=True, blank=True)
     # weight
-    weight_avg = models.FloatField(null=True)
-    weight_tag = models.CharField(max_length=20, null=True, choices=CHOICES_WEIGHTS)
-
-    # from reviews
-    rating = models.FloatField(null=True)  # scrape cron update
-    reviews_cnt = models.IntegerField(null=True)  # scrape cron update
-    recs_cnt = models.IntegerField(null=True)  # scrape cron update
-
-    # hotness
-    hotness = models.FloatField(null=True)  # update hotness cron
-
-    # similar
-    similars = models.ManyToManyField('Game', symmetrical=False, related_name='rev_similars')
-    sim_at = models.DateTimeField(null=True, blank=True)
+    weight_avg = models.FloatField(null=True, blank=True)
+    weight_tag = models.CharField(max_length=20, choices=CHOICES_WEIGHTS, null=True, blank=True)
 
     # shops aggregate
-    shop_available = models.BooleanField(null=True, blank=True)
-    shop_price = models.IntegerField(null=True, blank=True)
+    shop_best = models.ForeignKey(
+        Shop, on_delete=models.SET_NULL, related_name='cheapest_games', null=True, blank=True
+    )
+    shop_in_stock = models.BooleanField(null=True, blank=True)
+    shop_price = models.DecimalField(decimal_places=2, max_digits=9, null=True, blank=True)
     shop_mean = models.IntegerField(null=True, blank=True)
     shop_saving = models.FloatField(null=True, blank=True)
-    shop_outdated = models.BooleanField(default=False)
+    shop_outdated = models.BooleanField(default=True)
     shop_updated_at = models.DateTimeField(null=True, blank=True)
 
-    class Meta:
-        ordering = ('rank',)
-
     def __str__(self) -> str:
-        return f'{self.name} ({self.year})'
+        return unidecode(f'{self.name} ({self.year})')
 
-    @property
-    def bgg_link(self):
-        """Get boardgamegeek game url."""
-        return f'https://www.boardgamegeek.com/boardgame/{self.bgg_id}'
-
-    def best_shop(self) -> Optional['ShopGame']:
-        """Returns best shop with available stock."""
-        return (
-            self.shopgames.filter(current_available=True, url__isnull=False)
-            .order_by('current_price')
-            .first()
-        )
-
-    def comments(self) -> list['Review']:
-        """Get ordred comments."""
-        return self.reviews.filter(
-            comment__isnull=False, player__reviews_scr__isnull=False
-        ).order_by('-player__reviews_scr')
-
-    def similar(self) -> list['Game']:
-        """Returns similar games from kmean clustering."""
-        if not self.sim_cluster:
-            return []
-        return Game.objects.exclude(id=self.id).filter(sim_cluster=self.sim_cluster).all()
-
-    def mechanics_comma(self) -> str:
-        """Format mechanics with comma."""
-        return ', '.join([m.name for m in self.mechanics.all()])
-
-    def good_families(self) -> list[Label]:
-        """Get families that are used."""
-        return [f for f in self.families.all() if not any(ig in f.name for ig in IGNORE_FAMILIES)]
-
-    def families_comma(self) -> str:
-        """Format families with comma."""
-        return ', '.join([f.name for f in self.families.all()])
-
-    def categories_comma(self) -> str:
-        """Format categories with comma."""
-        return ', '.join([c.name for c in self.categories.all()])
-
-    def players_fmt(self) -> str:
-        """Show players on game detail page."""
-        cnts = []
-        for cnt in range(1, 9):
-            if self.best_min_players <= cnt <= self.best_max_players:
-                cnts.append(f'<strong style="font-size: 1.1em">{cnt}</strong>')
-            elif self.rec_min_players <= cnt <= self.rec_max_players:
-                cnts.append(f'{cnt}')
-            elif self.min_players <= cnt <= self.max_players:
-                cnts.append(f'<small class="text-muted">{cnt}</small>')
-        return mark_safe('&nbsp;'.join(cnts))  # noqa S308
-
-    def age_fmt(self) -> str:
-        """Format age specs."""
-        if self.rec_min_age:
-            return f'{self.rec_min_age}+'
-        elif self.min_age:
-            return f'{self.min_age}+'
-        return ''
-
-    def awards_fmt(self) -> str:
-        """Format awards."""
-        badges = []
-        for award in self.awards.all():
-            if award.type == AWARD_GAME_OF_THE_YEAR:
-                bg = 'bg-success text-light'
-                trophy = '<i class="bi bi-trophy-fill"></i>'
-            else:
-                bg = 'bg-light text-muted'
-                trophy = '<i class="bi bi-trophy"></i>'
-            badges.append(f"""<span class="badge {bg}" title="{award.description}">
-                {trophy}
-                {award.badge}
-            </span>""")
-        return ''.join(badges)
+    def get_absolute_url(self):
+        return reverse('game-detail-slug', kwargs={'pk': self.pk, 'slug': self.slug})
 
 
-class Player(Timestamped):
-    bgg_id = models.PositiveIntegerField(null=True)
-    nick = models.CharField(max_length=256, unique=True)
-
-    # updated in scrape
-    name = models.CharField(max_length=256, null=True, blank=True)
-    country = models.CharField(max_length=150, null=True, blank=True)
-    area = models.CharField(max_length=150, null=True, blank=True)
-    avatar = models.CharField(max_length=256, null=True, blank=True)
-    scraped_at = models.DateTimeField(db_index=True, null=True, blank=True)
-
-    # updated in predict (joined with scrape)
-    reviews_cnt = models.IntegerField(null=True)
-    reviews_scr = models.FloatField(null=True)
-    last_review_at = models.DateTimeField(db_index=True, null=True, blank=True)
-    rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
-    is_outdated = models.BooleanField(db_index=True, default=False)
-
-    # reschedule prediction for cron pickup
-    redo_requested_at = models.DateTimeField(null=True, blank=True)
-    redo_started_at = models.DateTimeField(null=True, blank=True)
-    redo_completed_at = models.DateTimeField(null=True, blank=True)
-
-    def __str__(self) -> str:
-        name = f' ({self.name})' if self.name else ''
-        return f'Player {self.nick}{name}'
-
-    @property
-    def bgg_link(self):
-        """Get boardgamegeek url."""
-        return f'https://www.boardgamegeek.com/user/{self.nick}'
-
-    def get_absolute_url(self) -> str:
-        """Get absolute url for links."""
-        return f'/players/{self.id}'
-
-    def geo(self):
-        """Get geo location."""
-        geo = ''
-        if self.country:
-            geo = self.country
-        if self.area:
-            geo += f' {self.area}'
-        return geo or ''
-
-    def is_rsa(self) -> bool:
-        """Is south africa country."""
-        return self.country and self.country == 'South Africa'
-
-
-class PlayerProxy(Player):
-    class Meta:
-        proxy = True
+# class Player(Timestamped):
+#     bgg_id = models.PositiveIntegerField(null=True)
+#     nick = models.CharField(max_length=256, unique=True)
+#
+#     # updated in scrape
+#     name = models.CharField(max_length=256, null=True, blank=True)
+#     country = models.CharField(max_length=150, null=True, blank=True)
+#     area = models.CharField(max_length=150, null=True, blank=True)
+#     avatar = models.CharField(max_length=256, null=True, blank=True)
+#     scraped_at = models.DateTimeField(db_index=True, null=True, blank=True)
+#
+#     # updated in predict (joined with scrape)
+#     reviews_cnt = models.IntegerField(null=True)
+#     reviews_scr = models.FloatField(null=True)
+#     last_review_at = models.DateTimeField(db_index=True, null=True, blank=True)
+#     rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
+#     is_outdated = models.BooleanField(db_index=True, default=False)
+#
+#     # reschedule prediction for cron pickup
+#     redo_requested_at = models.DateTimeField(null=True, blank=True)
+#     redo_started_at = models.DateTimeField(null=True, blank=True)
+#     redo_completed_at = models.DateTimeField(null=True, blank=True)
+#
+#     def __str__(self) -> str:
+#         name = f' ({self.name})' if self.name else ''
+#         return f'Player {self.nick}{name}'
+#
+#     @property
+#     def bgg_link(self):
+#         """Get boardgamegeek url."""
+#         return f'https://www.boardgamegeek.com/user/{self.nick}'
+#
+#     def get_absolute_url(self) -> str:
+#         """Get absolute url for links."""
+#         return f'/players/{self.id}'
+#
+#     def geo(self):
+#         """Get geo location."""
+#         geo = ''
+#         if self.country:
+#             geo = self.country
+#         if self.area:
+#             geo += f' {self.area}'
+#         return geo or ''
+#
+#     def is_rsa(self) -> bool:
+#         """Is south africa country."""
+#         return self.country and self.country == 'South Africa'
+#
+#
+# class PlayerProxy(Player):
+#     class Meta:
+#         proxy = True
 
 
 class Day(Timestamped):
-    day = models.DateField(unique=True)
+    day = models.DateField(primary_key=True)
 
-    reviews_cnt = models.IntegerField()
-    reviews_avg = models.FloatField()
-    last_review_id = models.IntegerField()
-    last_review_at = models.DateTimeField()
-    is_outdated = models.BooleanField(db_index=True, default=False)
-
-    def __str__(self) -> str:
-        try:
-            return f'<Day {self.day:"%y-%m-%d} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
-        except ValueError:
-            return f'<Day {self.day} cnt={self.reviews_cnt} avg={self.reviews_avg}>'
-
-    @staticmethod
-    def get_today() -> 'Day':
-        """Get today as model instance."""
-        today = now()
-        day, _ = Day.objects.get_or_create(
-            day=datetime(today.year, today.month, today.day),
-            defaults={
-                'reviews_cnt': 0,
-                'reviews_avg': 0,
-                'last_review_id': 0,
-                'last_review_at': now(),
-            },
-        )
-        return day
-
-    @staticmethod
-    def get_day_at(date_string: str) -> 'Day':
-        """Get specific day from string."""
-        day, _ = Day.objects.get_or_create(
-            day=date_string,
-            defaults={
-                'reviews_cnt': 0,
-                'reviews_avg': 0,
-                'last_review_id': 0,
-                'last_review_at': now(),
-            },
-        )
-        return day
-
-
-class GameDay(Timestamped):
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='gamedays')
-    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='gamedays')
-
-    # reviews per day aggregation
-    reviews_cnt = models.IntegerField(db_index=True)
-    reviews_avg = models.FloatField(db_index=True)
-    is_outdated = models.BooleanField(db_index=True, default=False)
-
-    # best and mean price aggregation
-    shop_best = models.FloatField(null=True, blank=True)
-    shop_mean = models.FloatField(null=True, blank=True)
-    shop_saving = models.FloatField(null=True, blank=True)
-
-    class Meta:
-        unique_together = ('game', 'day')
+    # reviews_cnt = models.IntegerField()
+    # reviews_avg = models.FloatField()
+    # last_review_id = models.IntegerField()
+    # last_review_at = models.DateTimeField()
+    # is_outdated = models.BooleanField(db_index=True, default=False)
 
     def __str__(self) -> str:
-        return (
-            f'<GameDay game={self.game.name} {self.day.day:"%y-%m-%d"} cnt={self.reviews_cnt} '
-            f'avg={round(self.reviews_avg, 1)}>'
-        )
+        return unidecode(f'{self.day:%y-%m-%d}')
 
 
-class Review(Timestamped):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='reviews')
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='reviews')
-    gameday = models.ForeignKey(
-        GameDay, null=True, on_delete=models.SET_NULL, related_name='reviews'
+# class Review(Timestamped):
+#     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='reviews')
+#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='reviews')
+#     gameday = models.ForeignKey(
+#         GameDay, null=True, on_delete=models.SET_NULL, related_name='reviews'
+#     )
+#
+#     bgg_id = models.PositiveIntegerField(db_index=True)
+#     rating = models.FloatField(db_index=True)
+#     comment = models.CharField(max_length=256, null=True)
+#     reviewed_at = models.DateTimeField(db_index=True)
+#     status = models.CharField(max_length=50, choices=REVIEW_STATUS_CHOICES)
+#
+#     # plays
+#     num_plays = models.IntegerField(default=0)
+#     last_played_at = models.DateTimeField(null=True)
+#
+#     predicted = models.FloatField(null=True)
+#
+#     class Meta:
+#         unique_together = ('player', 'game')
+#
+#     def __str__(self) -> str:
+#         return f'<Review-{self.bgg_id} {self.rating} {self.game.name} by {self.player.nick}>'
+#
+#     @property
+#     def diff(self) -> float:
+#         """Get the difference between predicted and rating."""
+#         if not self.predicted:
+#             return 0
+#         return self.predicted - self.rating
+#
+#     @property
+#     def diff_combine(self) -> float:
+#         """Get rating and diff combined."""
+#         return self.rating + self.diff
+#
+#     @property
+#     def day(self) -> datetime:
+#         """Get day of review."""
+#         return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)
+#
+#
+# class Award(Timestamped):
+#     CHOICES_AWARDS = (
+#         (AWARD_GAME_OF_THE_MONTH, AWARD_GAME_OF_THE_MONTH),
+#         (AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_YEAR),
+#     )
+#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='awards', null=True)
+#
+#     type = models.CharField(max_length=256, choices=CHOICES_AWARDS)
+#     description = models.CharField(max_length=256, null=True)
+#     badge = models.CharField(max_length=256, null=True)
+#     awarded_at = models.DateTimeField(null=True)
+#     score = models.FloatField(null=True)
+#     num_ratings = models.IntegerField(null=True)
+#
+#     # runner up
+#     ru_game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='runnerups', null=True)
+#     ru_score = models.FloatField(null=True)
+#     ru_num_ratings = models.IntegerField(null=True)
+#
+#     def __str__(self) -> str:
+#         return f'<Award {self.description} game={self.game} score={int(self.score)}>'
+#
+#
+# class Rec(Timestamped):
+#     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='recs')
+#     weight_tag = models.CharField(max_length=20, choices=CHOICES_WEIGHTS)
+#     best_players = models.PositiveSmallIntegerField()
+#
+#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='recs', null=True)
+#     predicted = models.FloatField(null=True)
+#     is_primary = models.BooleanField(default=False)
+#
+#     rec_at = models.DateTimeField(null=True)
+#
+#     def __str__(self) -> str:
+#         return f'<Rec {self.weight_tag} {self.best_players} {self.game.name} -> {self.player.nick}>'
+
+
+class Listing(Timestamped):
+    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='listings')
+    name = models.CharField(max_length=250)
+    slug = models.SlugField()
+    url = models.CharField(max_length=250, unique=True)
+    img = models.CharField(max_length=250)
+    scraped_at = models.DateField()
+
+    # type
+    is_accessory = models.BooleanField(default=False)
+    is_new = models.BooleanField(default=True)
+    is_preorder = models.BooleanField(default=False)
+
+    # latest price
+    in_stock = models.BooleanField(null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=9, null=True)
+    priced_at = models.DateField(null=True)
+
+    # boardgamegeek
+    game = models.ForeignKey(
+        Game, on_delete=models.CASCADE, related_name='listings', null=True, blank=True
     )
+    bgg_id = models.IntegerField(null=True, blank=True)
+    bgg_missing = models.BooleanField(default=False)
+    bgg_scraped = models.DateTimeField(null=True, blank=True)
 
-    bgg_id = models.PositiveIntegerField(db_index=True)
-    rating = models.FloatField(db_index=True)
-    comment = models.CharField(max_length=256, null=True)
-    reviewed_at = models.DateTimeField(db_index=True)
-    status = models.CharField(max_length=50, choices=REVIEW_STATUS_CHOICES)
+    objects = ListingManager()
 
-    # plays
-    num_plays = models.IntegerField(default=0)
-    last_played_at = models.DateTimeField(null=True)
+    def __str__(self):
+        return unidecode(f'<Listing-{self.id} [{self.shop}] {self.name}>')
 
-    predicted = models.FloatField(null=True)
-
-    class Meta:
-        unique_together = ('player', 'game')
-
-    def __str__(self) -> str:
-        return f'<Review-{self.bgg_id} {self.rating} {self.game.name} by {self.player.nick}>'
-
-    @property
-    def diff(self) -> float:
-        """Get the difference between predicted and rating."""
-        if not self.predicted:
-            return 0
-        return self.predicted - self.rating
-
-    @property
-    def diff_combine(self) -> float:
-        """Get rating and diff combined."""
-        return self.rating + self.diff
-
-    @property
-    def day(self) -> datetime:
-        """Get day of review."""
-        return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)
-
-
-class Award(Timestamped):
-    CHOICES_AWARDS = (
-        (AWARD_GAME_OF_THE_MONTH, AWARD_GAME_OF_THE_MONTH),
-        (AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_YEAR),
-    )
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='awards', null=True)
-
-    type = models.CharField(max_length=256, choices=CHOICES_AWARDS)
-    description = models.CharField(max_length=256, null=True)
-    badge = models.CharField(max_length=256, null=True)
-    awarded_at = models.DateTimeField(null=True)
-    score = models.FloatField(null=True)
-    num_ratings = models.IntegerField(null=True)
-
-    # runner up
-    ru_game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='runnerups', null=True)
-    ru_score = models.FloatField(null=True)
-    ru_num_ratings = models.IntegerField(null=True)
-
-    def __str__(self) -> str:
-        return f'<Award {self.description} game={self.game} score={int(self.score)}>'
-
-
-class Rec(Timestamped):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='recs')
-    weight_tag = models.CharField(max_length=20, choices=CHOICES_WEIGHTS)
-    best_players = models.PositiveSmallIntegerField()
-
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='recs', null=True)
-    predicted = models.FloatField(null=True)
-    is_primary = models.BooleanField(default=False)
-
-    rec_at = models.DateTimeField(null=True)
-
-    def __str__(self) -> str:
-        return f'<Rec {self.weight_tag} {self.best_players} {self.game.name} -> {self.player.nick}>'
-
-
-class Shop(Timestamped):
-    SHOP_CHOICES = (
-        (SHOP_MEEPS_AND_VEEPS, SHOP_MEEPS_AND_VEEPS),
-        (SHOP_TIMELESS, SHOP_TIMELESS),
-        (SHOP_GEEKHOME, SHOP_GEEKHOME),
-        (SHOP_THD, SHOP_THD),
-        (SHOP_TTG, SHOP_TTG),
-        (SHOP_GARGOYLE, SHOP_GARGOYLE),
-        (SHOP_LEVEL_UP, SHOP_LEVEL_UP),
-        (SHOP_SWORD_AND_BOARD, SHOP_SWORD_AND_BOARD),
-        (SHOP_AMAZON, SHOP_AMAZON),
-        (SHOP_BGBSA, SHOP_BGBSA),
-    )
-    name = models.CharField(max_length=50, unique=True, choices=SHOP_CHOICES)
-    host = models.CharField(max_length=150, unique=True)
-
-    def __str__(self) -> str:
-        return f'{self.name}'
-
-    def get_search_url(self, game: Game) -> str:  # noqa PLR0911
-        """Get search url."""
-        name = re.sub(REGEX_BOARD_GAME, '', game.name, flags=re.I)
-        name = re.sub(REGEX_BRACKETS, '', name)
-        name = name.replace(':', '').strip()
-
-        if self.name == SHOP_MEEPS_AND_VEEPS:
-            # https://meepsandveeps.co.za/search?type=product&q=dune
-            params = urlencode({'type': 'product', 'q': name})
-            return f'{self.host}search?{params}'
-
-        elif self.name == SHOP_TIMELESS:
-            # https://www.timelessboardgames.co.za/online-shop/?filter=&filter_product_name=dune
-            params = urlencode({'filter': '', 'filter_product_name': name})
-            return f'{self.host}online-shop/?{params}'
-
-        elif self.name == SHOP_GEEKHOME:
-            # https://www.geekhome.co.za/?s=dune&post_type=product
-            params = urlencode({'post_type': 'product', 's': name})
-            return f'{self.host}?{params}'
-
-        elif self.name == SHOP_THD:
-            # https://thehiddenden.co.za/?s=dune&post_type=product
-            params = urlencode({'post_type': 'product', 's': name})
-            return f'{self.host}?{params}'
-
-        elif self.name == SHOP_TTG:
-            # https://tabletopguru.co.za/search?type=product&q=dune
-            params = urlencode({'post_type': 'product', 'q': name})
-            return f'{self.host}/search?{params}'
-
-        elif self.name == SHOP_GARGOYLE:
-            # https://grinning-gargoyle.co.za/?s=detective&post_type=product&product_cat=
-            params = urlencode({'post_type': 'product', 's': name, 'product_cat': ''})
-            return f'{self.host}?{params}'
-
-        elif self.name == SHOP_SWORD_AND_BOARD:
-            # https://www.swordandboard.co.za/search?type=product&options%5Bprefix%5D=last&q=foo
-            params = urlencode({'type': 'product', 'q': name})
-            return f'{self.host}search?{params}'
-
-        elif self.name == SHOP_LEVEL_UP:
-            # https://levelupstore.co.za/search?q=dune
-            params = urlencode({'q': name})
-            return f'{self.host}search?{params}'
-
-        elif self.name == SHOP_AMAZON:
-            # https://www.amazon.co.za/s?k=nemesis&i=toys
-            params = urlencode({'k': name, 'rh': 'n:28002628031'})
-            return f'{self.host}s?{params}'
-
-        else:
-            raise ValueError(f'Unhandled price search for {self}')
-
-
-class ShopGame(Timestamped):
-    shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='shopgames')
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='shopgames')
-    url = models.CharField(max_length=250, unique=True, null=True, blank=True)
-    url_at = models.DateTimeField()
-    mia = models.BooleanField(default=False, blank=True)
-
-    current_available = models.BooleanField(null=True, blank=True)
-    current_price = models.IntegerField(null=True, blank=True)
-
-    class Meta:
-        unique_together = ('shop', 'game')
-
-    def __str__(self) -> str:
-        tail = (
-            'mia' if self.mia else 'n/a' if not self.current_available else f'R{self.current_price}'
-        )
-        return f'<{self.shop} + {self.game} = {tail}>'
-
-    def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-        """Requires price if available."""
-        self.url_at = now()
-        if self.current_available is True and self.current_price == 0:
-            raise ValueError(f'Cannot be free: {self}')
-        super().save(force_insert, force_update, using, update_fields)
-
-    def mark_as_removed(self):
-        """Game is removed from shop."""
-        logger.info(f'Game removed from store: {self}')
-        self.url = None
-        self.url_at = now()
-        self.mia = True
-        self.save()
+    def get_absolute_url(self):
+        """Get detail url."""
+        return reverse('listing-detail-slug', kwargs={'pk': self.pk, 'slug': self.slug})
 
 
 class Price(Timestamped):
-    STOCK_CHOICES = (
-        (STOCK_IN, STOCK_IN),
-        (STOCK_OUT, STOCK_OUT),
-    )
-    shopgame = models.ForeignKey(ShopGame, on_delete=models.CASCADE, related_name='prices')
-    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='prices')
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='prices')
+    day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='prices')
 
-    status = models.CharField(max_length=50, choices=STOCK_CHOICES)
-    price = models.IntegerField()
+    in_stock = models.BooleanField(default=True)
+    price = models.DecimalField(decimal_places=2, max_digits=9, null=True)
 
     class Meta:
-        unique_together = ('shopgame', 'day')
+        unique_together = ('listing', 'day')
 
     def __str__(self) -> str:
-        return f'Price {self.day}  {self.shopgame} {self.status} {self.price}'
+        value = f'{self.price:.0f}' if self.in_stock else 'Out of Stock'
+        return unidecode(f'<Price-{self.id} {self.day} {value} {self.listing}>')
 
 
-class Play(Timestamped):
-    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='plays')
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='plays')
-    day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='plays')
-    bgg_id = models.IntegerField()
-    duration = models.IntegerField(null=True)
-    num_players = models.IntegerField(null=True)
+# class Play(Timestamped):
+#     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='plays')
+#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='plays')
+#     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='plays')
+#     bgg_id = models.IntegerField()
+#     duration = models.IntegerField(null=True)
+#     num_players = models.IntegerField(null=True)
+#
+#     def __str__(self):
+#         return f'<Play bggid={self.bgg_id} {self.game.name} by {self.player.nick} {self.day.day}>'
 
-    def __str__(self):
-        return f'<Play bggid={self.bgg_id} {self.game.name} by {self.player.nick} {self.day.day}>'
 
+class Scrapelog(Timestamped):
+    day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='scrapelogs')
+    target = models.CharField(max_length=250)
+    scraped_at = models.DateTimeField()
+    outcome = models.CharField(max_length=255)
+    duration = models.IntegerField()
 
-class CronSchedule(Timestamped):
-    day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='cron_schedules')
-    hotness = models.TextField(null=True)
-    hotness_dur = models.FloatField(null=True)
-    scrape_games = models.TextField(null=True)
-    scrape_games_dur = models.FloatField(null=True)
-    update_game_stats = models.TextField(null=True)
-    update_game_stats_dur = models.FloatField(null=True)
-    train_models_sim = models.TextField(null=True)
-    train_models_sim_dur = models.FloatField(null=True)
-    scrape_players = models.TextField(null=True)
-    scrape_players_dur = models.FloatField(null=True)
-    scrape_shop_bgbsa = models.TextField(null=True)
-    scrape_shop_bgbsa_dur = models.FloatField(null=True)
-    scrape_shop_thd = models.TextField(null=True)
-    scrape_shop_thd_dur = models.FloatField(null=True)
-    scrape_shop_mav = models.TextField(null=True)
-    scrape_shop_mav_dur = models.FloatField(null=True)
-    scrape_shop_tl = models.TextField(null=True)
-    scrape_shop_tl_dur = models.FloatField(null=True)
-    scrape_shop_gh = models.TextField(null=True)
-    scrape_shop_gh_dur = models.FloatField(null=True)
-    scrape_shop_ttg = models.TextField(null=True)
-    scrape_shop_ttg_dur = models.FloatField(null=True)
-    scrape_shop_gg = models.TextField(null=True)
-    scrape_shop_gg_dur = models.FloatField(null=True)
-    scrape_shop_sab = models.TextField(null=True)
-    scrape_shop_sab_dur = models.FloatField(null=True)
-    scrape_shop_lu = models.TextField(null=True)
-    scrape_shop_lu_dur = models.FloatField(null=True)
-    scrape_shop_amz = models.TextField(null=True)
-    scrape_shop_amz_dur = models.FloatField(null=True)
-    scrape_shop_out = models.TextField(null=True)
-    scrape_shop_out_dur = models.FloatField(null=True)
+    class Meta:
+        unique_together = ['day', 'target']
 
     def __str__(self):
-        hotness_fmt = self.hotness_dur if self.hotness == 'OK' else self.hotness
-        return f'<Cron {self.day.day} hotness={hotness_fmt}>'
-
-    @staticmethod
-    def upart(data):
-        """Partial update on current cron."""
-        today = Day.get_today()
-        cs, _ = CronSchedule.objects.get_or_create(day=today)
-        for key, value in data.items():
-            setattr(cs, key, value)
-
-        cs.save()
-        logger.info(f'Cron now: {data}')
-        return cs
+        return unidecode(f'<Scrapelog-{self.id} {self.day} {self.target}>')

@@ -6,8 +6,8 @@ import pytz
 from django.db.models import Max
 from django.utils.timezone import now
 
+from main.games import get
 from main.models import Day, Game, Play, Player
-from main.scraper import get
 
 logger = logging.getLogger(__name__)
 

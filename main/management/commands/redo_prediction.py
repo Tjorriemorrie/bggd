@@ -6,9 +6,9 @@ from django.core.management import BaseCommand
 from django.utils.timezone import now
 
 from main.errors import PlayerRatingNewGameError, PlayerRatingUsernameNotFoundError
+from main.games import scrape_player_ratings
 from main.models import Game, Player
 from main.recommendations import predict_player
-from main.scraper import scrape_player_ratings
 
 logger = logging.getLogger(__name__)
 

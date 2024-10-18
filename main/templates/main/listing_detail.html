@@ -1,0 +1,21 @@
+{% extends 'main/base.html' %}
+
+{% block content %}
+    <div class="row container-listing-detail">
+        <div class="col">
+            <h1>
+                <img class="img-fluid" src="{{ listing.img }}"/>
+                {{ listing.name }}
+            </h1>
+            <h4>From
+                <a href="#" target="_blank" class="me-3">{{ listing.shop.name }}</a>
+                <a href="{{ listing.url }}" target="_blank" class="me-3"><i class="bi bi-box-arrow-up-right"></i></a>
+            </h4>
+            <p>In stock: {{ listing.in_stock }}</p>
+            {% if listing.in_stock %}
+                <p>Price: R{{ listing.price }}</p>
+            {% endif %}
+            <sub><small class="text-muted">Created at: {{ listing.created_at }}</small></sub>
+        </div>
+    </div>
+{% endblock %}

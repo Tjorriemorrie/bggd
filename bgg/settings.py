@@ -13,6 +13,7 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import sys
+import warnings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 from pathlib import Path
@@ -20,7 +21,6 @@ from pathlib import Path
 from environs import Env
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-
 
 env = Env()
 env.read_env()  # read .env file, if it exists
@@ -37,11 +37,10 @@ DEVELOPER = env.bool('DEVELOPER', False)
 
 ALLOWED_HOSTS = [
     '127.0.0.1',
-    '178.62.218.44',
+    '139.59.146.204',
     'bggdata.co.za',
     'www.bggdata.co.za',
 ]
-
 
 # Application definition
 
@@ -53,12 +52,18 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.humanize',
-    'main.apps.MainConfig',
-    'health_check',  # required
-    'health_check.db',  # stock Django health checkers
-    'health_check.contrib.migrations',
-    'health_check.contrib.psutil',  # disk and memory utilization; requires psutil
+    # third party
     'django_extensions',
+    'crispy_forms',
+    'crispy_bootstrap5',
+    'django_tables2',
+    'django_filters',
+    # mine
+    'main.apps.MainConfig',
+    # 'health_check',  # required
+    # 'health_check.db',  # stock Django health checkers
+    # 'health_check.contrib.migrations',
+    # 'health_check.contrib.psutil',  # disk and memory utilization; requires psutil
 ]
 
 MIDDLEWARE = [
@@ -91,17 +96,15 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'bgg.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/3.0/ref/settings/#databases
 
 DATABASES = {
     'default': {
-        'ENGINE': 'bgg',
-        # 'ENGINE': 'django.db.backends.sqlite3',
+        'ENGINE': 'django.db.backends.sqlite3',
         'NAME': BASE_DIR / 'db.sqlite3',
         'OPTIONS': {
-            'timeout': 25,
+            'timeout': 30,
         },
     }
 }
@@ -134,7 +137,6 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
-
 # Internationalization
 # https://docs.djangoproject.com/en/3.0/topics/i18n/
 
@@ -146,15 +148,14 @@ USE_I18N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.0/howto/static-files/
 
 STATIC_URL = '/static/'
 STATIC_ROOT = BASE_DIR / 'static'
 
-
 # logging
+warnings.simplefilter(action='ignore', category=FutureWarning)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -168,9 +169,9 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'level': env('LOG_LEVEL'),
+            'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': BASE_DIR / 'logs' / 'wsgi.log',
+            'filename': BASE_DIR / '.logs' / 'wsgi.log',
             'when': 'midnight',
             'backupCount': 30,
             'delay': True,
@@ -185,16 +186,19 @@ LOGGING = {
     },
     'root': {
         'handlers': ['file', 'console'],
-        'level': env('LOG_LEVEL'),
+        'level': 'INFO',
         'propagate': False,
     },
     'loggers': {
         'django': {
             'propagate': False,
         },
+        'django.db.backends': {
+            'level': 'DEBUG',
+            'handlers': ['console'],
+        },
     },
 }
-
 
 # EMAIL
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
@@ -205,7 +209,6 @@ DEFAULT_FROM_EMAIL = os.getenv('EMAIL_ADDRESS')
 EMAIL_HOST_PASSWORD = os.getenv('EMAIL_PASSWORD')
 EMAIL_PORT = 587
 
-
 # Health check
 HEALTH_CHECK = {
     'DISK_USAGE_MAX': 90,  # percent
@@ -213,3 +216,9 @@ HEALTH_CHECK = {
 }
 
 BGBSA_BEARER = env.str('BGBSA_BEARER')
+
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
+
+PROCESS_POOL = env.int('PROCESS_POOL')

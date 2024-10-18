@@ -1,0 +1,39 @@
+{% extends 'main/base.html' %}
+
+{% load django_tables2 %}
+{% load crispy_forms_tags %}
+
+{% block content %}
+    <div class="row">
+
+        <div class="col-auto">
+            <h4 class="mt-4">{{ table.paginator.count }} {{ facet }}</h4>
+        </div>
+
+        <div class="col-auto ms-auto text-end">
+            <form class="row align-items-center g-3 filtering-form">
+                <div class="col-auto">
+                    {{ filtering.form|crispy }}
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-light">
+                        <i class="bi bi-funnel"></i>
+                    </button>
+                </div>
+                {% if filtering.data.query %}
+                    <div class="col-auto ms-3">
+                        <div class="alert alert-light">
+                            <a href="?{% for key, value in request.GET.items %}{% if key != 'query' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="btn-close me-2 close-icon" aria-label="Close"></a>
+                            <span>"{{ filtering.data.query }}"</span>
+                        </div>
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+
+    </div>
+
+
+    {% render_table table %}
+
+{% endblock %}

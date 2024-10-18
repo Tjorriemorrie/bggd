@@ -1,0 +1,50 @@
+{% extends 'main/base.html' %}
+{% load fmt %}
+
+{% load static %}
+
+{% block content %}
+    <div class="row container-shop-detail">
+        <div class="col">
+            <h1>Game:
+                {{ game.name }}
+                <a href="{{ game.url }}" target="_blank" class="ms-3">
+                    <img src="{% static 'main/img/bgg.svg' %}"/>
+                </a>
+            </h1>
+            <h6>{{ game.pitch }}</h6>
+            <p>
+                <img src="{{ game.img }}" style="width: 15em;"/>
+            </p>
+
+            {% if game.shop_mean %}
+                <p>Average price: R{{ game.shop_mean }}</p>
+            {% endif %}
+
+            {% for listing in game.listings.all %}
+                <p class="{% if not listing.in_stock %}text-decoration-line-through{% endif %}">
+                    <a href="{{ listing.url }}" target="_blank">
+                        {{ listing.shop.name }} &mdash; {{ listing|price }} ({{ listing.name }})
+                    </a>
+                </p>
+            {% endfor %}
+
+            <dl>
+                <dt>Type:</dt>
+                <dd>{{ game.label }}</dd>
+                <dt>Year:</dt>
+                <dd>{{ game.year }}</dd>
+                <dt>Rank:</dt>
+                <dd>{{ game.rank }}</dd>
+                <dt>Rating:</dt>
+                <dd>{{ game.rating|floatformat:1 }}</dd>
+                <dt>Weight:</dt>
+                <dd>{{ game.weight_avg }}</dd>
+                <dt>Description:</dt>
+                <dd>{{ game.description }}</dd>
+            </dl>
+
+            <sub><small class="text-muted">Created at: {{ game.created_at }}</small></sub>
+        </div>
+    </div>
+{% endblock %}

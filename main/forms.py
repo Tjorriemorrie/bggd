@@ -1,15 +1,29 @@
+import logging
+
 from django import forms
 
-from main.models import ShopGame
+from main.models import Listing
+
+logger = logging.getLogger(__name__)
 
 
-class ShopGameForm(forms.ModelForm):
-    class Meta:
-        model = ShopGame
-        fields = ['shop', 'game', 'url', 'mia']
+class LookupForm(forms.Form):
+    listing_id = forms.IntegerField(widget=forms.HiddenInput())
+    bgg_id = forms.IntegerField(required=False, widget=forms.NumberInput())
+    is_missing = forms.BooleanField(
+        required=False, initial=False, label='Is missing?', widget=forms.CheckboxInput()
+    )
+    is_accessory = forms.BooleanField(
+        required=False, initial=False, label='Is accessory?', widget=forms.CheckboxInput()
+    )
 
-    def clean_url(self):
-        """Clean the url."""
-        if self.cleaned_data['url']:
-            url_part = self.cleaned_data['url'].partition('?')[0]
-            return url_part
+    def save(self) -> Listing:
+        """Save bgg_id to listing."""
+        listing = Listing.objects.get(id=self.cleaned_data['listing_id'])
+        listing.bgg_id = self.cleaned_data.get('bgg_id') or None
+        listing.bgg_missing = self.cleaned_data.get('is_missing', False)
+        listing.save()
+        logger.info(
+            f'Saved bgg info: id={listing.bgg_id} missing={listing.bgg_missing} to {listing}'
+        )
+        return listing
