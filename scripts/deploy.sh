@@ -14,8 +14,8 @@ python3 manage.py migrate --noinput
 # Collect static files
 python3 manage.py collectstatic --noinput
 
-# Restart Gunicorn
-systemctl restart gunicorn
+# Restart Gunicorn using the password from SERVER_PWD
+echo $SERVER_PWD | sudo -S systemctl restart gunicorn
 
 # Optional: Restart Nginx if needed
 #sudo systemctl restart nginx
