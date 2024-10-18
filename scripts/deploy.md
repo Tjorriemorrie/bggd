@@ -13,9 +13,7 @@ It's important to make sure your system is up to date. Run the following command
     sudo apt-get update
     sudo apt-get upgrade
 
-Install git for Github Actions deployment
 
-    sudo apt install git
 
 ### 2. Add a New User
 
@@ -30,6 +28,8 @@ You will be prompted to set a password and fill in some details (like name, etc.
 Once the user is created, grant them sudo privileges by adding them to the `sudo` group:
 
     gpasswd -a bgg sudo
+
+
 
 ### 3. Steps to Set Up SSH Key for new User
 
@@ -56,23 +56,40 @@ Then log in as the new user:
     ssh bgg@<your-droplet-ip>
 
 
-### 4. Steps to Use the Existing Python Version
+### 4. Get project cloned
 
-Check the Installed Python Version:
+
+#### Check the Installed Python Version:
 
 You can confirm the installed version of Python by running:
 
     python3 --version
 
-Steps to Set Up Your Django App in /home/bgg
+
+#### Install git for Github Actions deployment
+
+    sudo apt install git
+
+Create ssh keys to use with Github
+
+    ssh-keygen -t ed25519 -C "<email>"
+
+Copy the public key
+
+    cat ~/.ssh/id_ed25519.pub
+
+And add it to Github SSH keys
+
+
+#### Steps to Set Up Your Django App in /home/bgg
 
 Navigate to Your Home Directory:
 
     cd /home/bgg
 
-Create Your Django App Directory:
+Clone your repository
 
-    mkdir bggd
+    git clone git@github.com:<user>/<repo>.git
 
 Navigate into the App Directory:
 
@@ -84,12 +101,207 @@ Create Your Virtual Environment:
 
 Activate the Virtual Environment:
 
-
     source .venv/bin/activate
 
-Install gunicorn
+
+### 6. Set up services
+
+Install gunicorn (with venv activated)
 
     pip install gunicorn
+
+#### Set up Gunicorn Socket
+
+The Gunicorn socket will listen for incoming requests and pass them to the Gunicorn service.
+
+Create the Gunicorn socket file:
+
+    sudo vim /etc/systemd/system/gunicorn.socket
+
+Add the following configuration:
+
+```ini
+[Unit]
+Description=gunicorn socket
+
+[Socket]
+ListenStream=/run/gunicorn.sock
+
+[Install]
+WantedBy=sockets.target
+```
+
+`ListenStream=/run/gunicorn.sock`: This creates a Unix socket for communication between Gunicorn and the reverse proxy (like Nginx).
+
+
+#### Set up Gunicorn Systemd Service
+
+The Gunicorn service manages the actual running of the Gunicorn application.
+
+Create the Gunicorn service file:
+
+    sudo vim /etc/systemd/system/gunicorn.service
+
+Add the following configuration:
+
+```ini
+[Unit]
+Description=gunicorn daemon
+Requires=gunicorn.socket
+After=network.target
+
+[Service]
+User=bgg
+Group=www-data
+WorkingDirectory=/home/bgg/bggd
+ExecStart=/home/bgg/bggd/.venv/bin/gunicorn \
+          --access-logfile - \
+          --workers 2 \
+          --bind unix:/run/gunicorn.sock \
+          bggd.wsgi:application
+
+[Install]
+WantedBy=multi-user.target
+```
+
+`User`: This should be the user under which your application will run.\
+`WorkingDirectory`: Path to the directory containing your project.\
+`ExecStart`: Path to your Gunicorn binary within the virtual environment. Change bggd.wsgi:application to match your app’s WSGI entry point (likely <project_name>.wsgi:application).\
+`Workers`: Should be (#cores * 2) + 1. Should be 2 for basic droplet.
+
+
+#### Start and Enable Gunicorn
+
+Reload the Systemd daemon to apply the changes:
+
+    sudo systemctl daemon-reload
+
+Start and enable the Gunicorn socket:
+
+    sudo systemctl start gunicorn.socket
+    sudo systemctl enable gunicorn.socket
+
+Verify the Gunicorn socket is active:
+
+    sudo systemctl status gunicorn.socket
+
+You should see the socket is active. It listens on /run/gunicorn.sock.
+
+Check file exists
+
+    file /run/gunicorn.sock
+
+Check gunicorn logs
+
+    sudo journalctl -u gunicorn.socket
+
+Check if the Gunicorn service starts on demand:
+
+    sudo systemctl start gunicorn
+    sudo systemctl enable gunicorn
+
+If changes made to gunicorn service file, reload it with:
+
+    sudo systemctl daemon-reload
+    sudo systemctl restart gunicorn
+
+
+
+### 7. Configure Nginx to Proxy Pass to Gunicorn
+
+Install Nginx if it isn’t installed already:
+
+    sudo apt update
+    sudo apt install nginx
+
+Open the Nginx configuration file (or create a new one for your site):
+
+    sudo vim /etc/nginx/sites-available/bggd
+
+Add the following configuration to proxy requests to Gunicorn:
+
+```nginx
+server {
+    listen 80;
+    server_name 139.59.146.204 bggdata.co.za www.bggdata.co.za;
+
+    location /static/ {
+        root /home/bgg/bggd/static;
+    }
+
+    location / {
+        proxy_pass http://unix:/run/gunicorn.sock;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Port $server_port;
+        proxy_set_header Connection "";
+    }
+}
+```
+
+Replace your_domain_or_IP with your server's domain or IP address.
+
+Enable your site:
+
+    sudo ln -s /etc/nginx/bggd/your_site /etc/nginx/sites-enabled
+
+Test Nginx for syntax errors:
+
+    sudo nginx -t
+
+Restart Nginx to apply the changes:
+
+    sudo systemctl restart nginx
+
+
+#### 5. Firewall Configuration (if needed)
+
+Remove Port 8000 from UFW (Uncomplicated Firewall)\
+You can delete the firewall rule allowing traffic on port 8000 with the following command:
+
+    sudo ufw delete allow 8000
+
+This will close port 8000, which is often used for development (python manage.py runserver), so your server will no longer be accessible on that port.
+
+If you have UFW enabled, allow Nginx through the firewall:
+
+    sudo ufw allow 'Nginx Full'
+
+Enable UFW if it's not active \
+If the firewall is not yet active, you can enable it with:
+
+    sudo ufw enable
+
+Check UFW Status \
+After making changes to the firewall, it's a good idea to check the status and confirm that the desired ports (80 and possibly 443) are open:
+
+    sudo ufw app list
+    sudo ufw app info 'Nginx Full'
+    sudo ufw status verbose
+
+
+#### Check Application
+
+You should now be able to access your application by navigating to your domain or droplet's IP. \
+If you encounter any issues, check the Gunicorn and Nginx logs:\
+Gunicorn logs:
+
+    sudo journalctl -u gunicorn
+
+Nginx logs:
+
+    sudo tail -f /var/log/nginx/error.log
+
+This setup will ensure your Django app is served by Gunicorn and managed with Systemd for stability and control.
+
+
+INSTALL CERT
+https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal
+  # not working = sudo apt-get install python-certbot-nginx
+sudo certbot --nginx -d besetfree.co.za -d www.besetfree.co.za
 
 
 ### 5. Create deployment files
@@ -140,17 +352,7 @@ jobs:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 ```
 
-#### Update deploy.sh
 
-Ensure your deploy.sh script can handle the SSH private key correctly. You might want to add this line at the beginning of the script to set up the SSH key:
-
-```bash
-#!/bin/bash
-
-# Set up SSH key
-echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-chmod 600 ~/.ssh/id_rsa
-```
 
 #### Update Django Settings
 
@@ -179,101 +381,3 @@ STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 ```
 
 This sets up a static root directory where Django will collect all static files.
-
-
-### 6. Set up Gunicorn
-
-#### Set up Gunicorn Socket
-
-The Gunicorn socket will listen for incoming requests and pass them to the Gunicorn service.
-
-Create the Gunicorn socket file:
-
-    sudo vim /etc/systemd/system/gunicorn.socket
-
-Add the following configuration:
-
-```ini
-[Unit]
-Description=gunicorn socket
-
-[Socket]
-ListenStream=/run/gunicorn.sock
-
-[Install]
-WantedBy=sockets.target
-```
-
-`ListenStream=/run/gunicorn.sock`: This creates a Unix socket for communication between Gunicorn and the reverse proxy (like Nginx).
-
-
-
-
-SET UP GUNICORN SYSTEMD
- sudo vim /etc/systemd/system/gunicorn.service
-   [Unit]
-   Description=gunicorn daemon
-   Requires=gunicorn.socket
-   After=network.target
-   [Service]
-   User=free
-   Group=www-data
-   WorkingDirectory=/home/bgg/bggd
-   ExecStart=/home/bgg/bggd/env/bin/gunicorn \
-             --access-logfile - \
-             --workers 3 \
-             --bind unix:/run/gunicorn.sock \
-             bggd.wsgi:application
-
-   [Install]
-   WantedBy=multi-user.target
-
-
-GUNICORN START AND ACTIVATE
-  sudo systemctl start gunicorn.socket
-  sudo systemctl enable gunicorn.socket
-  sudo systemctl status gunicorn.socket
-check file exists
-  file /run/gunicorn.sock
-check gunicorn logs
-  sudo journalctl -u gunicorn.socket
-
-if changes made to gunicorn service file, reload it with:
-    sudo systemctl daemon-reload
-    sudo systemctl restart gunicorn
-
-
-SET UP NGINX
-set up site
-  sudo vim /etc/nginx/sites-available/besetfree
-server {
-    listen 80;
-    server_name 165.22.202.78 besetfree.co.za www.besetfree.co.za;
-
-    location = /favicon.ico { access_log off; log_not_found off; }
-    location /static/ {
-        root /home/free/besetfree/static;
-    }
-
-    location / {
-        include proxy_params;
-        proxy_pass http://unix:/run/gunicorn.sock;
-    }
-}
-
-  sudo ln -s /etc/nginx/sites-available/besetfree /etc/nginx/sites-enabled
-
-check errors:
-  sudo nginx -t
-restart:
-  sudo systemctl restart nginx
-open firewall to port 80 (and remove dev 8000)
-    sudo ufw delete allow 8000
-    sudo ufw allow 'Nginx Full'
-
-
-
-INSTALL CERT
-https://certbot.eff.org/instructions?ws=nginx&os=ubuntufocal
-  # not working = sudo apt-get install python-certbot-nginx
-sudo certbot --nginx -d besetfree.co.za -d www.besetfree.co.za
