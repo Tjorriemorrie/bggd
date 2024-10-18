@@ -30,4 +30,4 @@ jobs:
 
       - name: Deploy to DigitalOcean
         run: |
-          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }} 'bash -s' < ./scripts/deploy.sh
+          ssh ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' < ./scripts/deploy.sh
