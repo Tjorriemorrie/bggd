@@ -9,8 +9,9 @@ logfile="/home/bgg/deploy.log"
 
 # Pull the latest code
 echo "Pulling latest code..." | tee -a "$logfile"
-git pull origin main >> "$logfile" 2>&1
-echo "git pull exit code: $?" | tee -a "$logfile"
+git fetch origin
+git reset --hard origin/main >> "$logfile" 2>&1
+echo "git reset exit code: $?" | tee -a "$logfile"
 
 # Activate virtual environment and install dependencies
 echo "Installing dependencies..." | tee -a "$logfile"
