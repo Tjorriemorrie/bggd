@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
 
-from main.models import Day, Game, Listing, Shop
+from main.models import Day, Game, Listing, Scrapelog, Shop
 
 logger = logging.getLogger(__name__)
 
@@ -50,17 +50,16 @@ shop_lock = multiprocessing.Lock()
 
 def upsert_shop(shop_name: str) -> Shop:
     """Get shop by name."""
-    with shop_lock:
-        with transaction.atomic():
-            shop, created = Shop.objects.get_or_create(
-                name=shop_name,
-                defaults={
-                    'slug': slugify(unidecode(shop_name)),
-                },
-            )
-            if created:
-                logger.info(f'Created shop {shop}')
-            return shop
+    with shop_lock, transaction.atomic():
+        shop, created = Shop.objects.get_or_create(
+            name=shop_name,
+            defaults={
+                'slug': slugify(unidecode(shop_name)),
+            },
+        )
+        if created:
+            logger.info(f'Created shop {shop}')
+        return shop
 
 
 def get_latest_new_games() -> QuerySet[Game]:
@@ -84,3 +83,9 @@ def list_listings_without_games() -> QuerySet[Listing]:
 def best_listing_by_game(game: Game) -> Listing | None:
     """Returns best listing with available stock."""
     return game.listings.filter(in_stock=True, price__isnull=False).order_by('price').first()
+
+
+def get_last_scrape(shop: Shop) -> Scrapelog | None:
+    """Last scrape of shop."""
+    scrapelog = Scrapelog.objects.filter(target=f'shop {shop.name}').order_by('scraped_at').last()
+    return scrapelog

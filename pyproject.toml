@@ -61,6 +61,7 @@ ignore = [
     "D100",  # Missing docstring in public module
     "D101",  # Missing docstring in public class
     "D106",  # Missing docstring in public nested class
+    "S308",  # Use of `mark_safe` may expose cross-site scripting vulnerabilities
 ]
 # Allow auto-fixing of all enabled rules when using the `--fix` option.
 fixable = ["ALL"]

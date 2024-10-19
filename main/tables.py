@@ -1,12 +1,24 @@
 import logging
 
-from django.db.models import Count, ExpressionWrapper, F, FloatField, OrderBy, Q
+from django.db.models import (
+    Count,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    OrderBy,
+    OuterRef,
+    Q,
+    Subquery,
+    Value,
+)
+from django.db.models.functions import Concat
 from django.template.defaultfilters import floatformat
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 from django_tables2 import BooleanColumn, Column, tables
 
-from main.models import Game, Listing, Shop
+from main.models import Game, Listing, Scrapelog, Shop
+from main.selectors import get_last_scrape
 from main.templatetags.fmt import discount, price
 
 logger = logging.getLogger(__name__)
@@ -56,9 +68,9 @@ class ListingTable(tables.Table):
         """Handle ordering for all fields."""
         str_field_name = f'-{field_name}' if is_descending else field_name
         required_ordering = [str_field_name] + [
-            l
-            for l in ['-in_stock', '-discount', '-price']
-            if field_name != l and f'-{field_name}' != l
+            default_field
+            for default_field in ['-in_stock', '-discount', '-price']
+            if default_field not in (field_name, f'-{field_name}')
         ]
 
         created_ordering = []
@@ -102,23 +114,9 @@ class ListingTable(tables.Table):
         )
         return format_html(name + ext)
 
-    # def order_price(self, queryset, is_descending):
-    #     """Order price with None and 0 values at the end."""
-    #     order_field = F('price').desc(nulls_last=True) if is_descending else F('price').asc(nulls_last=True)
-    #     queryset = queryset.order_by(order_field)
-    #     return queryset, True
-
     def render_price(self, record: Listing):
         """Render price."""
         return price(record, show_currency=False)
-
-    # def order_discount(self, queryset, is_descending):
-    #     """Order by calculated saving."""
-    #     # Annotate the queryset with the calculated discount
-    #     discount_expr = ExpressionWrapper(F('game__shop_mean') - F('price'), output_field=FloatField())
-    #     queryset = queryset.annotate(discount=discount_expr)
-    #     ordering = F('discount').desc(nulls_last=True) if is_descending else F('discount').asc(nulls_last=True)
-    #     return queryset.order_by(ordering), True
 
     def render_discount(self, record: Listing):
         """Render price with filter."""
@@ -131,6 +129,7 @@ class ShopTable(tables.Table):
     preorder_cnt = Column(
         verbose_name='Preorder Items', empty_values=(), initial_sort_descending=True
     )
+    scraped = Column(verbose_name='Scraped', empty_values=(), initial_sort_descending=True)
 
     class Meta:
         model = Shop
@@ -139,6 +138,7 @@ class ShopTable(tables.Table):
             'new_cnt',
             'second_cnt',
             'preorder_cnt',
+            'scraped',
         )
         template_name = 'main/table_list.html'
 
@@ -187,6 +187,28 @@ class ShopTable(tables.Table):
     def render_preorder_cnt(self, record: Shop):
         """Show number of listings."""
         return record.listings.filter(is_new=True, is_preorder=True).count()
+
+    def order_scraped(self, queryset, is_descending):
+        """Order based on last scrape."""
+        # Subquery to find the latest scraped_at for each shop
+        latest_scrape = (
+            Scrapelog.objects.filter(target=Concat(Value('shop '), OuterRef('name')))
+            .order_by('-scraped_at')
+            .values('scraped_at')[:1]
+        )
+
+        # Annotate each shop with the latest scrape date from Scrapelog
+        queryset = queryset.annotate(last_scraped_at=Subquery(latest_scrape))
+
+        ordering = 'last_scraped_at' if not is_descending else '-last_scraped_at'
+        return queryset.order_by(ordering), True
+
+    def render_scraped(self, record: Shop):
+        """Show last scraped date."""
+        if scrapelog := get_last_scrape(record):
+            return f'{scrapelog.scraped_at:%Y-%m-%d}'
+        else:
+            return ''
 
 
 class GameTable(tables.Table):
@@ -262,7 +284,11 @@ class GameTable(tables.Table):
     def render_img(self, record: Game):
         """Render img."""
         oos = 'out-of-stock-img' if not record.shop_in_stock else ''
-        img = f'<a href="{record.get_absolute_url()}"><img src="{record.img}" class="list-img {oos}"/></a>'
+        img = (
+            f'<a href="{record.get_absolute_url()}">'
+            f'<img src="{record.img}" class="list-img {oos}"/>'
+            f'</a>'
+        )
         return mark_safe(img)
 
     def render_name(self, record: Game):
@@ -273,15 +299,6 @@ class GameTable(tables.Table):
         return mark_safe(name)
 
     # def order_rank(self, queryset, is_descending):
-    #     """Order rank with None and 0 values at the end."""
-    #     existing_ordering = queryset.query.order_by
-    #     order_field = F('rank').desc(nulls_last=True) if is_descending else F('rank').asc(nulls_last=True)
-    #     if existing_ordering:
-    #         queryset = queryset.order_by(order_field, *existing_ordering)
-    #     else:
-    #         queryset = queryset.order_by(order_field)
-    #     return queryset, True
-
     def order_shop_price(self, queryset, is_descending):
         """Order field with None values at the end."""
         order_field = (
@@ -296,29 +313,9 @@ class GameTable(tables.Table):
         """Render price with filter."""
         return price(record, show_currency=False)
 
-    # def order_shop_saving(self, queryset, is_descending):
-    #     """Order field with None values at the end."""
-    #     existing_ordering = queryset.query.order_by
-    #     order_field = F('shop_saving').desc(nulls_last=True) if is_descending else F('shop_saving').asc(nulls_last=True)
-    #     if existing_ordering:
-    #         queryset = queryset.order_by(order_field, *existing_ordering)
-    #     else:
-    #         queryset = queryset.order_by(order_field)
-    #     return queryset, True
-
     def render_shop_saving(self, record: Game):
         """Render price with filter."""
         return discount(record)
-
-    # def order_shop_in_stock(self, queryset, is_descending):
-    #     """Order field with None values at the end."""
-    #     existing_ordering = queryset.query.order_by
-    #     order_field = F('shop_in_stock').desc(nulls_last=True) if is_descending else F('shop_in_stock').asc(nulls_last=True)
-    #     if existing_ordering:
-    #         queryset = queryset.order_by(order_field, *existing_ordering)
-    #     else:
-    #         queryset = queryset.order_by(order_field)
-    #     return queryset, True
 
     def render_shop_in_stock(self, record: Game):
         """Render number of shops."""
