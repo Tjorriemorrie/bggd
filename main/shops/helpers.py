@@ -22,31 +22,54 @@ logger = logging.getLogger(__name__)
 
 def base_scrape(worker):
     """Start scraping using multiprocessing with ProcessPoolExecutor."""
-    # fork_context = mp.get_context('fork')
-    # spawn_context = multiprocessing.get_context('spawn')  # Use 'spawn' on Windows
-
     process_pool_size = settings.PROCESS_POOL
+    max_retries = 3
+    retry_delay = 1
+
     with concurrent.futures.ProcessPoolExecutor(max_workers=process_pool_size) as executor:
         pages_to_scrape = list(range(1, 5))
         future_to_page = {executor.submit(worker, page): page for page in pages_to_scrape}
+        failed_pages = {}  # Store pages that need retrying
 
-        try:
-            while future_to_page:
-                # As workers finish, collect results and submit new tasks
-                for future in concurrent.futures.as_completed(future_to_page):
-                    page = future_to_page.pop(future)
+        while future_to_page or failed_pages:
+            # Handle completed futures
+            for future in concurrent.futures.as_completed(future_to_page):
+                page = future_to_page.pop(future)
 
-                    try:
-                        new_pages = future.result(timeout=30)
-                        for new_page in new_pages:
-                            if new_page not in pages_to_scrape:
-                                pages_to_scrape.append(new_page)
-                                future_to_page[executor.submit(worker, new_page)] = new_page
+                try:
+                    new_pages = future.result(timeout=30)
+                    for new_page in new_pages:
+                        if new_page not in pages_to_scrape:
+                            pages_to_scrape.append(new_page)
+                            future_to_page[executor.submit(worker, new_page)] = new_page
 
-                    except Exception as exc:
-                        logger.exception(f'Error with future on page {page}: {exc}')
-        finally:
-            executor.shutdown(wait=True)
+                except concurrent.futures.process.BrokenProcessPool:
+                    # Handle BrokenProcessPool by retrying the page
+                    logger.warning(f'BrokenProcessPool on page {page}. Retrying...')
+                    failed_pages[page] = failed_pages.get(page, 0) + 1
+                    if failed_pages[page] <= max_retries:
+                        # Resubmit the task after a short delay
+                        import time
+
+                        time.sleep(retry_delay)
+                        future_to_page[executor.submit(worker, page)] = page
+                    else:
+                        logger.error(
+                            f'Max retries ({max_retries}) exceeded for page {page}. Giving up.'
+                        )
+
+                # except Exception as exc:
+                #     logger.exception(f'Error with future on page {page}: {exc}')
+                #     raise
+
+            # Submit new tasks for pages that need retrying (if any)
+            if failed_pages:
+                for page, _ in list(failed_pages.items()):
+                    if page not in future_to_page:
+                        future_to_page[executor.submit(worker, page)] = page
+                        del failed_pages[page]  # Remove from retry list
+
+        executor.shutdown(wait=True)
 
 
 def strip_query_params(url: str) -> str:

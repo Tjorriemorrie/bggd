@@ -17,8 +17,7 @@ def worker(page: int) -> list:
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-        # noqa E501
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
     url = f'{shop_host}/online-shop/'
     params = {
@@ -53,6 +52,7 @@ def worker(page: int) -> list:
 
 
 def worker_wrapper(*args, **kwargs):
+    """Wrap worker."""
     try:
         return worker(*args, **kwargs)
     except Exception:

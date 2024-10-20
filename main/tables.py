@@ -120,7 +120,7 @@ class ListingTable(tables.Table):
 
     def render_discount(self, record: Listing):
         """Render price with filter."""
-        return discount(record)
+        return discount(record, show_currency=False)
 
 
 class ShopTable(tables.Table):
@@ -315,7 +315,7 @@ class GameTable(tables.Table):
 
     def render_shop_saving(self, record: Game):
         """Render price with filter."""
-        return discount(record)
+        return discount(record, show_currency=False)
 
     def render_shop_in_stock(self, record: Game):
         """Render number of shops."""

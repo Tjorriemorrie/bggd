@@ -70,7 +70,7 @@ def get_latest_new_games() -> QuerySet[Game]:
 
 def get_best_savings_games() -> QuerySet[Game]:
     """Get the best savings games."""
-    games = Game.objects.filter(shop_saving__gte=100).order_by('-shop_saving', '-shop_price').all()
+    games = Game.objects.order_by('-shop_saving', '-shop_price').all()[:18]
     return games
 
 
