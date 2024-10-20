@@ -37,7 +37,7 @@ def base_scrape(worker):
                 page = future_to_page.pop(future)
 
                 try:
-                    new_pages = future.result(timeout=30)
+                    new_pages = future.result(timeout=300)
                     for new_page in new_pages:
                         if new_page not in pages_to_scrape:
                             pages_to_scrape.append(new_page)
