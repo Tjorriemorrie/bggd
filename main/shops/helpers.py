@@ -20,10 +20,11 @@ from main.selectors import get_today
 logger = logging.getLogger(__name__)
 
 
-def base_scrape(worker):  # noqa: PLR0912, PLR0915
+def base_scrape(worker):
     """Start scraping using multiprocessing with ProcessPoolExecutor."""
     process_pool_size = settings.PROCESS_POOL
-    max_retries = 3
+    max_retries = 5  # Increased retries to 5 attempts
+    retry_delay = 10  # Added 10s delay between retries
 
     pages_to_scrape = list(range(1, 5))
     failed_pages = {}  # Store pages that need retrying
@@ -36,11 +37,16 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
         # Ensure a usable executor
         if not executor_usable or executor is None:
             # Shutdown previous executor (if it exists and not already shut down)
-            if executor is not None and not executor._shutdown:
-                executor.shutdown(wait=True)
+            if executor is not None:
+                try:
+                    executor.shutdown(wait=True)
+                except RuntimeError as e:
+                    if 'cannot shutdown already-shutdown' not in str(e).lower():
+                        raise
             # Create a new executor
             executor = concurrent.futures.ProcessPoolExecutor(max_workers=process_pool_size)
             executor_usable = True
+            future_to_page = {}  # Reset future_to_page for the new executor
 
         # Submit initial tasks or retry failed tasks
         if not future_to_page and (pages_to_scrape or failed_pages):
@@ -65,8 +71,14 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
 
             except concurrent.futures.process.BrokenProcessPool:
                 logger.warning(f'BrokenProcessPool on page {page}. Retrying...')
-                failed_pages[page] = failed_pages.get(page, 0) + 1
+                if page not in failed_pages:
+                    failed_pages[page] = 0
+                failed_pages[page] += 1
                 if failed_pages[page] <= max_retries:
+                    # Add a 10s delay before retrying
+                    import time
+
+                    time.sleep(retry_delay)
                     # Mark executor as unusable for the next iteration
                     executor_usable = False
                 else:
@@ -89,11 +101,10 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
         try:
             executor.shutdown(wait=True)
         except RuntimeError as e:
-            # Handle the case where shutdown is called on an already-shut-down executor
             if 'cannot shutdown already-shutdown' not in str(e).lower():
                 raise
         finally:
-            executor = None  # Set executor to None to indicate it's no longer usable
+            executor = None
 
 
 def strip_query_params(url: str) -> str:
