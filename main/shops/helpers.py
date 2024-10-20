@@ -20,56 +20,80 @@ from main.selectors import get_today
 logger = logging.getLogger(__name__)
 
 
-def base_scrape(worker):
+def base_scrape(worker):  # noqa: PLR0912, PLR0915
     """Start scraping using multiprocessing with ProcessPoolExecutor."""
     process_pool_size = settings.PROCESS_POOL
     max_retries = 3
-    retry_delay = 1
 
-    with concurrent.futures.ProcessPoolExecutor(max_workers=process_pool_size) as executor:
-        pages_to_scrape = list(range(1, 5))
-        future_to_page = {executor.submit(worker, page): page for page in pages_to_scrape}
-        failed_pages = {}  # Store pages that need retrying
+    pages_to_scrape = list(range(1, 5))
+    failed_pages = {}  # Store pages that need retrying
+    processed_pages = set()  # Track successfully processed pages
+    executor_usable = True  # Flag to track executor usability
+    executor = None  # Initialize executor variable
+    future_to_page = {}  # Initialize future_to_page dictionary
 
-        while future_to_page or failed_pages:
-            # Handle completed futures
-            for future in concurrent.futures.as_completed(future_to_page):
-                page = future_to_page.pop(future)
+    while pages_to_scrape or failed_pages or future_to_page:
+        # Ensure a usable executor
+        if not executor_usable or executor is None:
+            # Shutdown previous executor (if it exists and not already shut down)
+            if executor is not None and not executor._shutdown:
+                executor.shutdown(wait=True)
+            # Create a new executor
+            executor = concurrent.futures.ProcessPoolExecutor(max_workers=process_pool_size)
+            executor_usable = True
 
-                try:
-                    new_pages = future.result(timeout=300)
-                    for new_page in new_pages:
-                        if new_page not in pages_to_scrape:
-                            pages_to_scrape.append(new_page)
-                            future_to_page[executor.submit(worker, new_page)] = new_page
+        # Submit initial tasks or retry failed tasks
+        if not future_to_page and (pages_to_scrape or failed_pages):
+            for page in list(pages_to_scrape):
+                future_to_page[executor.submit(worker, page)] = page
+                pages_to_scrape.remove(page)
+            for page, _ in list(failed_pages.items()):
+                future_to_page[executor.submit(worker, page)] = page
+                del failed_pages[page]
 
-                except concurrent.futures.process.BrokenProcessPool:
-                    # Handle BrokenProcessPool by retrying the page
-                    logger.warning(f'BrokenProcessPool on page {page}. Retrying...')
-                    failed_pages[page] = failed_pages.get(page, 0) + 1
-                    if failed_pages[page] <= max_retries:
-                        # Resubmit the task after a short delay
-                        import time
+        # Handle completed futures
+        for future in list(future_to_page):
+            page = future_to_page[future]
+            try:
+                new_pages = future.result(timeout=300)
+                # Add new pages to pages_to_scrape (if not already processed)
+                for new_page in new_pages:
+                    if new_page not in processed_pages and new_page not in pages_to_scrape:
+                        pages_to_scrape.append(new_page)
+                # Mark the current page as processed
+                processed_pages.add(page)
 
-                        time.sleep(retry_delay)
-                        future_to_page[executor.submit(worker, page)] = page
-                    else:
-                        logger.error(
-                            f'Max retries ({max_retries}) exceeded for page {page}. Giving up.'
-                        )
+            except concurrent.futures.process.BrokenProcessPool:
+                logger.warning(f'BrokenProcessPool on page {page}. Retrying...')
+                failed_pages[page] = failed_pages.get(page, 0) + 1
+                if failed_pages[page] <= max_retries:
+                    # Mark executor as unusable for the next iteration
+                    executor_usable = False
+                else:
+                    logger.error(
+                        f'Max retries ({max_retries}) exceeded for page {page}. Giving up.'
+                    )
+                    del failed_pages[page]
+                    processed_pages.add(page)  # Ensure page is marked as processed
 
-                # except Exception as exc:
-                #     logger.exception(f'Error with future on page {page}: {exc}')
-                #     raise
+            except Exception as exc:
+                logger.exception(f'Error with future on page {page}: {exc}')
+                processed_pages.add(page)  # Ensure page is marked as processed on error
+                raise
 
-            # Submit new tasks for pages that need retrying (if any)
-            if failed_pages:
-                for page, _ in list(failed_pages.items()):
-                    if page not in future_to_page:
-                        future_to_page[executor.submit(worker, page)] = page
-                        del failed_pages[page]  # Remove from retry list
+            # Remove completed future
+            del future_to_page[future]
 
-        executor.shutdown(wait=True)
+    # Final shutdown
+    if executor is not None:
+        try:
+            executor.shutdown(wait=True)
+        except RuntimeError as e:
+            # Handle the case where shutdown is called on an already-shut-down executor
+            if 'cannot shutdown already-shutdown' not in str(e).lower():
+                raise
+        finally:
+            executor = None  # Set executor to None to indicate it's no longer usable
 
 
 def strip_query_params(url: str) -> str:
