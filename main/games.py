@@ -24,7 +24,7 @@ from main.errors import (
     TooManyRequestsError,
 )
 from main.models import Game, Label
-from main.selectors import best_listing_by_game, get_today
+from main.selectors import best_listing_by_game, get_today, get_best_savings_games
 
 logger = logging.getLogger(__name__)
 
@@ -623,7 +623,10 @@ def search_bgg(name: str) -> dict | None:
 
 def update_outdated_game_shop_prices():
     """Update outdated shop prices on games."""
-    games = Game.objects.filter(shop_outdated=True).all()
+    games = list(
+        {*Game.objects.filter(shop_outdated=True).all(),
+         *get_best_savings_games()}
+    )
     total = len(games)
     for ix, game in enumerate(games):
         logger.info(f'{ix}/{total} Updating prices for {game}')
