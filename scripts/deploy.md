@@ -152,9 +152,13 @@ Set the owner of the static files directory to www-data (the Nginx user):
 
     sudo chown -R www-data:www-data /home/bgg/bggd/static/
 
-Make sure the directory is readable by the web server:
+User needs access to run collectstatic
 
-    sudo chmod -R 755 /home/bgg/bggd/static/
+    sudo chown bgg /home/bgg/bggd/static
+
+Set appropriate permissions
+
+    sudo chmod -R u=rwx,g=rx,o= /home/bgg/bggd/static
 
 Add the IP and domain names to the ALLOWED_HOSTS
 

@@ -7,6 +7,10 @@ cd /home/bgg/bggd
 logfile="/home/bgg/deploy.log"
 : > "$logfile"
 
+# Log the user executing the script
+echo "Logging who is executing the script..." | tee -a "$logfile"
+whoami | tee -a "$logfile"
+
 # Pull the latest code
 echo "Pulling latest code..." | tee -a "$logfile"
 git fetch origin

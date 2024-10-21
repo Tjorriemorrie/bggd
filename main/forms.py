@@ -1,6 +1,7 @@
 import logging
 
 from django import forms
+from django.utils import timezone
 
 from main.models import Listing
 
@@ -23,6 +24,7 @@ class LookupForm(forms.Form):
         listing.bgg_id = self.cleaned_data.get('bgg_id') or None
         listing.bgg_missing = self.cleaned_data.get('is_missing', False)
         listing.is_accessory = self.cleaned_data.get('is_accessory', False)
+        listing.bgg_scraped = timezone.now()
         listing.save()
         logger.info(
             f'Saved bgg info: id={listing.bgg_id} missing={listing.bgg_missing} to {listing}'
