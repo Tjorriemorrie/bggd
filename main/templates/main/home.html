@@ -11,6 +11,13 @@
                 {% include 'main/snippet_game_group.html' with games=savings %}
             {% endif %}
 
+            <hr/>
+
+            {% if latest %}
+                <h3>Newest games!</h3>
+                {% include 'main/snippet_game_group.html' with games=latest %}
+            {% endif %}
+
         </div>
     </div>
 {% endblock %}

@@ -89,3 +89,9 @@ def get_last_scrape(shop: Shop) -> Scrapelog | None:
     """Last scrape of shop."""
     scrapelog = Scrapelog.objects.filter(target=f'shop {shop.name}').order_by('scraped_at').last()
     return scrapelog
+
+
+def list_newwest_games():
+    """List newest games."""
+    games = Game.objects.order_by('-created_at').all()[:18]
+    return games

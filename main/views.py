@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 def home_view(request: WSGIRequest):
     """Home view."""
     savings = get_best_savings_games()
-    # latest = get_latest_new_games()
+    # latest = list_newwest_games()
     ctx = {
         'savings': savings,
         # 'latest': latest,
@@ -54,6 +54,7 @@ class ListingDetailView(DetailView):
     context_object_name = 'listing'
 
     def get_context_data(self, **kwargs):
+        """Get context."""
         context = super().get_context_data(**kwargs)
         context['nav'] = 'listings'
         return context
@@ -88,6 +89,7 @@ class ShopDetailView(DetailView):
     context_object_name = 'shop'
 
     def get_context_data(self, **kwargs):
+        """Get context."""
         context = super().get_context_data(**kwargs)
         context['nav'] = 'shops'
         return context
@@ -123,6 +125,7 @@ class GameDetailView(DetailView):
     context_object_name = 'game'
 
     def get_context_data(self, **kwargs):
+        """Get context."""
         context = super().get_context_data(**kwargs)
         context['nav'] = 'games'
         return context

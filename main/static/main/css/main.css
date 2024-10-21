@@ -59,3 +59,28 @@ a:hover {
 .filtering-form .form-control {
     margin-top: 1em;
 }
+
+
+/************************* FOOTER **********************************/
+
+footer2 {
+    /* Background Gradient */
+    background-image: linear-gradient(to bottom, #ccc, #999);
+
+    /* Optional: For demonstration purposes, to see the gradient in action */
+    min-height: 200px; /* Adjust the height to see the gradient effect */
+    text-align: center;
+    padding: 20px;
+    color: #333; /* Text color, for readability */
+}
+
+footer {
+    padding-top: 5em;
+    text-align: center;
+    color: #666;
+}
+
+footer img {
+    filter: grayscale(100%);
+    opacity: 0.5;
+}
