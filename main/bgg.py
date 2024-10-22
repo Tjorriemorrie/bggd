@@ -1,5 +1,7 @@
 import logging
+import time
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from concurrent.futures.process import BrokenProcessPool
 
 import django
 from django.utils import timezone
@@ -28,23 +30,44 @@ def scrape_new_games():
         return
 
     listing_ids = [listing.id for listing in listings]
-    idx = 0
+    total = len(listing_ids)
+    retries = 0
+    max_retries = 10
+    wait_seconds = 10
+    while retries < max_retries:
+        try:
+            idx = 0
+            # Initialize the process pool
+            with ProcessPoolExecutor(max_workers=settings.PROCESS_POOL) as executor:
+                future_to_id = {
+                    executor.submit(scrape_game_worker, listing_id): listing_id
+                    for listing_id in listing_ids
+                }
 
-    with ProcessPoolExecutor(max_workers=settings.PROCESS_POOL) as executor:
-        # Submit tasks individually
-        future_to_id = {
-            executor.submit(scrape_game_worker, listing_id): listing_id
-            for listing_id in listing_ids
-        }
+                for future in as_completed(future_to_id):
+                    listing_id = future_to_id[future]
+                    try:
+                        future.result()  # This will raise an exception if the worker failed
+                        idx += 1
+                        logger.info(
+                            f'{idx}/{total} Successfully processed listing ID: {listing_id}')
+                    except Exception as exc:
+                        logger.exception(f'Error processing listing ID {listing_id}: {exc}')
 
-        for future in as_completed(future_to_id):
-            listing_id = future_to_id[future]
-            try:
-                future.result()  # This will raise an exception if the worker failed
-                idx += 1
-                logger.info(f'{idx}/{total} Successfully processed listing ID: {listing_id}')
-            except Exception as exc:
-                logger.exception(f'Error processing listing ID {listing_id}: {exc}')
+            # If the pool completes successfully, break out of the retry loop
+            break
+
+        except BrokenProcessPool as bpp:
+            # Log the BrokenProcessPool error
+            logger.error(
+                f'BrokenProcessPool error encountered. Attempt {retries + 1}/{max_retries}: {bpp}')
+            retries += 1
+            if retries < max_retries:
+                logger.info(f'Retrying in {wait_seconds} seconds...')
+                time.sleep(wait_seconds)
+            else:
+                logger.error('Max retries reached. Exiting...')
+                raise
 
 
 def scrape_game_worker(listing_id):

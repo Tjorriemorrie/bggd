@@ -59,7 +59,7 @@ def get(
 
     if url == last_url and params == last_params:
         sleep_time = round(sleep_time + 0.5, 3)
-        logger.info(f'Increased sleep time to {sleep_time}')
+        logger.info(f'Same url: increased sleep time to {sleep_time} for {url}')
     elif sleep_time:
         sleep_time = round(sleep_time - 0.005, 3)
     last_url = url
