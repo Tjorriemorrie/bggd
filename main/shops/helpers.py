@@ -12,7 +12,7 @@ from django.utils.text import slugify
 from retry import retry
 from unidecode import unidecode
 
-from main.errors import ListingImageError, ListingIntegrityError
+from main.errors import ListingImageError, ListingIntegrityError, ListingUrlError
 from main.games import get
 from main.models import Listing, Price, Shop
 from main.selectors import get_today
@@ -109,6 +109,8 @@ def base_scrape(worker):
 
 def strip_query_params(url: str) -> str:
     """Strip query params."""
+    if not url.startswith('http'):
+        raise ListingUrlError(f'http missing: {url}')
     # Parse the URL into components
     parsed_url = urlparse(url)
     # Rebuild the URL without query parameters (empty query part)

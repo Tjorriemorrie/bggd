@@ -34,7 +34,7 @@ def worker(page: int) -> list:
     rows = container.find_all('li', recursive=False)
     for row in rows:
         anchor = row.find('a')
-        href = anchor['href']
+        href = shop_host + anchor['href']
         img_src = 'http:' + anchor.find('img')['src']
         name = row.find('div', class_='product-detail').get_text(separator=' ', strip=True)
         # price details

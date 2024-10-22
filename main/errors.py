@@ -54,6 +54,10 @@ class ListingImageError(Exception):
     """listing has bad image."""
 
 
+class ListingUrlError(Exception):
+    """listing has bad url."""
+
+
 class ListingIntegrityError(Exception):
     """listing has bad integrity."""
 
