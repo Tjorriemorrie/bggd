@@ -17,9 +17,10 @@
                                     {{ game.name }}
                                 </a>
                             </h5>
+                            <p class="card-text">{{ game|price }}</p>
                         </div>
                         <div class="card-footer d-flex justify-content-between">
-                            <span>{{ game|price }}</span>
+                            <span>{{ game.shop_best.name }}</span>
                             {% if game.shop_saving %}
                                 <span>{{ game|discount }}</span>
                             {% endif %}
