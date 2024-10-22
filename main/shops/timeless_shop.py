@@ -34,7 +34,7 @@ def worker(page: int) -> list:
     for row in rows[2:-2]:
         img_src = row.find_all('img')[0]['src']
         name = row.find_all('p', class_='w3-small')[0].get_text(separator=' ', strip=True)
-        href = row.find_all('a')[0]['href']
+        href = shop_host + '/' + row.find_all('a')[0]['href']
         is_new = 'Pre-loved' not in row.text
         # price details
         if 'Out of stock' in row.text:
