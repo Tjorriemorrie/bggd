@@ -580,3 +580,75 @@ Update the deploy script: Now, the sudo command will no longer ask for a passwor
 bash
 
 sudo systemctl restart gunicorn
+
+
+### 11. Create swap file for memory
+
+The memory for droplets are very low and does not have any swapping.
+
+    free -m
+
+Check if Swap is Enabled \
+Before proceeding, check if any swap space is currently enabled:
+
+    sudo swapon --show
+
+If there’s no output, it means no swap space is enabled.
+
+Create a Swap File \
+Use the dd command to create a 3GB file to use as swap:
+
+    sudo dd if=/dev/zero of=/swapfile bs=1M count=3072
+
+`if=/dev/zero`: Source of zero bytes.\
+`of=/swapfile`: Location to create the swap file.\
+`bs=1M`: Block size of 1MB.\
+`count=3072`: The number of blocks to create, 3072 blocks for 3GB.
+
+Set the Correct Permissions \
+Ensure the swap file has the correct permissions for security:
+
+    sudo chmod 600 /swapfile
+
+Mark the File as Swap \
+Format the file to swap space:
+
+    sudo mkswap /swapfile
+
+Enable the Swap File \
+Enable the swap file so that the system starts using it:
+
+    sudo swapon /swapfile
+
+Verify the Swap is Active \
+Check that the swap file is now active:
+
+    sudo swapon --show
+
+Make the Swap File Permanent \
+To ensure the swap file is available after a reboot, add it to /etc/fstab. Edit the file with:
+
+    sudo vim /etc/fstab
+
+Add the following line at the end of the file:
+
+`/swapfile none swap sw 0 0`
+
+
+To Set Swappiness:
+
+Temporarily adjust swappiness:
+
+    sudo sysctl vm.swappiness=10
+
+This will apply the value until the next reboot.
+
+To make the change permanent, edit `/etc/sysctl.conf`:
+
+    sudo vim /etc/sysctl.conf
+
+Add or update the following line:
+
+    vm.swappiness=10
+
+This configuration will allow your system to focus on utilizing your available RAM efficiently while reserving swap for when it’s truly needed.

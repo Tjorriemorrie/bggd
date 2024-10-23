@@ -6,7 +6,7 @@ from urllib.parse import urlparse, urlunparse
 
 import requests
 from django.conf import settings
-from django.db import IntegrityError, OperationalError
+from django.db import IntegrityError, OperationalError, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 from retry import retry
@@ -149,20 +149,28 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
     """Update/create and store the listing in the db."""
     href = strip_query_params(href)
     img_src = strip_query_params(img_src)
-    listing, created = Listing.objects.update_or_create(
-        shop=shop,
-        url=href,
-        defaults={
-            'name': name,
-            'slug': slugify(unidecode(name)),
-            'img': img_src,
-            'scraped_at': timezone.now(),
-            **params,
-        },
-    )
-    if created:
-        logger.info(f'Listing created: {listing}')
-    return listing
+
+    try:
+        with transaction.atomic():
+            listing, created = Listing.objects.select_for_update().update_or_create(
+                shop=shop,
+                url=href,
+                defaults={
+                    'name': name,
+                    'slug': slugify(unidecode(name)),
+                    'img': img_src,
+                    'scraped_at': timezone.now(),
+                    **params,
+                },
+            )
+            if created:
+                logger.info(f'Listing created: {listing}')
+            else:
+                logger.info(f'Listing updated: {listing}')
+        return listing
+    except IntegrityError:
+        logger.error(f'Failed to upsert listing due to unique constraint violation, for {href} ')
+        raise
 
 
 def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params):
@@ -172,10 +180,6 @@ def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
     except (ListingUrlError, ListingImageError):
         logger.exception('Could not handle item data')
         return
-    except IntegrityError:
-        logger.error(f'Shop: {shop}')
-        logger.error(f'Url: {strip_query_params(href)}')
-        raise
     price = upsert_price(listing, in_stock, price_value)
     logger.info(f'{listing} has price {price}')
 
