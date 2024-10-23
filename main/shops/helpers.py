@@ -6,7 +6,7 @@ from urllib.parse import urlparse, urlunparse
 
 import requests
 from django.conf import settings
-from django.db import IntegrityError, OperationalError, transaction
+from django.db import IntegrityError, OperationalError, connection, transaction
 from django.utils import timezone
 from django.utils.text import slugify
 from retry import retry
@@ -168,9 +168,11 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
             else:
                 logger.info(f'Listing updated: {listing}')
         return listing
-    except IntegrityError as exc:
+    except IntegrityError:
         logger.error(f'Failed to upsert listing due to unique constraint violation, for "{href}"')
-        raise OperationalError('Retry IntegrityError') from exc
+        with connection.cursor() as cursor:
+            cursor.execute('DELETE FROM main_listing WHERE url = ?', [href])
+        return upsert_listing(shop, name, href, img_src, **params)
 
 
 def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params):
