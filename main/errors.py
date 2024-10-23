@@ -58,9 +58,5 @@ class ListingUrlError(Exception):
     """listing has bad url."""
 
 
-class ListingIntegrityError(Exception):
-    """listing has bad integrity."""
-
-
 class BggSearchError(Exception):
     """Search error on BGG."""

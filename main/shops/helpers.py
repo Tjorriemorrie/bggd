@@ -6,13 +6,13 @@ from urllib.parse import urlparse, urlunparse
 
 import requests
 from django.conf import settings
-from django.db import OperationalError
+from django.db import IntegrityError, OperationalError
 from django.utils import timezone
 from django.utils.text import slugify
 from retry import retry
 from unidecode import unidecode
 
-from main.errors import ListingImageError, ListingIntegrityError, ListingUrlError
+from main.errors import ListingImageError, ListingUrlError
 from main.games import get
 from main.models import Listing, Price, Shop
 from main.selectors import get_today
@@ -20,7 +20,7 @@ from main.selectors import get_today
 logger = logging.getLogger(__name__)
 
 
-def base_scrape(worker):
+def base_scrape(worker):  # noqa: PLR0912, PLR0915
     """Start scraping using multiprocessing with ProcessPoolExecutor."""
     process_pool_size = settings.PROCESS_POOL
     max_retries = 5  # Increased retries to 5 attempts
@@ -69,7 +69,8 @@ def base_scrape(worker):
                 # Mark the current page as processed
                 processed_pages.add(page)
 
-            except concurrent.futures.process.BrokenProcessPool:
+            except concurrent.futures.process.BrokenProcessPool as exc:
+                logger.warning(f'{exc}')
                 logger.warning(f'BrokenProcessPool on page {page}. Retrying...')
                 if page not in failed_pages:
                     failed_pages[page] = 0
@@ -109,7 +110,7 @@ def base_scrape(worker):
 
 def strip_query_params(url: str) -> str:
     """Strip query params."""
-    if not url.startswith('http'):
+    if not url or not url.startswith('http'):
         raise ListingUrlError(f'http missing: {url}')
     # Parse the URL into components
     parsed_url = urlparse(url)
@@ -168,8 +169,13 @@ def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
     """Handle exceptions on upserts."""
     try:
         listing = upsert_listing(shop, name, href, img_src, **params)
-    except (ListingImageError, ListingIntegrityError):
+    except (ListingUrlError, ListingImageError):
+        logger.exception('Could not handle item data')
         return
+    except IntegrityError:
+        logger.error(f'Shop: {shop}')
+        logger.error(f'Url: {strip_query_params(href)}')
+        raise
     price = upsert_price(listing, in_stock, price_value)
     logger.info(f'{listing} has price {price}')
 
