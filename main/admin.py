@@ -39,7 +39,7 @@ class ListingAdmin(admin.ModelAdmin):
     )
     list_filter = ('shop__name', 'in_stock')
     list_editable = ('bgg_id',)
-    search_fields = ('name',)
+    search_fields = ('name', 'url')
     readonly_fields = ('shop', 'in_stock', 'price', 'priced_at')
     ordering = (
         'bgg_missing',
@@ -49,9 +49,11 @@ class ListingAdmin(admin.ModelAdmin):
     change_list_template = 'admin/listing_change_list.html'
 
     def pic(self, obj: Listing):
+        """Pic."""
         return format_html(f'<img src="{obj.img}" style="width:3em;height:auto;padding:0.1em;"/>')
 
     def name_link(self, obj: Listing):
+        """Name link."""
         return format_html(
             """
             <a href="{url}" target="_blank">
@@ -63,6 +65,7 @@ class ListingAdmin(admin.ModelAdmin):
         )
 
     def get_urls(self):
+        """Get urls."""
         urls = super().get_urls()
         custom_urls = [
             path(r'lookup/', self.admin_site.admin_view(self.lookup_view), name='listing-lookup')
@@ -70,6 +73,7 @@ class ListingAdmin(admin.ModelAdmin):
         return custom_urls + urls
 
     def lookup_view(self, request):
+        """Lookup view."""
         ctx = dict(
             self.admin_site.each_context(request),
         )
@@ -126,6 +130,7 @@ class GameAdmin(admin.ModelAdmin):
     actions = [update_game_shop_prices_action]
 
     def name_img(self, obj: Game):
+        """Get name and img."""
         return format_html(
             """
             <img src="{img}" style="width:3em;height:auto;padding:0 1em 0 0;float:left;"/>
