@@ -64,8 +64,10 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
                 new_pages = future.result(timeout=300)
                 # Add new pages to pages_to_scrape (if not already processed)
                 for new_page in new_pages:
-                    if new_page not in processed_pages and new_page not in pages_to_scrape:
-                        pages_to_scrape.append(new_page)
+                    if new_page not in processed_pages:
+                        pages_to_scrape.append(
+                            new_page
+                        )  # Do not check pages_to_scrape as it's already managed
                 # Mark the current page as processed
                 processed_pages.add(page)
 
@@ -165,8 +167,8 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
             )
             if created:
                 logger.info(f'Listing created: {listing}')
-            else:
-                logger.info(f'Listing updated: {listing}')
+            # else:
+            #     logger.info(f'Listing updated: {listing}')
         return listing
     except IntegrityError:
         logger.error(f'Failed to upsert listing due to unique constraint violation, for "{href}"')
