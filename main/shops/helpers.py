@@ -171,6 +171,12 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
     except IntegrityError:
         logger.error(f'Failed to upsert listing due to unique constraint violation, for "{href}"')
         with connection.cursor() as cursor:
+            cursor.execute(
+                'DELETE FROM main_price '
+                'WHERE listing_id IN (SELECT id FROM main_listing WHERE url = ?)',
+                [href],
+            )
+        with connection.cursor() as cursor:
             cursor.execute('DELETE FROM main_listing WHERE url = ?', [href])
         return upsert_listing(shop, name, href, img_src, **params)
 
