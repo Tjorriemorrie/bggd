@@ -1,4 +1,5 @@
 import logging
+import re
 
 from bs4 import BeautifulSoup
 from django.conf import settings
@@ -37,6 +38,8 @@ def worker(page: int) -> list:
         img_src = 'https:' + row.find('img')['data-src']
         href = shop_host + anchor['href']
         name = anchor.get_text(separator=' ', strip=True)
+        # Remove newlines and extra whitespace
+        name = re.sub(r'\s+', ' ', name).strip()
         # price details
         sold_out_span = row.find('span', class_='product-thumbnail__price')
         if 'Sold Out' in sold_out_span.text.strip():

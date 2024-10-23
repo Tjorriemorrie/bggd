@@ -24,7 +24,7 @@ from main.errors import (
     TooManyRequestsError,
 )
 from main.models import Game, Label
-from main.selectors import best_listing_by_game, get_today, get_best_savings_games
+from main.selectors import best_listing_by_game, get_best_savings_games, get_today
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ def get(
         logger.error(f'Too many requests: {res.content} for {url}')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
-        logger.error(f'Server error! {url}: {res.text}')
+        logger.error(f'Server error! {url}')
         raise TooManyRequestsError()
     elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
@@ -623,17 +623,14 @@ def search_bgg(name: str) -> dict | None:
 
 def update_outdated_game_shop_prices():
     """Update outdated shop prices on games."""
-    games = list(
-        {*Game.objects.filter(shop_outdated=True).all(),
-         *get_best_savings_games()}
-    )
+    games = list({*Game.objects.filter(shop_outdated=True).all(), *get_best_savings_games()})
     total = len(games)
     for ix, game in enumerate(games):
         logger.info(f'{ix}/{total} Updating prices for {game}')
         update_game_shop_prices(game)
 
 
-def update_game_shop_prices(game: Game):
+def update_game_shop_prices(game: Game):  # noqa: PLR0915
     """Update the GameDay with the prices of the best shop.
 
     Then set the final current value on the game.
