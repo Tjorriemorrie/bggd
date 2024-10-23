@@ -23,17 +23,17 @@ logger = logging.getLogger(__name__)
 def base_scrape(worker):  # noqa: PLR0912, PLR0915
     """Start scraping using multiprocessing with ProcessPoolExecutor."""
     process_pool_size = settings.PROCESS_POOL
-    max_retries = 5  # Increased retries to 5 attempts
-    retry_delay = 10  # Added 10s delay between retries
+    max_retries = 50
+    retry_delay = 10
 
+    broken_pools = 0
     pages_to_scrape = list(range(1, 5))
-    failed_pages = {}  # Store pages that need retrying
     processed_pages = set()  # Track successfully processed pages
     executor_usable = True  # Flag to track executor usability
     executor = None  # Initialize executor variable
     future_to_page = {}  # Initialize future_to_page dictionary
 
-    while pages_to_scrape or failed_pages or future_to_page:
+    while pages_to_scrape:
         # Ensure a usable executor
         if not executor_usable or executor is None:
             # Shutdown previous executor (if it exists and not already shut down)
@@ -49,13 +49,10 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
             future_to_page = {}  # Reset future_to_page for the new executor
 
         # Submit initial tasks or retry failed tasks
-        if not future_to_page and (pages_to_scrape or failed_pages):
+        if not future_to_page and pages_to_scrape:
             for page in list(pages_to_scrape):
                 future_to_page[executor.submit(worker, page)] = page
                 pages_to_scrape.remove(page)
-            for page, _ in list(failed_pages.items()):
-                future_to_page[executor.submit(worker, page)] = page
-                del failed_pages[page]
 
         # Handle completed futures
         for future in list(future_to_page):
@@ -64,36 +61,32 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
                 new_pages = future.result(timeout=300)
                 # Add new pages to pages_to_scrape (if not already processed)
                 for new_page in new_pages:
-                    if new_page not in processed_pages:
-                        pages_to_scrape.append(
-                            new_page
-                        )  # Do not check pages_to_scrape as it's already managed
+                    if (
+                            new_page not in processed_pages and
+                            new_page not in pages_to_scrape and
+                            new_page not in future_to_page.values()
+                    ):
+                        pages_to_scrape.append(new_page)
                 # Mark the current page as processed
                 processed_pages.add(page)
 
-            except concurrent.futures.process.BrokenProcessPool as exc:
-                logger.warning(f'{exc}')
+            except concurrent.futures.process.BrokenProcessPool:
                 logger.warning(f'BrokenProcessPool on page {page}. Retrying...')
-                if page not in failed_pages:
-                    failed_pages[page] = 0
-                failed_pages[page] += 1
-                if failed_pages[page] <= max_retries:
-                    # Add a 10s delay before retrying
-                    import time
-
-                    time.sleep(retry_delay)
+                broken_pools += 1
+                if broken_pools > max_retries:
+                    logger.error(f'Not adding page {page} back for perm broken pool')
+                    processed_pages.add(page)
+                else:
+                    # add page back to list to scrape
+                    pages_to_scrape.append(page)
                     # Mark executor as unusable for the next iteration
                     executor_usable = False
-                else:
-                    logger.error(
-                        f'Max retries ({max_retries}) exceeded for page {page}. Giving up.'
-                    )
-                    del failed_pages[page]
-                    processed_pages.add(page)  # Ensure page is marked as processed
+                    import time
+                    time.sleep(retry_delay)
 
             except Exception as exc:
                 logger.exception(f'Error with future on page {page}: {exc}')
-                processed_pages.add(page)  # Ensure page is marked as processed on error
+                processed_pages.add(page)
                 raise
 
             # Remove completed future
@@ -191,7 +184,7 @@ def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
         logger.exception('Could not handle item data')
         return
     price = upsert_price(listing, in_stock, price_value)
-    logger.info(f'{listing} has price {price}')
+    # logger.info(f'{listing} has price {price}')
 
 
 @retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
