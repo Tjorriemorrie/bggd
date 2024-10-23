@@ -168,9 +168,9 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
             else:
                 logger.info(f'Listing updated: {listing}')
         return listing
-    except IntegrityError:
-        logger.error(f'Failed to upsert listing due to unique constraint violation, for {href} ')
-        raise
+    except IntegrityError as exc:
+        logger.error(f'Failed to upsert listing due to unique constraint violation, for "{href}"')
+        raise OperationalError('Retry IntegrityError') from exc
 
 
 def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params):
