@@ -686,7 +686,7 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
 
     # finally update game
     best_listing = best_listing_by_game(game)
-    if best_listing:
+    if best_listing and len(df):
         game.shop_best = best_listing.shop
         game.shop_in_stock = True
         game.shop_price = best_listing.price

@@ -99,6 +99,8 @@ class ListingAdmin(admin.ModelAdmin):
             else:
                 ctx['finished'] = True
 
+        ctx['remaining'] = list_listings_without_games().count()
+
         return render(request, 'admin/listing_lookup.html', ctx)
 
 

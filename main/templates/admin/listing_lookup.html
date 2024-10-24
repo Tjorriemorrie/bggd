@@ -1,10 +1,15 @@
 {% extends "admin/base_site.html" %}
+{% load humanize %}
 {% load static %}
 
 {% load crispy_forms_tags %}
 
 
 {% block content %}
+
+    {% if remaining %}
+        <p>Remaining: {{ remaining|intcomma }}</p>
+    {% endif %}
 
     {% if finished %}
         <p>No more ungamed listings.</p>
