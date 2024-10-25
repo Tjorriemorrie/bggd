@@ -726,7 +726,9 @@ def auto_assign_games():
 
     random.shuffle(listings)
     for ix, listing in enumerate(listings):
-        bgg = search_bgg(listing.name)
+        name = listing.name
+        name = name.replace('(Pre-loved)', '')
+        bgg = search_bgg(name.strip())
         if not bgg['bgg_id']:
             logger.warning(f'{ix}/{total} No bgg game found for {listing}')
             listing.bgg_missing = True
@@ -735,4 +737,4 @@ def auto_assign_games():
 
         listing.bgg_id = bgg['bgg_id']
         listing.save()
-        logger.info(f'{ix}/{total} Successfully assigned {listing.bgg_id} to {listing}')
+        logger.info(f'{ix}/{total} Successfully assigned {bgg["name"]} to {listing}')
