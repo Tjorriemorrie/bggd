@@ -10,7 +10,8 @@ import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from django.db import OperationalError
+from django.db import OperationalError, transaction
+from django.db.transaction import TransactionManagementError
 from django.utils import timezone
 from django.utils.text import slugify
 from retry import retry
@@ -228,7 +229,14 @@ def get(
 #         scrape_game(game)
 
 
-@retry((OperationalError, ScrapeError), delay=3, jitter=3, max_delay=30)
+@retry(
+    (OperationalError, ScrapeError, TransactionManagementError),
+    tries=99,
+    delay=1,
+    jitter=1,
+    max_delay=30,
+    logger=logger,
+)
 def scrape_game(bgg_id: int) -> Game:
     """Scrape the game from boardgamegeek."""
     logger.info(f'Scraping {bgg_id}...')
@@ -270,12 +278,22 @@ def scrape_game(bgg_id: int) -> Game:
         raise NotImplementedError(f'Unknown label: {game.label}')
 
     game.scraped_at = timezone.now()
-    game.save()
+    with transaction.atomic():
+        game.save()
 
     logger.info(f'Saved game {game}')
     return game
 
 
+@retry(
+    (OperationalError, TransactionManagementError),
+    tries=99,
+    delay=1,
+    backoff=1,
+    jitter=1,
+    max_delay=30,
+    logger=logger,
+)
 def scrape_boardgame_details(bgg_id, game, preload):
     """Get specific boardgame details."""
     # basic details
@@ -301,8 +319,9 @@ def scrape_boardgame_details(bgg_id, game, preload):
 
     # labels (require game to be saved)
     if not game.pk:
-        game.id = bgg_id
-        game.save()
+        with transaction.atomic():
+            game.id = bgg_id
+            game.save()
     game_links_labels = {
         'boardgamecategory': ('categories', LABEL_CATEGORY),
         'boardgamemechanic': ('mechanics', LABEL_MECHANIC),
