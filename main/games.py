@@ -1,5 +1,6 @@
 import json
 import logging
+import random
 import re
 from contextlib import suppress
 from datetime import datetime
@@ -83,7 +84,7 @@ def get(
         raise RequestsError() from exc
 
     if res.status_code in [requests.codes.too_many, 430]:
-        logger.error(f'Too many requests: {res.content} for {url}')
+        logger.error(f'Too many requests for {url} {params}')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
         logger.error(f'Server error! {url}')
@@ -714,15 +715,16 @@ def auto_assign_games():
     """Auto assign games from search."""
     logger.info('Auto assign games from search...')
 
-    listings = Listing.objects.filter(bgg_id__isnull=True, bgg_missing=False)
+    listings = list(Listing.objects.filter(bgg_id__isnull=True, bgg_missing=False))
 
-    total = listings.count()
+    total = len(listings)
     logger.info(f'Found {total} listings to assign.')
 
     if total == 0:
         logger.info('No new games to assign.')
         return
 
+    random.shuffle(listings)
     for ix, listing in enumerate(listings):
         bgg = search_bgg(listing.name)
         if not bgg['bgg_id']:
