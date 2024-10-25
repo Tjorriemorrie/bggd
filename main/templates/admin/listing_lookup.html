@@ -38,6 +38,13 @@
                     <img src="{% static 'admin/img/icon-no.svg' %}" alt="True">
                 {% endif %}
             </p>
+            <p>BGG game linked:
+                {% if listing.game %}
+                    <img src="{% static 'admin/img/icon-yes.svg' %}" alt="True">
+                {% else %}
+                    <img src="{% static 'admin/img/icon-no.svg' %}" alt="True">
+                {% endif %}
+            </p>
 
             {% if bgg.image %}
                 <p>

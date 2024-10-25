@@ -644,5 +644,6 @@ def auto_assign_games():
             continue
 
         listing.bgg_id = bgg['bgg_id']
+        listing.bgg_missing = False
         listing.save()
         logger.info(f'{ix}/{total} Successfully assigned {bgg["name"]} to {listing}')

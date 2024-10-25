@@ -94,7 +94,17 @@ class ListingAdmin(admin.ModelAdmin):
         else:
             listing = list_listings_without_games().first()
             if listing:
-                bgg = search_bgg(listing.bgg_id or listing.name)
+                if not listing.game:
+                    bgg = search_bgg(listing.bgg_id or listing.name)
+                else:
+                    bgg = {
+                        'name': listing.game.name,
+                        'bgg_id': listing.bgg_id,
+                        'missing': False,
+                        'image': listing.game.img,
+                        'search': f'https://boardgamegeek.com/geeksearch.php?'
+                        f'objecttype=boardgame&action=search&q={listing.bgg_id}',
+                    }
                 initial = {
                     'listing_id': listing.id,
                     'bgg_id': bgg['bgg_id'] if bgg else '',
