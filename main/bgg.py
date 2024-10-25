@@ -50,7 +50,8 @@ def scrape_new_games():
                         future.result()  # This will raise an exception if the worker failed
                         idx += 1
                         logger.info(
-                            f'{idx}/{total} Successfully processed listing ID: {listing_id}')
+                            f'{idx}/{total} Successfully processed listing ID: {listing_id}'
+                        )
                     except Exception as exc:
                         logger.exception(f'Error processing listing ID {listing_id}: {exc}')
 
@@ -60,7 +61,8 @@ def scrape_new_games():
         except BrokenProcessPool as bpp:
             # Log the BrokenProcessPool error
             logger.error(
-                f'BrokenProcessPool error encountered. Attempt {retries + 1}/{max_retries}: {bpp}')
+                f'BrokenProcessPool error encountered. Attempt {retries + 1}/{max_retries}: {bpp}'
+            )
             retries += 1
             if retries < max_retries:
                 logger.info(f'Retrying in {wait_seconds} seconds...')
@@ -73,6 +75,8 @@ def scrape_new_games():
 def scrape_game_worker(listing_id):
     """Worker function to scrape a game based on its listing ID."""
     # Ensure Django is set up correctly within the worker
+    from django.db import transaction
+
     from main.games import scrape_game
     from main.models import Listing
 
@@ -83,14 +87,15 @@ def scrape_game_worker(listing_id):
         listing = Listing.objects.get(id=listing_id)
         # logger.info(f'Fetched listing: {listing} with bgg_id: {listing.bgg_id}')
 
-        game = scrape_game(listing.bgg_id)
-        game.shop_outdated = True
-        game.save()
+        with transaction.atomic():
+            game = scrape_game(listing.bgg_id)
+            game.shop_outdated = True
+            game.save()
 
-        listing.game = game
-        listing.bgg_missing = False
-        listing.bgg_scraped = timezone.now()
-        listing.save()
+            listing.game = game
+            listing.bgg_missing = False
+            listing.bgg_scraped = timezone.now()
+            listing.save()
         # logger.info(f'Successfully scraped and saved game for listing ID: {listing_id}')
 
     except Listing.DoesNotExist:

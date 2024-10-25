@@ -23,7 +23,7 @@ from main.errors import (
     ScrapeError,
     TooManyRequestsError,
 )
-from main.models import Game, Label
+from main.models import Game, Label, Listing
 from main.selectors import best_listing_by_game, get_best_savings_games, get_today
 
 logger = logging.getLogger(__name__)
@@ -708,3 +708,29 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
     game.shop_outdated = False
     game.shop_updated_at = timezone.now()
     game.save()
+
+
+def auto_assign_games():
+    """Auto assign games from search."""
+    logger.info('Auto assign games from search...')
+
+    listings = Listing.objects.filter(bgg_id__isnull=True, bgg_missing=False)
+
+    total = listings.count()
+    logger.info(f'Found {total} listings to assign.')
+
+    if total == 0:
+        logger.info('No new games to assign.')
+        return
+
+    for ix, listing in enumerate(listings):
+        bgg = search_bgg(listing.name)
+        if not bgg['bgg_id']:
+            logger.warning(f'{ix}/{total} No bgg game found for {listing}')
+            listing.bgg_missing = True
+            listing.save()
+            continue
+
+        listing.bgg_id = bgg['bgg_id']
+        listing.save()
+        logger.info(f'{ix}/{total} Successfully assigned {listing.bgg_id} to {listing}')

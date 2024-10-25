@@ -2,12 +2,10 @@ import logging
 import time
 
 from django.core.management import BaseCommand
-from django.db import OperationalError
 from django.utils import timezone
-from retry import retry
 
 from main.bgg import scrape_new_games
-from main.games import update_outdated_game_shop_prices
+from main.games import auto_assign_games, update_outdated_game_shop_prices
 from main.models import Scrapelog
 from main.selectors import get_today
 
@@ -18,24 +16,33 @@ class Command(BaseCommand):
     help = 'Scrape BGG games.'
 
     def add_arguments(self, parser):
+        """Add subparsers."""
         subparsers = parser.add_subparsers(dest='subcommand', required=True)
 
+        # Subparser for 'auto'
+        subparsers.add_parser('auto', help='Auto assign BGG games')
+
         # Subparser for 'new'
-        new_parser = subparsers.add_parser('new', help='Scrape new BGG games')
+        subparsers.add_parser('new', help='Scrape new BGG games')
 
         # Subparser for 'out'
-        out_parser = subparsers.add_parser('out', help='Dummy scrape for out-of-stock games')
+        subparsers.add_parser('out', help='Dummy scrape for out-of-stock games')
 
-    @retry((OperationalError,), delay=3, jitter=3, max_delay=30)
+    def scrape_auto(self, *args, **options):
+        """Auto assign games from search."""
+        logger.info(''.center(99, '='))
+        auto_assign_games()
+        logger.info('Finished scraping new games'.center(50, '='))
+
     def scrape_new(self, *args, **options):
         """Scrape new games by their bgg_ids."""
-        logger.info('Scraping new games'.center(50, '='))
+        logger.info(''.center(99, '='))
         scrape_new_games()
         logger.info('Finished scraping new games'.center(50, '='))
 
     def scrape_out(self, *args, **options):
         """Update games with new shop information."""
-        logger.info('Update games with shop info'.center(50, '='))
+        logger.info(''.center(99, '='))
         update_outdated_game_shop_prices()
         logger.info('Finished updating games with shop info'.center(50, '='))
 
@@ -46,10 +53,15 @@ class Command(BaseCommand):
         start_at = time.time()
 
         try:
-            if subcommand == 'new':
+            if subcommand == 'auto':
+                self.scrape_auto(*args, **options)
+                target = 'game auto'
+            elif subcommand == 'new':
                 self.scrape_new(*args, **options)
+                target = 'game new'
             elif subcommand == 'out':
                 self.scrape_out(*args, **options)
+                target = 'game out'
             else:
                 raise NotImplementedError(f'No such cmd found: {subcommand}')
         except Exception as exc:
@@ -58,11 +70,6 @@ class Command(BaseCommand):
 
         dur = round(time.time() - start_at)
         today = get_today()
-
-        if subcommand == 'new':
-            target = 'game new'
-        else:
-            target = 'game out'
 
         scrapelog, created = Scrapelog.objects.update_or_create(
             day=today,
