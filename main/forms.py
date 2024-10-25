@@ -22,7 +22,11 @@ class LookupForm(forms.Form):
         """Save bgg_id to listing."""
         listing = Listing.objects.get(id=self.cleaned_data['listing_id'])
         listing.bgg_id = self.cleaned_data.get('bgg_id') or None
-        listing.bgg_missing = self.cleaned_data.get('is_missing', False)
+        if self.cleaned_data.get('is_missing', False):
+            listing.bgg_missing = True
+            listing.bgg_id = None
+        else:
+            listing.bgg_missing = False
         listing.is_accessory = self.cleaned_data.get('is_accessory', False)
         listing.bgg_looked_at = timezone.now()
         listing.save()

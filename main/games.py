@@ -247,7 +247,6 @@ def search_bgg(name: str) -> dict | None:
         return {
             'name': 'not_found',
             'bgg_id': None,
-            'missing': True,
             'image': None,
             'search': res.request.url,
         }
@@ -262,7 +261,6 @@ def search_bgg(name: str) -> dict | None:
         return {
             'name': 'not_found',
             'bgg_id': None,
-            'missing': True,
             'image': None,
             'search': res.request.url,
         }
@@ -274,7 +272,6 @@ def search_bgg(name: str) -> dict | None:
     return {
         'name': game_name,
         'bgg_id': bgg_id,
-        'missing': False,
         'image': image_url,
         'search': res.request.url,
     }

@@ -107,8 +107,8 @@ class ListingAdmin(admin.ModelAdmin):
                     }
                 initial = {
                     'listing_id': listing.id,
-                    'bgg_id': bgg['bgg_id'] if bgg else '',
-                    'is_missing': bgg['missing'],
+                    'bgg_id': bgg.get('bgg_id'),
+                    'is_missing': listing.bgg_missing,
                     'is_accessory': listing.is_accessory,
                 }
                 form = LookupForm(initial=initial)

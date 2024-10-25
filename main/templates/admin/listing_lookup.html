@@ -4,6 +4,8 @@
 
 {% load crispy_forms_tags %}
 
+{% block title %}{{ listing.name }}{% endblock %}
+
 {% block content %}
 
     {% if remaining %}
