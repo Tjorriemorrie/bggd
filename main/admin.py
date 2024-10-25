@@ -7,10 +7,18 @@ from django.utils.html import format_html
 
 from main.forms import LookupForm
 from main.games import search_bgg, update_game_shop_prices
-from main.models import Game, Listing, Price, Scrapelog, Shop
+from main.models import Game, Label, Listing, Price, Scrapelog, Shop
 from main.selectors import list_listings_without_games
 
 logger = logging.getLogger(__name__)
+
+
+@admin.register(Label)
+class LabelAdmin(admin.ModelAdmin):
+    list_display = ['id', 'name', 'type']
+    list_filter = ['type']
+    search_fields = ['id', 'name']
+    ordering = ['type', 'name']
 
 
 @admin.register(Shop)
@@ -156,13 +164,6 @@ class ScrapelogAdmin(admin.ModelAdmin):
     ordering = ['-day', 'target']
 
 
-# @admin.register(Label)
-# class LabelAdmin(admin.ModelAdmin):
-#     list_display = ['bgg_id', 'name', 'type']
-#     list_filter = ['type']
-#     ordering = ['type', 'name']
-#
-#
 # @admin.action(description='Scrape games')
 # def scrape_game_cmd(modeladmin, request, queryset):
 #     """Scrape game command."""

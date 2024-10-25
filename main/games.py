@@ -331,9 +331,10 @@ def scrape_boardgame_details(bgg_id, game, preload):
     for key, val in game_links_labels.items():
         data = []
         for link_item in preload['item']['links'][key]:
-            label, _ = Label.objects.get_or_create(
-                id=link_item['objectid'], defaults={'type': val[1], 'name': link_item['name']}
-            )
+            with transaction.atomic():
+                label, _ = Label.objects.get_or_create(
+                    id=link_item['objectid'], defaults={'type': val[1], 'name': link_item['name']}
+                )
             data.append(label)
         getattr(game, val[0]).set(data)
 
