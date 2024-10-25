@@ -49,7 +49,7 @@ last_url = ''
 last_params = dict()
 
 
-@retry((TooManyRequestsError, RequestsError), delay=5, jitter=1, max_delay=60, tries=2)
+@retry((TooManyRequestsError, RequestsError), delay=3, max_delay=60, tries=42)
 def get(
     url: str, params: dict = None, headers: dict = None, redirect: bool = False
 ) -> requests.Response:
