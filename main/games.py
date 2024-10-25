@@ -10,8 +10,7 @@ import numpy as np
 import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from django.db import OperationalError, transaction
-from django.db.transaction import TransactionManagementError
+from django.db import OperationalError
 from django.utils import timezone
 from django.utils.text import slugify
 from retry import retry
@@ -102,141 +101,43 @@ def get(
     return res
 
 
-# def scrape_rankings() -> list[Game]:
-#     """Scrape the ranking from boardgamegeek."""
-#     logger.info('Scraping rankings...')
-#     games = []
-#     name_pattern = re.compile(r'(.*)\s\((-?\d+)\)')
-#     id_pattern = re.compile(r'/(?:boardgame|boardgameexpansion)/(\d+)/')
-#     for page in range(1, 11):
-#         rankings_url = f'{URL_RANKINGS}{page}'
-#         res = get(rankings_url)
-#         html = BeautifulSoup(res.text, 'html.parser')
-#         rows = html.find_all('tr', id='row_')
-#         logger.info(f'Found {len(rows)} rows for page {page}...')
-#         if not rows:
-#             return
-#
-#         for row in rows:
-#             tds = row.find_all('td')
-#             rank = tds[0].text.strip()
-#             url = tds[1].find('a')['href']
-#             id_matches = id_pattern.search(url)
-#             try:
-#                 bgg_id = id_matches.group(1)
-#             except AttributeError:
-#                 logger.error(f'Could not scrape: no id from {url}')
-#                 raise
-#             name_year = tds[2].find_all('div')[1].text.strip()
-#             name_matches = name_pattern.search(name_year)
-#             try:
-#                 name = name_matches.group(1)
-#                 year = int(name_matches.group(2))
-#             except AttributeError:
-#                 logger.error(f'Could not scrape: no name/year from {name_year}')
-#                 continue
-#             game, created = Game.objects.update_or_create(
-#                 bgg_id=bgg_id,
-#                 defaults={
-#                     'rank': int(rank),
-#                     'url': url,
-#                     'name': name,
-#                     'year': year,
-#                 },
-#             )
-#             logger.info(f'{created and "Created" or "Updated"} {game}')
-#             games.append(game)
-#             if created:
-#                 logger.info(f'New game! Stopping with {game}')
-#                 break
-#     logger.info('Finished scraping rankings')
-#     return games
-#
-#
-# def scrape_hotness() -> list[Game]:
-#     """Scrape boardgamegeek api hotness."""
-#     return
-#     logger.info('Scraping hotness...')
-#     games = []
-#     res = get(URL_HOTNESS)
-#     soup = BeautifulSoup(res.content, 'xml')
-#     items = soup.find_all('item')
-#     for item in items[:10]:
-#         bgg_id = item['id']
-#         rank = 10_000 + int(item['rank'])
-#         name = item.find('name')['value']
-#         year = item.find('yearpublished')['value']
-#         try:
-#             scrape_thing(bgg_id)
-#         except NotBoardGameTypeError:
-#             logger.info(f'#{rank} {name} [{year}] is not a boardgame')
-#             continue
-#         game, created = Game.objects.get_or_create(
-#             bgg_id=bgg_id,
-#             defaults={
-#                 'rank': int(rank),
-#                 'url': f'/boardgame/{bgg_id}',
-#                 'name': name,
-#                 'year': year,
-#             },
-#         )
-#         logger.info(f'{created and "Created" or "Existing"} {game}')
-#         games.append(game)
-#         if created:
-#             logger.info(f'New game! Stopping with {game}')
-#             break
-#     logger.info('Finished scraping hotness!')
-#     return games
-#
-#
-# def delete_most_insignificant_games():
-#     """Delete games to reduce reviews count."""
-#     logger.info('Deleting oldest games...')
-#     total_reviews_cnt = Review.objects.count()
-#     if total_reviews_cnt < REVIEW_COUNT_LIMIT:
-#         logger.info(f'Not enough reviews to delete games: {total_reviews_cnt}')
-#         return
-#
-#     # Calculate the date one year ago from today
-#     one_year_ago = now() - timedelta(days=365)
-#     # two_year_ago = now() - timedelta(days=365 * 2)
-#
-#     # Query to find the game with the fewest reviews in the past year
-#     games_with_fewest_reviews = Game.objects.filter(
-#         created_at__lt=one_year_ago, reviews_cnt__isnull=False, shop_in_stock=False
-#     ).order_by('reviews_cnt')
-#     for ix, game in enumerate(games_with_fewest_reviews):
-#         game.delete()
-#         total_reviews_cnt_after = Review.objects.count()
-#         logger.info(
-#             f'Deleting {game}: cleared {total_reviews_cnt - total_reviews_cnt_after} reviews'
-#         )
-#         total_reviews_cnt = total_reviews_cnt_after
-#         if ix >= DAILY_DELETE_LIMIT:
-#             break
-#
-#
-# def update_game_details_and_reviews():
-#     """Updating games."""
-#     logger.info('Updating already scraped games...')
-#     days_ago = 5
-#     total_game_cnt = Game.objects.count()
-#     daily_cut = total_game_cnt // days_ago
-#     time_ago = now() - timedelta(days=days_ago)
-#     games = Game.objects.filter(scraped_at__lt=time_ago).all()[:daily_cut]
-#     for ix, game in enumerate(games):
-#         logger.info(f'Progress {ix}/{len(games)}')
-#         scrape_game(game)
+def scrape_new_games():
+    """Scrape games from bgg_ids from listings."""
+    logger.info('Scraping new games...')
+
+    listings = list(Listing.objects.filter(bgg_id__isnull=False, bgg_missing=False).all())
+
+    total = len(listings)
+    logger.info(f'Found {total} listings to scrape.')
+
+    if total == 0:
+        logger.info('No new games to scrape.')
+        return
+
+    for ix, listing in enumerate(listings):
+        try:
+            game = Game.objects.get(id=listing.bgg_id)
+            game.shop_outdated = True
+            game.save()
+        except Game.DoesNotExist:
+            try:
+                game = scrape_game(listing.bgg_id)
+            except BggGameNotFoundError:
+                logger.warning(f'Boardgamegeek id {listing.bgg_id} not found!')
+                listing.bgg_id = None
+                listing.bgg_missing = True
+                listing.bgg_scraped_at = timezone.now()
+                listing.save()
+                return
+
+        listing.game = game
+        listing.bgg_missing = False
+        listing.bgg_scraped_at = timezone.now()
+        listing.save()
+        logger.info(f'{ix}/{total} Successfully scraped and saved game for {listing}')
 
 
-@retry(
-    (OperationalError, ScrapeError, TransactionManagementError),
-    tries=99,
-    delay=1,
-    jitter=1,
-    max_delay=30,
-    logger=logger,
-)
+@retry((OperationalError, ScrapeError), tries=99, delay=1, jitter=1, max_delay=30)
 def scrape_game(bgg_id: int) -> Game:
     """Scrape the game from boardgamegeek."""
     logger.info(f'Scraping {bgg_id}...')
@@ -278,23 +179,12 @@ def scrape_game(bgg_id: int) -> Game:
         raise NotImplementedError(f'Unknown label: {game.label}')
 
     game.scraped_at = timezone.now()
-    with transaction.atomic():
-        game.save()
-
+    game.save()
     logger.info(f'Saved game {game}')
     return game
 
 
-@retry(
-    (OperationalError, TransactionManagementError),
-    tries=99,
-    delay=1,
-    backoff=1,
-    jitter=1,
-    max_delay=30,
-    logger=logger,
-)
-def scrape_boardgame_details(bgg_id, game, preload):
+def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
     """Get specific boardgame details."""
     # basic details
     game.rating = float(preload['item']['stats']['average'])
@@ -319,9 +209,8 @@ def scrape_boardgame_details(bgg_id, game, preload):
 
     # labels (require game to be saved)
     if not game.pk:
-        with transaction.atomic():
-            game.id = bgg_id
-            game.save()
+        game.id = bgg_id
+        game.save()
     game_links_labels = {
         'boardgamecategory': ('categories', LABEL_CATEGORY),
         'boardgamemechanic': ('mechanics', LABEL_MECHANIC),
@@ -331,10 +220,9 @@ def scrape_boardgame_details(bgg_id, game, preload):
     for key, val in game_links_labels.items():
         data = []
         for link_item in preload['item']['links'][key]:
-            with transaction.atomic():
-                label, _ = Label.objects.get_or_create(
-                    id=link_item['objectid'], defaults={'type': val[1], 'name': link_item['name']}
-                )
+            label, _ = Label.objects.get_or_create(
+                id=link_item['objectid'], defaults={'type': val[1], 'name': link_item['name']}
+            )
             data.append(label)
         getattr(game, val[0]).set(data)
 

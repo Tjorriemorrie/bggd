@@ -4,8 +4,7 @@ import time
 from django.core.management import BaseCommand
 from django.utils import timezone
 
-from main.bgg import scrape_new_games
-from main.games import auto_assign_games, update_outdated_game_shop_prices
+from main.games import auto_assign_games, scrape_new_games, update_outdated_game_shop_prices
 from main.models import Scrapelog
 from main.selectors import get_today
 
