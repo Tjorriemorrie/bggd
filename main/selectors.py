@@ -3,7 +3,7 @@ import logging
 import multiprocessing
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import F, QuerySet
 from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
@@ -76,7 +76,21 @@ def get_best_savings_games() -> QuerySet[Game]:
 
 def list_listings_without_games() -> QuerySet[Listing]:
     """Gives listings without bgg_ids."""
-    listings = Listing.objects.filter(bgg_id__isnull=True, bgg_missing=False).order_by('-price')
+    # first get any unlooked
+    listings = Listing.objects.filter(bgg_looked_at__isnull=True).order_by(
+        'bgg_missing',
+        '-price',
+    )
+    if listings:
+        return listings
+
+    # else sort it by updated_at
+    listings = Listing.objects.filter(updated_at__gt=F('bgg_looked_at')).order_by('updated_at')
+    if listings:
+        return listings
+
+    # otherwise just rotate from oldest
+    listings = Listing.objects.order_by('bgg_looked_at')
     return listings
 
 

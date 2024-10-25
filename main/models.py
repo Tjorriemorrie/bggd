@@ -33,6 +33,7 @@ class Shop(Timestamped):
 
     @property
     def host(self):
+        """Get host."""
         from main.shops import shop_hosts
 
         return shop_hosts[self.name]
@@ -98,6 +99,7 @@ class Game(Timestamped):
         return unidecode(f'{self.name} ({self.year})')
 
     def get_absolute_url(self):
+        """Get detail url."""
         return reverse('game-detail-slug', kwargs={'pk': self.pk, 'slug': self.slug})
 
 
@@ -210,44 +212,6 @@ class Day(Timestamped):
 #     def day(self) -> datetime:
 #         """Get day of review."""
 #         return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)
-#
-#
-# class Award(Timestamped):
-#     CHOICES_AWARDS = (
-#         (AWARD_GAME_OF_THE_MONTH, AWARD_GAME_OF_THE_MONTH),
-#         (AWARD_GAME_OF_THE_YEAR, AWARD_GAME_OF_THE_YEAR),
-#     )
-#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='awards', null=True)
-#
-#     type = models.CharField(max_length=256, choices=CHOICES_AWARDS)
-#     description = models.CharField(max_length=256, null=True)
-#     badge = models.CharField(max_length=256, null=True)
-#     awarded_at = models.DateTimeField(null=True)
-#     score = models.FloatField(null=True)
-#     num_ratings = models.IntegerField(null=True)
-#
-#     # runner up
-#     ru_game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='runnerups', null=True)
-#     ru_score = models.FloatField(null=True)
-#     ru_num_ratings = models.IntegerField(null=True)
-#
-#     def __str__(self) -> str:
-#         return f'<Award {self.description} game={self.game} score={int(self.score)}>'
-#
-#
-# class Rec(Timestamped):
-#     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='recs')
-#     weight_tag = models.CharField(max_length=20, choices=CHOICES_WEIGHTS)
-#     best_players = models.PositiveSmallIntegerField()
-#
-#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='recs', null=True)
-#     predicted = models.FloatField(null=True)
-#     is_primary = models.BooleanField(default=False)
-#
-#     rec_at = models.DateTimeField(null=True)
-#
-#     def __str__(self) -> str:
-#         return f'<Rec {self.weight_tag} {self.best_players} {self.game.name} -> {self.player.nick}>'
 
 
 class Listing(Timestamped):
@@ -274,7 +238,8 @@ class Listing(Timestamped):
     )
     bgg_id = models.IntegerField(null=True, blank=True)
     bgg_missing = models.BooleanField(default=False)
-    bgg_scraped = models.DateTimeField(null=True, blank=True)
+    bgg_scraped_at = models.DateTimeField(null=True, blank=True)
+    bgg_looked_at = models.DateTimeField(null=True, blank=True)
 
     objects = ListingManager()
 

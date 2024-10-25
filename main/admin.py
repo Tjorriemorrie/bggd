@@ -86,11 +86,12 @@ class ListingAdmin(admin.ModelAdmin):
         else:
             listing = list_listings_without_games().first()
             if listing:
-                bgg = search_bgg(listing.name)
+                bgg = search_bgg(listing.bgg_id or listing.name)
                 initial = {
                     'listing_id': listing.id,
                     'bgg_id': bgg['bgg_id'] if bgg else '',
                     'is_missing': bgg['missing'],
+                    'is_accessory': listing.is_accessory,
                 }
                 form = LookupForm(initial=initial)
                 ctx['listing'] = listing

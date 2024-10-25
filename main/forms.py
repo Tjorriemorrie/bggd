@@ -24,7 +24,7 @@ class LookupForm(forms.Form):
         listing.bgg_id = self.cleaned_data.get('bgg_id') or None
         listing.bgg_missing = self.cleaned_data.get('is_missing', False)
         listing.is_accessory = self.cleaned_data.get('is_accessory', False)
-        listing.bgg_scraped = timezone.now()
+        listing.bgg_looked_at = timezone.now()
         listing.save()
         logger.info(
             f'Saved bgg info: id={listing.bgg_id} missing={listing.bgg_missing} to {listing}'

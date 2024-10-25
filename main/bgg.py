@@ -94,7 +94,7 @@ def scrape_game_worker(listing_id):
 
             listing.game = game
             listing.bgg_missing = False
-            listing.bgg_scraped = timezone.now()
+            listing.bgg_scraped_at = timezone.now()
             listing.save()
         # logger.info(f'Successfully scraped and saved game for listing ID: {listing_id}')
 
@@ -104,7 +104,7 @@ def scrape_game_worker(listing_id):
         logger.warning(f'Boardgamegeek id {listing.bgg_id} not found!')
         listing.bgg_id = None
         listing.bgg_missing = True
-        listing.bgg_scraped = timezone.now()
+        listing.bgg_scraped_at = timezone.now()
         listing.save()
     except Exception as exc:
         logger.exception(f'Unexpected error while scraping listing ID {listing_id}: {exc}')

@@ -14,13 +14,14 @@
         <p>No more ungamed listings.</p>
     {% else %}
         <h3>Match listing to BGG game:</h3>
+        <p>Shop: {{ listing.shop.name }}</p>
         <p>
             <img src="{{ listing.img }}" style="width:10em; height:auto;"/>
             <a href="{{ listing.url }}" target="_blank">
                 {{ listing.name }}
             </a>
         </p>
-        <p>from {{ listing.shop.name }}</p>
+        <p>Looked up at: {{ listing.bgg_looked_at }}</p>
 
         <br/>
 
@@ -29,6 +30,14 @@
             {% if bgg.search %}
                 <p><a href="{{ bgg.search }}" target="_blank">search bgg</a></p>
             {% endif %}
+
+            <p>BGG ID assigned:
+                {% if listing.bgg_id %}
+                    <img src="{% static 'admin/img/icon-yes.svg' %}" alt="True">
+                {% else %}
+                    <img src="{% static 'admin/img/icon-no.svg' %}" alt="True">
+                {% endif %}
+            </p>
 
             {% if bgg.image %}
                 <p>
