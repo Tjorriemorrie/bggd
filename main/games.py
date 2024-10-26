@@ -105,7 +105,9 @@ def scrape_new_games():
     """Scrape games from bgg_ids from listings."""
     logger.info('Scraping new games...')
 
-    listings = list(Listing.objects.filter(bgg_id__isnull=False, bgg_missing=False).all())
+    listings = list(
+        Listing.objects.filter(bgg_id__isnull=False, bgg_missing=False, game__isnull=True).all()
+    )
 
     total = len(listings)
     logger.info(f'Found {total} listings to scrape.')
