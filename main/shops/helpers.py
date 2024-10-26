@@ -62,9 +62,9 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
                 # Add new pages to pages_to_scrape (if not already processed)
                 for new_page in new_pages:
                     if (
-                            new_page not in processed_pages and
-                            new_page not in pages_to_scrape and
-                            new_page not in future_to_page.values()
+                        new_page not in processed_pages
+                        and new_page not in pages_to_scrape
+                        and new_page not in future_to_page.values()
                     ):
                         pages_to_scrape.append(new_page)
                 # Mark the current page as processed
@@ -82,6 +82,7 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
                     # Mark executor as unusable for the next iteration
                     executor_usable = False
                     import time
+
                     time.sleep(retry_delay)
 
             except Exception as exc:
@@ -147,7 +148,7 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
 
     try:
         with transaction.atomic():
-            listing, created = Listing.objects.select_for_update().update_or_create(
+            listing, created = Listing.objects.update_or_create(
                 shop=shop,
                 url=href,
                 defaults={
@@ -158,21 +159,31 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
                     **params,
                 },
             )
-            if created:
-                logger.info(f'Listing created: {listing}')
-            # else:
-            #     logger.info(f'Listing updated: {listing}')
+        if created:
+            logger.info(f'Listing created: {listing}')
+        # else:
+        #     logger.info(f'Listing updated: {listing}')
         return listing
     except IntegrityError:
         logger.error(f'Failed to upsert listing due to unique constraint violation, for "{href}"')
-        with connection.cursor() as cursor:
-            cursor.execute(
-                'DELETE FROM main_price '
-                'WHERE listing_id IN (SELECT id FROM main_listing WHERE url = ?)',
-                [href],
-            )
-        with connection.cursor() as cursor:
-            cursor.execute('DELETE FROM main_listing WHERE url = ?', [href])
+        try:
+            bad_listing = Listing.objects.get(url=href)
+            with transaction.atomic():
+                bad_listing.delete()
+        except Listing.DoesNotExist:
+            try:
+                with connection.cursor() as cursor:
+                    cursor.execute(
+                        'DELETE FROM main_price '
+                        'WHERE listing_id IN (SELECT id FROM main_listing WHERE url = ?)',
+                        [href],
+                    )
+                with connection.cursor() as cursor:
+                    cursor.execute('DELETE FROM main_listing WHERE url = ?', [href])
+            except TypeError as exc:
+                raise ListingUrlError(
+                    f'Could not fix bad listing at {shop} with url {href}'
+                ) from exc
         return upsert_listing(shop, name, href, img_src, **params)
 
 
@@ -183,7 +194,7 @@ def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
     except (ListingUrlError, ListingImageError):
         logger.exception('Could not handle item data')
         return
-    price = upsert_price(listing, in_stock, price_value)
+    upsert_price(listing, in_stock, price_value)
     # logger.info(f'{listing} has price {price}')
 
 
