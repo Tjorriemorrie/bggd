@@ -23,8 +23,7 @@ def worker(page: int) -> list:
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-        # noqa E501
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
     url = f'{shop_host}/collections/best-selling'
     params = {
@@ -47,6 +46,7 @@ def worker(page: int) -> list:
         img_src_raw = 'https:' + img_tag['data-src']
         img_src = img_src_raw.replace('{width}', str(img_widths[-1]))
         name = row.find('p').get_text(separator=' ', strip=True)
+        is_new = 'Pre-owned' not in name
         anchor = row.find('a')
         href = shop_host + anchor['href']
         # price details
@@ -58,7 +58,7 @@ def worker(page: int) -> list:
             price_txt = row.find_all('span')[-1].get_text(strip=True)
             price_value = parse_price(price_txt)
 
-        handle_item_data(shop, name, href, img_src, in_stock, price_value)
+        handle_item_data(shop, name, href, img_src, in_stock, price_value, **{'is_new': is_new})
 
     if len(rows) > 0:
         return [page + 1, page + 2]
@@ -66,6 +66,7 @@ def worker(page: int) -> list:
 
 
 def worker_wrapper(*args, **kwargs):
+    """Worker wrapper."""
     try:
         return worker(*args, **kwargs)
     except Exception:

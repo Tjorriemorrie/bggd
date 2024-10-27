@@ -54,7 +54,7 @@ class Game(Timestamped):
     subdomains = models.ManyToManyField(Label, related_name='dom_games', blank=True)
 
     name = models.CharField(max_length=250)
-    slug = models.SlugField()
+    slug = models.SlugField(max_length=250)
     label = models.CharField(max_length=50)
     year = models.IntegerField(
         validators=[MinValueValidator(-2500), MaxValueValidator(now().year + 1)]
@@ -217,7 +217,7 @@ class Day(Timestamped):
 class Listing(Timestamped):
     shop = models.ForeignKey(Shop, on_delete=models.CASCADE, related_name='listings')
     name = models.CharField(max_length=250)
-    slug = models.SlugField()
+    slug = models.SlugField(max_length=250)
     url = models.CharField(max_length=250, unique=True)
     img = models.CharField(max_length=250)
     scraped_at = models.DateField()
