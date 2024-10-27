@@ -647,3 +647,17 @@ def auto_assign_games():
         listing.bgg_missing = False
         listing.save()
         logger.info(f'{ix}/{total} Successfully assigned {bgg["name"]} to {listing}')
+
+
+def clean_games():
+    """Clean games with no listings."""
+    logger.info('Cleaning games with no listings...')
+
+    games = list(Game.objects.filter(listings__isnull=True))
+
+    total = len(games)
+    logger.info(f'Found {total} games to clear.')
+
+    for ix, game in enumerate(games):
+        game.delete()
+        logger.info(f'{ix}/{total} cleared {game}')

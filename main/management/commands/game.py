@@ -4,7 +4,12 @@ import time
 from django.core.management import BaseCommand
 from django.utils import timezone
 
-from main.games import auto_assign_games, scrape_new_games, update_outdated_game_shop_prices
+from main.games import (
+    auto_assign_games,
+    clean_games,
+    scrape_new_games,
+    update_outdated_game_shop_prices,
+)
 from main.models import Scrapelog
 from main.selectors import get_today
 
@@ -27,6 +32,9 @@ class Command(BaseCommand):
         # Subparser for 'out'
         subparsers.add_parser('out', help='Dummy scrape for out-of-stock games')
 
+        # Subparser for 'clean'
+        subparsers.add_parser('clean', help='Clean games with no listings')
+
     def scrape_auto(self, *args, **options):
         """Auto assign games from search."""
         logger.info(''.center(99, '='))
@@ -45,6 +53,12 @@ class Command(BaseCommand):
         update_outdated_game_shop_prices()
         logger.info('Finished updating games with shop info'.center(50, '='))
 
+    def scrape_clean(self, *args, **options):
+        """Clean games with no listings."""
+        logger.info(''.center(99, '='))
+        clean_games()
+        logger.info('Finished updating games with shop info'.center(50, '='))
+
     def handle(self, *args, **options):
         """Handle subcommands and call the appropriate method."""
         subcommand = options['subcommand']
@@ -61,6 +75,9 @@ class Command(BaseCommand):
             elif subcommand == 'out':
                 self.scrape_out(*args, **options)
                 target = 'game out'
+            elif subcommand == 'clean':
+                self.scrape_clean(*args, **options)
+                target = 'game clean'
             else:
                 raise NotImplementedError(f'No such cmd found: {subcommand}')
         except Exception as exc:
