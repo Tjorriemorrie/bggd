@@ -77,8 +77,9 @@ def get_best_savings_games() -> QuerySet[Game]:
 def list_listings_without_games() -> QuerySet[Listing]:
     """Gives listings without bgg_ids."""
     # first get any unlooked
-    listings = Listing.objects.filter(bgg_looked_at__isnull=True).order_by(
-        '-bgg_missing',
+    listings = Listing.objects.filter(
+        bgg_looked_at__isnull=True, bgg_missing__isnull=True
+    ).order_by(
         '-price',
     )
     if listings:
