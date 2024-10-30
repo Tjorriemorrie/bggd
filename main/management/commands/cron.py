@@ -17,6 +17,9 @@ class Command(BaseCommand):
         logger.info(' scraping shops '.center(99, '*'))
         call_command('shop', 'all')
 
+        logger.info(' scraping bgg auto '.center(99, '*'))
+        call_command('game', 'auto')
+
         logger.info(' scraping bgg ids '.center(99, '*'))
         call_command('game', 'new')
 
