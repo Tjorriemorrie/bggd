@@ -1,4 +1,7 @@
+from datetime import datetime, timedelta
+
 from django import template
+from django.utils import timezone
 from django.utils.safestring import mark_safe
 
 from main.constants import FORMAT_PRICE_HUNDREDS, FORMAT_PRICE_THOUSANDS
@@ -64,3 +67,35 @@ def discount(obj, show_currency: bool = True):
     currency = 'R' if show_currency else ''
 
     return mark_safe(f'<span class="price">{currency}{saving:.0f} ({perc:.0f}%)</span>')
+
+
+@register.filter
+def days_ago(value):
+    """Calculate how many days ago a given date or datetime was, considering the user's timezone."""
+    if not isinstance(value, datetime | timedelta):
+        return ''
+
+    value = timezone.localtime(value)
+    now = timezone.localtime(timezone.now())
+    # date_str = value.strftime('%H:%M')
+
+    # today
+    if value.date() == now.date():
+        return 'Today'
+        # return f'Today ({date_str})'
+
+    value_midnight = value.replace(hour=0, minute=0, second=0)
+    now_midnight = now.replace(hour=23, minute=59, second=59)
+    delta = now_midnight - value_midnight
+
+    # yesterday
+    if delta.days <= 1:
+        return 'Yesterday'
+        # return f'Yesterday ({date_str})'
+
+    # x days ago
+    # day = value.day  # Get the day without leading zero
+    # month = value.strftime('%b')  # Get the abbreviated month
+    # date_str = f'{day} {month}'  # Combine day and month
+    return f'{delta.days} days ago'
+    # return f'{delta.days} days ago ({date_str})'

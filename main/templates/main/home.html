@@ -8,14 +8,14 @@
 
             {% if savings %}
                 <h3>Best savings on games!</h3>
-                {% include 'main/snippet_game_group.html' with games=savings %}
+                {% include 'main/snippet_game_group.html' with games=savings footer="discount" %}
             {% endif %}
 
-            <hr/>
+            <hr class="m-5"/>
 
             {% if latest %}
-                <h3>Newest games!</h3>
-                {% include 'main/snippet_game_group.html' with games=latest %}
+                <h3 class="mt-5">Newest games!</h3>
+                {% include 'main/snippet_game_group.html' with games=latest footer="xdays" %}
             {% endif %}
 
         </div>

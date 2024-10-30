@@ -21,8 +21,12 @@
                         </div>
                         <div class="card-footer d-flex justify-content-between">
                             <span>{{ game.shop_best.name }}</span>
-                            {% if game.shop_saving %}
-                                <span>{{ game|discount }}</span>
+                            {% if footer == "discount" %}
+                                {% if game.shop_saving %}
+                                    <span>{{ game|discount }}</span>
+                                {% endif %}
+                            {% elif footer == "xdays" %}
+                                <span>{{ game.created_at|days_ago }}</span>
                             {% endif %}
                         </div>
                     </div>

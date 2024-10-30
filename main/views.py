@@ -8,7 +8,7 @@ from django_tables2 import SingleTableView
 
 from main.filters import GameFilter, ListingFilter, ShopFilter
 from main.models import Game, Listing, Shop
-from main.selectors import get_best_savings_games
+from main.selectors import get_best_savings_games, list_newwest_games
 from main.tables import GameTable, ListingTable, ShopTable
 
 logger = logging.getLogger(__name__)
@@ -17,10 +17,10 @@ logger = logging.getLogger(__name__)
 def home_view(request: WSGIRequest):
     """Home view."""
     savings = get_best_savings_games()
-    # latest = list_newwest_games()
+    latest = list_newwest_games()
     ctx = {
         'savings': savings,
-        # 'latest': latest,
+        'latest': latest,
     }
     return render(request, 'main/home.html', ctx)
 

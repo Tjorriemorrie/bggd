@@ -60,6 +60,7 @@ extend-select = ["E501"]
 ignore = [
     "D100",  # Missing docstring in public module
     "D101",  # Missing docstring in public class
+    "D104",  # Missing docstring in public package
     "D106",  # Missing docstring in public nested class
     "S308",  # Use of `mark_safe` may expose cross-site scripting vulnerabilities
 ]
