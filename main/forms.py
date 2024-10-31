@@ -21,7 +21,10 @@ class LookupForm(forms.Form):
     def save(self) -> Listing:
         """Save bgg_id to listing."""
         listing = Listing.objects.get(id=self.cleaned_data['listing_id'])
-        listing.bgg_id = self.cleaned_data.get('bgg_id') or None
+        new_bgg_id = self.cleaned_data.get('bgg_id') or None
+        if listing.bgg_id != new_bgg_id:
+            listing.bgg_id = new_bgg_id
+            listing.game = None
         if self.cleaned_data.get('is_missing', False):
             listing.bgg_missing = True
             listing.bgg_id = None
