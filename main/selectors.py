@@ -117,5 +117,6 @@ def get_last_scrape(shop: Shop) -> Scrapelog | None:
 
 def list_newwest_games():
     """List newest games."""
-    games = Game.objects.order_by('-created_at').all()[:18]
+    seven_days = timezone.now() - datetime.timedelta(days=7)
+    games = Game.objects.filter(created_at__gt=seven_days).order_by('-price').all()[:18]
     return games
