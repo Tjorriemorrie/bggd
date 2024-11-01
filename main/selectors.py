@@ -86,7 +86,7 @@ def list_listings_without_games() -> QuerySet[Listing]:
 
     # make sure home page is all correct
     savings = get_best_savings_games()
-    latest = list_newwest_games()
+    latest = list_newest_games()
     home_page_game_ids = [g.id for g in chain(savings, latest)]
     listings = Listing.objects.filter(
         bgg_looked_at__isnull=True, game_id__in=home_page_game_ids
@@ -115,8 +115,8 @@ def get_last_scrape(shop: Shop) -> Scrapelog | None:
     return scrapelog
 
 
-def list_newwest_games():
+def list_newest_games():
     """List newest games."""
     seven_days = timezone.now() - datetime.timedelta(days=7)
-    games = Game.objects.filter(created_at__gt=seven_days).order_by('-price').all()[:18]
+    games = Game.objects.filter(created_at__gt=seven_days).order_by('-shop_price').all()[:18]
     return games
