@@ -1,6 +1,7 @@
 import datetime
 import logging
 import multiprocessing
+from itertools import chain
 
 from django.db import transaction
 from django.db.models import QuerySet
@@ -80,6 +81,16 @@ def list_listings_without_games() -> QuerySet[Listing]:
     listings = Listing.objects.filter(bgg_looked_at__isnull=True, bgg_missing=True).order_by(
         '-price'
     )
+    if listings:
+        return listings
+
+    # make sure home page is all correct
+    savings = get_best_savings_games()
+    latest = list_newwest_games()
+    home_page_game_ids = [g.id for g in chain(savings, latest)]
+    listings = Listing.objects.filter(
+        bgg_looked_at__isnull=True, game_id__in=home_page_game_ids
+    ).order_by('-price')
     if listings:
         return listings
 
