@@ -1,4 +1,5 @@
 {% extends "admin/base_site.html" %}
+{% load fmt %}
 {% load humanize %}
 {% load static %}
 
@@ -17,6 +18,7 @@
     {% else %}
         <h3>Match listing to BGG game:</h3>
         <p>Shop: {{ listing.shop.name }}</p>
+        <p>Price: {{ listing|price }}</p>
         <p>
             <img src="{{ listing.img }}" style="width:10em; height:auto;"/>
             <a href="{{ listing.url }}" target="_blank">
