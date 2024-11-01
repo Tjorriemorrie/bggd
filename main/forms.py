@@ -24,10 +24,17 @@ class LookupForm(forms.Form):
         new_bgg_id = self.cleaned_data.get('bgg_id') or None
         if listing.bgg_id != new_bgg_id:
             listing.bgg_id = new_bgg_id
+            if listing.game:
+                listing.game.shop_outdated = True
+                listing.game.save()
             listing.game = None
         if self.cleaned_data.get('is_missing', False):
             listing.bgg_missing = True
             listing.bgg_id = None
+            if listing.game:
+                listing.game.shop_outdated = True
+                listing.game.save()
+            listing.game = None
         else:
             listing.bgg_missing = False
         listing.is_accessory = self.cleaned_data.get('is_accessory', False)
