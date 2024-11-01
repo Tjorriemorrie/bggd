@@ -166,8 +166,9 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
         logger.info(f'Created: {listing}')
         return listing
 
-    except IntegrityError:
+    except IntegrityError as exc:
         logger.error(f'Failed to upsert listing due to unique constraint violation, for "{href}"')
+        raise ListingUrlError(f'Integrity error for {href}') from exc
         # try:
         #     bad_listing = Listing.objects.get(url=href)
         #     with transaction.atomic():
