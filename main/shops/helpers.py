@@ -140,7 +140,7 @@ def parse_price(price_txt) -> float:
     return price
 
 
-@retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
+@retry((OperationalError,), tries=99, delay=1, logger=logger)
 def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> Listing:
     """Update/create and store the listing in the db."""
     href = strip_query_params(href)
@@ -197,49 +197,65 @@ def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
     except (ListingUrlError, ListingImageError):
         logger.exception('Could not handle item data')
         return
-    upsert_price(listing, in_stock, price_value)
+    new_price, price_created = upsert_price(listing, in_stock, price_value)
+    if price_created:
+        update_listing_with_price(listing, new_price)
+
     # logger.info(f'{listing} has price {price}')
 
 
-@retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
-def upsert_price(listing: Listing, in_stock: bool, value: float) -> Price:
+@retry((OperationalError,), tries=99, delay=1, logger=logger)
+def upsert_price(listing: Listing, in_stock: bool, value: float) -> tuple[Price, bool]:
     """Upsert new price if different."""
     day = get_today()
     prev_price = listing.prices.last()
-    if not prev_price or prev_price.price != value or prev_price.in_stock != in_stock:
-        # create the new price
-        new_price, created = Price.objects.update_or_create(
-            listing=listing,
-            day=day,
-            defaults={
-                'in_stock': in_stock,
-                'price': value,
-            },
-        )
-        logger.info(f'{"New" if created else "Updated"} Price: {new_price}')
+    with transaction.atomic():
+        # create first price ever
+        if not prev_price:
+            new_price = Price.objects.create(
+                listing=listing, day=day, in_stock=in_stock, price=value
+            )
+            logger.info(f'Created {new_price}')
+            return new_price, True
 
-        update_listing_with_price(listing, new_price)
+        # create new price if value changed
+        if prev_price.price != value or prev_price.in_stock != in_stock:
+            # only update changes on same day
+            if prev_price.day == day:
+                prev_price.price = value
+                prev_price.in_stock = in_stock
+                prev_price.save()
+                logger.info(f'Updated existing price on this day {prev_price}')
+                return prev_price, True
 
-        return new_price
-    return prev_price
+            # create new
+            else:
+                new_price = Price.objects.create(
+                    listing=listing, day=day, in_stock=in_stock, price=value
+                )
+                logger.info(f'Created {new_price}')
+                return new_price, True
+
+    return prev_price, False
 
 
-@retry((OperationalError,), tries=99, delay=1, backoff=1, jitter=1, max_delay=30, logger=logger)
+@retry((OperationalError,), tries=99, delay=1, logger=logger)
 def update_listing_with_price(listing: Listing, price: Price):
     """Update the listing with latest price info."""
-    if price.in_stock:
-        listing.in_stock = True
-        listing.price = price.price
-    else:
-        listing.in_stock = False
-        listing.price = None
-    listing.priced_at = price.day.day
-    listing.save()
+    with transaction.atomic():
+        if price.in_stock:
+            listing.in_stock = True
+            listing.price = price.price
+        else:
+            listing.in_stock = False
+            listing.price = None
+        listing.priced_at = price.day.day
+        listing.save()
 
-    # outdate game if applicable
-    if listing.game:
-        listing.game.shop_outdated = True
-        listing.game.save()
+        # outdate game if applicable
+        if listing.game:
+            listing.game.shop_outdated = True
+            listing.game.save()
 
 
 def missed_listings(shop: Shop):
