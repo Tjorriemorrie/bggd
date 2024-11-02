@@ -146,14 +146,16 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
     href = strip_query_params(href)
     img_src = strip_query_params(img_src)
 
-    try:
-        listing = Listing.objects.get(shop=shop, url=href)
-        return listing
-    except Listing.DoesNotExist:
-        pass
+    with transaction.atomic():
+        try:
+            listing = Listing.objects.get(shop=shop, url=href)
+            listing.scraped_at = timezone.now()
+            listing.save()
+            return listing
+        except Listing.DoesNotExist:
+            pass
 
-    try:
-        with transaction.atomic():
+        try:
             listing = Listing.objects.create(
                 shop=shop,
                 url=href,
@@ -163,12 +165,13 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
                 scraped_at=timezone.now(),
                 **params,
             )
-        logger.info(f'Created: {listing}')
-        return listing
-
-    except IntegrityError as exc:
-        logger.error(f'Failed to upsert listing due to unique constraint violation, for "{href}"')
-        raise ListingUrlError(f'Integrity error for {href}') from exc
+            logger.info(f'Created: {listing}')
+            return listing
+        except IntegrityError as exc:
+            logger.error(
+                f'Failed to upsert listing due to unique constraint violation, for "{href}"'
+            )
+            raise ListingUrlError(f'Integrity error for {href}') from exc
         # try:
         #     bad_listing = Listing.objects.get(url=href)
         #     with transaction.atomic():
@@ -195,7 +198,7 @@ def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
     try:
         listing = upsert_listing(shop, name, href, img_src, **params)
     except (ListingUrlError, ListingImageError):
-        logger.exception('Could not handle item data')
+        logger.error('Could not handle item data')
         return
     new_price, price_created = upsert_price(listing, in_stock, price_value)
     if price_created:
