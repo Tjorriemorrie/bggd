@@ -253,6 +253,7 @@ def update_listing_with_price(listing: Listing, price: Price):
             listing.in_stock = False
             listing.price = None
         listing.priced_at = price.day.day
+        listing.scraped_at = timezone.now()  # although in upsert, also from missing
         listing.save()
 
         # outdate game if applicable
@@ -269,18 +270,11 @@ def missed_listings(shop: Shop):
     )
     today = get_today()
     for missing in missings:
-        Price.objects.create(
+        new_price = Price.objects.create(
             listing=missing,
             day=today,
             in_stock=False,
         )
-        missing.in_stock = False
-        missing.price = None
-        missing.scraped_at = timezone.now()
-        missing.save()
 
-        if missing.game:
-            missing.game.shop_outdated = True
-            missing.game.save()
-
+        update_listing_with_price(missing, new_price)
         logger.info(f'Missing {missing}')
