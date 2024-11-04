@@ -69,9 +69,9 @@ def get_latest_new_games() -> QuerySet[Game]:
     return games
 
 
-def get_best_savings_games() -> QuerySet[Game]:
+def get_best_savings_games(reverse: bool = False) -> QuerySet[Game]:
     """Get the best savings games."""
-    games = Game.objects.order_by('-shop_saving', '-shop_price').all()[:18]
+    games = Game.objects.order_by(f'{"" if reverse else "-"}shop_saving', '-shop_price').all()[:18]
     return games
 
 
@@ -86,8 +86,9 @@ def list_listings_without_games() -> QuerySet[Listing]:
 
     # make sure home page is all correct
     savings = get_best_savings_games()
+    worst = get_best_savings_games(reverse=True)
     latest = list_newest_games()
-    home_page_game_ids = [g.id for g in chain(savings, latest)]
+    home_page_game_ids = [g.id for g in chain(savings, latest, worst)]
     listings = Listing.objects.filter(
         bgg_looked_at__isnull=True, game_id__in=home_page_game_ids
     ).order_by('-price')
