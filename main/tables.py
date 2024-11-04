@@ -311,7 +311,9 @@ class GameTable(tables.Table):
 
     def render_shop_price(self, record: Game):
         """Render price with filter."""
-        return price(record, show_currency=False)
+        price_txt = price(record, show_currency=False)
+        shop_name = record.shop_best.name
+        return mark_safe(f'{price_txt}<br/>{shop_name}')
 
     def render_shop_saving(self, record: Game):
         """Render price with filter."""
