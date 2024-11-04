@@ -96,9 +96,9 @@ def list_listings_without_games() -> QuerySet[Listing]:
         return listings
 
     # else sort it by discount
-    listings = Listing.objects.filter(bgg_looked_at__isnull=True, shop_saving__gt=0).order_by(
-        '-shop_saving'
-    )
+    listings = Listing.objects.filter(
+        bgg_looked_at__isnull=True, game__isnull=False, game__shop_saving__gt=0
+    ).order_by('-game__shop_saving')
     if listings:
         return listings
 
