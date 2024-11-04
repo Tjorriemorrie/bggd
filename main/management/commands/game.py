@@ -30,7 +30,10 @@ class Command(BaseCommand):
         subparsers.add_parser('new', help='Scrape new BGG games')
 
         # Subparser for 'out'
-        subparsers.add_parser('out', help='Dummy scrape for out-of-stock games')
+        out_parser = subparsers.add_parser('out', help='Dummy scrape for out-of-stock games')
+        out_parser.add_argument(
+            '--all', action='store_true', help='Force all to recalculate', default=False
+        )
 
         # Subparser for 'clean'
         subparsers.add_parser('clean', help='Clean games with no listings')
@@ -50,7 +53,7 @@ class Command(BaseCommand):
     def scrape_out(self, *args, **options):
         """Update games with new shop information."""
         logger.info(''.center(99, '='))
-        update_outdated_game_shop_prices()
+        update_outdated_game_shop_prices(options['all'])
         logger.info('Finished updating games with shop info'.center(50, '='))
 
     def scrape_clean(self, *args, **options):

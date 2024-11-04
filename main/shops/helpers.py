@@ -264,9 +264,9 @@ def update_listing_with_price(listing: Listing, price: Price):
 
 def missed_listings(shop: Shop):
     """Set missing listings as out of stock."""
-    hours_30 = timezone.now() - timedelta(hours=30)
+    hours_ago = timezone.now() - timedelta(hours=1)
     missings = Listing.objects.prefetch_related('game').filter(
-        shop=shop, scraped_at__lt=hours_30, in_stock=True
+        shop=shop, scraped_at__lt=hours_ago, in_stock=True
     )
     today = get_today()
     for missing in missings:

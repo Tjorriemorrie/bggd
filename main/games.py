@@ -529,9 +529,12 @@ def search_bgg(name: str) -> dict | None:
 #         review.delete()
 
 
-def update_outdated_game_shop_prices():
+def update_outdated_game_shop_prices(all_: bool):
     """Update outdated shop prices on games."""
-    games = list({*Game.objects.filter(shop_outdated=True).all(), *get_best_savings_games()})
+    if all_:
+        games = list(Game.objects.all())
+    else:
+        games = list({*Game.objects.filter(shop_outdated=True).all(), *get_best_savings_games()})
     total = len(games)
     for ix, game in enumerate(games):
         logger.info(f'{ix}/{total} Updating prices for {game}')
