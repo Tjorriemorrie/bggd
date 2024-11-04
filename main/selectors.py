@@ -77,7 +77,7 @@ def get_best_savings_games(reverse: bool = False) -> QuerySet[Game]:
 
 def list_listings_without_games() -> QuerySet[Listing]:
     """Gives listings without bgg_ids."""
-    # first get any unlooked
+    # first get any unlooked that is missing
     listings = Listing.objects.filter(bgg_looked_at__isnull=True, bgg_missing=True).order_by(
         '-price'
     )
@@ -95,8 +95,15 @@ def list_listings_without_games() -> QuerySet[Listing]:
     if listings:
         return listings
 
-    # else sort it by updated_at
-    listings = Listing.objects.filter(bgg_looked_at__isnull=True).order_by('-price')
+    # else sort it by discount
+    listings = Listing.objects.filter(bgg_looked_at__isnull=True, shop_saving__gt=0).order_by(
+        '-shop_saving'
+    )
+    if listings:
+        return listings
+
+    # lastly just by updated date
+    listings = Listing.objects.filter(bgg_looked_at__isnull=True).order_by('-updated_at')
     if listings:
         return listings
 
