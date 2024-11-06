@@ -102,10 +102,16 @@ def list_listings_without_games() -> QuerySet[Listing]:
     if listings:
         return listings
 
-    # lastly just by updated date
-    listings = Listing.objects.filter(bgg_looked_at__isnull=True).order_by(
-        '-in_stock', '-updated_at'
+    # recently created listings
+    days_ago = timezone.now() - datetime.timedelta(days=7)
+    listings = Listing.objects.filter(bgg_looked_at__isnull=True, created_at__gt=days_ago).order_by(
+        '-price'
     )
+    if listings:
+        return listings
+
+    # lastly just by updated date
+    listings = Listing.objects.filter(bgg_looked_at__isnull=True).order_by('-in_stock', '-price')
     if listings:
         return listings
 
