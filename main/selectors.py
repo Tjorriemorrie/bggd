@@ -135,14 +135,14 @@ def list_newest_games():
     """List newest games."""
     price_cutoff = 1_000
     max_num = 18
-    days = 3
+    days = 2
     while True:
         days_ago = timezone.now() - datetime.timedelta(days=days)
         games = (
             Game.objects.filter(
                 created_at__gt=days_ago, shop_in_stock=True, shop_price__gt=price_cutoff
             )
-            .order_by('-year', '-created_at')
+            .order_by('-created_at')
             .all()[:max_num]
         )
         if len(games) >= max_num:
