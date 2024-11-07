@@ -169,8 +169,8 @@ def scrape_game(bgg_id: int) -> Game:
     game.url = res.request.url
     try:
         game.rank = int(preload['item']['rankinfo'][0]['rank']) or None
-    except KeyError as exc:
-        raise BggGameNotFoundError(f'No rankinfo for {url}') from exc
+    except KeyError:
+        logger.info(f'No rankinfo for {game.name} [{bgg_id}]')
     game.img = preload['item']['imageurl'].replace('\\', '')
     description_html = preload['item']['description'].replace('\\', '').replace('\n', ' ')
     description = BeautifulSoup(description_html, 'html.parser').text
@@ -192,7 +192,10 @@ def scrape_game(bgg_id: int) -> Game:
 def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
     """Get specific boardgame details."""
     # basic details
-    game.rating = float(preload['item']['stats']['average'])
+    try:
+        game.rating = float(preload['item']['stats']['average'])
+    except KeyError:
+        logger.info(f'No stats average for {game.name} [{bgg_id}]')
     game.min_players = preload['item']['minplayers']
     game.max_players = preload['item']['maxplayers']
     game.min_play_time = preload['item']['minplaytime']
