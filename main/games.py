@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import random
@@ -167,7 +168,8 @@ def scrape_game(bgg_id: int) -> Game:
     game.label = preload['item']['label']
     game.year = int(preload['item']['yearpublished'])
     game.url = res.request.url
-    game.rank = int(preload['item']['rankinfo'][0]['rank']) or None
+    with contextlib.suppress(KeyError):
+        game.rank = int(preload['item']['rankinfo'][0]['rank']) or None
     game.img = preload['item']['imageurl'].replace('\\', '')
     description_html = preload['item']['description'].replace('\\', '').replace('\n', ' ')
     description = BeautifulSoup(description_html, 'html.parser').text

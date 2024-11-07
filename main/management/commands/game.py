@@ -70,17 +70,17 @@ class Command(BaseCommand):
 
         try:
             if subcommand == 'auto':
-                self.scrape_auto(*args, **options)
                 target = 'game auto'
+                self.scrape_auto(*args, **options)
             elif subcommand == 'new':
-                self.scrape_new(*args, **options)
                 target = 'game new'
+                self.scrape_new(*args, **options)
             elif subcommand == 'out':
-                self.scrape_out(*args, **options)
                 target = 'game out'
+                self.scrape_out(*args, **options)
             elif subcommand == 'clean':
-                self.scrape_clean(*args, **options)
                 target = 'game clean'
+                self.scrape_clean(*args, **options)
             else:
                 raise NotImplementedError(f'No such cmd found: {subcommand}')
         except Exception as exc:
