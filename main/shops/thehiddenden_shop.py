@@ -17,8 +17,7 @@ def worker(page: int) -> list:
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-        # noqa E501
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
     params = {
         'swoof': '1',
@@ -37,9 +36,14 @@ def worker(page: int) -> list:
     for row in rows:
         anchor = row.find('a')
         href = row.find('a')['href']
-        img_src = anchor.find('img')['data-src']
-        img_src = img_src.split('?')[0]
+        img = anchor.find('img')
+        try:
+            img_src = img['data-src']
+        except KeyError:
+            logger.warning(f'Image data not found in data-src: {anchor.find("img")}')
+            img_src = img['src']
         name = row.select_one('p.name.product-title').get_text(separator=' ', strip=True)
+
         # price details
         in_stock = True
         try:
@@ -56,6 +60,7 @@ def worker(page: int) -> list:
 
 
 def worker_wrapper(*args, **kwargs):
+    """Worker wrapper."""
     try:
         return worker(*args, **kwargs)
     except Exception:
