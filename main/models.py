@@ -225,7 +225,6 @@ class Listing(Timestamped):
     # type
     is_accessory = models.BooleanField(default=False)
     is_new = models.BooleanField(default=True)
-    is_preorder = models.BooleanField(default=False)
 
     # latest price
     in_stock = models.BooleanField(null=True)

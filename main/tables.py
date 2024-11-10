@@ -126,9 +126,6 @@ class ListingTable(tables.Table):
 class ShopTable(tables.Table):
     new_cnt = Column(verbose_name='New Items', empty_values=(), initial_sort_descending=True)
     second_cnt = Column(verbose_name='Second Items', empty_values=(), initial_sort_descending=True)
-    preorder_cnt = Column(
-        verbose_name='Preorder Items', empty_values=(), initial_sort_descending=True
-    )
     scraped = Column(verbose_name='Scraped', empty_values=(), initial_sort_descending=True)
 
     class Meta:
@@ -137,7 +134,6 @@ class ShopTable(tables.Table):
             'name',
             'new_cnt',
             'second_cnt',
-            'preorder_cnt',
             'scraped',
         )
         template_name = 'main/table_list.html'
@@ -150,43 +146,23 @@ class ShopTable(tables.Table):
 
     def order_new_cnt(self, queryset, is_descending):
         """Order listings count."""
-        queryset = queryset.annotate(
-            new_cnt=Count('listings', filter=Q(listings__is_new=True, listings__is_preorder=False))
-        )
+        queryset = queryset.annotate(new_cnt=Count('listings', filter=Q(listings__is_new=True)))
         ordering = '-new_cnt' if is_descending else 'new_cnt'
         return queryset.order_by(ordering), True
 
     def render_new_cnt(self, record: Shop):
         """Show number of listings."""
-        return record.listings.filter(is_new=True, is_preorder=False).count()
+        return record.listings.filter(is_new=True).count()
 
     def order_second_cnt(self, queryset, is_descending):
         """Order listings count."""
-        queryset = queryset.annotate(
-            second_cnt=Count(
-                'listings', filter=Q(listings__is_new=False, listings__is_preorder=False)
-            )
-        )
+        queryset = queryset.annotate(second_cnt=Count('listings', filter=Q(listings__is_new=False)))
         ordering = '-second_cnt' if is_descending else 'second_cnt'
         return queryset.order_by(ordering), True
 
     def render_second_cnt(self, record: Shop):
         """Show number of listings."""
-        return record.listings.filter(is_new=False, is_preorder=False).count()
-
-    def order_preorder_cnt(self, queryset, is_descending):
-        """Order listings count."""
-        queryset = queryset.annotate(
-            preorder_cnt=Count(
-                'listings', filter=Q(listings__is_new=True, listings__is_preorder=True)
-            )
-        )
-        ordering = '-preorder_cnt' if is_descending else 'preorder_cnt'
-        return queryset.order_by(ordering), True
-
-    def render_preorder_cnt(self, record: Shop):
-        """Show number of listings."""
-        return record.listings.filter(is_new=True, is_preorder=True).count()
+        return record.listings.filter(is_new=False).count()
 
     def order_scraped(self, queryset, is_descending):
         """Order based on last scrape."""

@@ -34,6 +34,8 @@ def worker(page: int) -> list:
     container = html.find('div', class_='container collection-matrix')
     rows = container.find_all('div', recursive=False)
     for row in rows:
+        if 'Pre-Order' in row.text:
+            continue
         anchor = row.find_all('a')[-1]
         img_src = 'https:' + row.find('img')['data-src']
         href = shop_host + anchor['href']

@@ -26,4 +26,7 @@ class Command(BaseCommand):
         logger.info(' updating game values '.center(99, '*'))
         call_command('game', 'out')
 
+        logger.info(' clean games '.center(99, '*'))
+        call_command('game', 'clean')
+
         logger.info(' finished cron job '.center(99, '*'))
