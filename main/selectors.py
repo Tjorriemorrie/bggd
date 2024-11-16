@@ -133,9 +133,9 @@ def get_last_scrape(shop: Shop) -> Scrapelog | None:
 
 def list_newest_games():
     """List newest games."""
-    price_cutoff = 1_000
+    price_cutoff = 1_100
     max_num = 18
-    days = 2
+    days = 4
     while True:
         days_ago = timezone.now() - datetime.timedelta(days=days)
         games = (
