@@ -541,7 +541,14 @@ def update_outdated_game_shop_prices(all_: bool):
     if all_:
         games = list(Game.objects.all())
     else:
-        games = list({*Game.objects.filter(shop_outdated=True).all(), *get_best_savings_games()})
+        oldest_cutoff = Game.objects.count() // 28
+        games = list(
+            {
+                *Game.objects.filter(shop_outdated=True).all(),
+                *get_best_savings_games(),
+                *Game.objects.order_by('shop_updated_at')[:oldest_cutoff],
+            }
+        )
     total = len(games)
     for ix, game in enumerate(games):
         logger.info(f'{ix}/{total} Updating prices for {game}')
