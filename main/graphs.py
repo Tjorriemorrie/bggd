@@ -3,6 +3,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
+from django.core import cache
 from plotly.graph_objs import Figure
 
 from main.models import Game
@@ -14,6 +15,10 @@ logger = logging.getLogger(__name__)
 def get_game_prices_graph(game: Game):
     """Get game prices graph for every shop."""
     logger.info(f'Getting price graph for {game}')
+    cache_key = 'get_game_prices_graph'
+    if fig := cache.get(cache_key):
+        return fig
+
     dfs = {}
     shop_names = {}  # To map slugs to shop names
 
@@ -80,6 +85,8 @@ def get_game_prices_graph(game: Game):
         legend_title='Shop Name',
         height=800,
     )
+
+    cache.set(cache_key, fig, timeout=43200)
     return fig
 
 
