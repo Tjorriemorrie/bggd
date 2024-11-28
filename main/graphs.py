@@ -3,7 +3,7 @@ from datetime import datetime
 
 import numpy as np
 import pandas as pd
-from django.core import cache
+from django.core.cache import cache
 from plotly.graph_objs import Figure
 
 from main.models import Game

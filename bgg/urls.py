@@ -1,24 +1,37 @@
 from django.contrib import admin
 from django.urls import path
+from django.views.decorators.cache import cache_page
 
 from main import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', views.home_view, name='home'),
-    path('listings/', views.ListingListView.as_view(), name='listing-list'),
-    path('listing/<int:pk>/', views.ListingDetailView.as_view(), name='listing-detail'),
+    path('', cache_page(60 * 60)(views.home_view), name='home'),
+    path('listings/', cache_page(60 * 60)(views.ListingListView.as_view()), name='listing-list'),
+    path(
+        'listing/<int:pk>/',
+        cache_page(60 * 60)(views.ListingDetailView.as_view()),
+        name='listing-detail',
+    ),
     path(
         'listing/<int:pk>/<slug:slug>/',
-        views.ListingDetailView.as_view(),
+        cache_page(60 * 60)(views.ListingDetailView.as_view()),
         name='listing-detail-slug',
     ),
-    path('shops/', views.ShopListView.as_view(), name='shop-list'),
-    path('shop/<int:pk>/', views.ShopDetailView.as_view(), name='shop-detail'),
-    path('shop/<int:pk>/<slug:slug>/', views.ShopDetailView.as_view(), name='shop-detail-slug'),
-    path('games/', views.GameListView.as_view(), name='game-list'),
-    path('game/<int:pk>/', views.GameDetailView.as_view(), name='game-detail'),
-    path('game/<int:pk>/<slug:slug>/', views.GameDetailView.as_view(), name='game-detail-slug'),
+    path('shops/', cache_page(60 * 60)(views.ShopListView.as_view()), name='shop-list'),
+    path('shop/<int:pk>/', cache_page(60 * 60)(views.ShopDetailView.as_view()), name='shop-detail'),
+    path(
+        'shop/<int:pk>/<slug:slug>/',
+        cache_page(60 * 60)(views.ShopDetailView.as_view()),
+        name='shop-detail-slug',
+    ),
+    path('games/', cache_page(60 * 60)(views.GameListView.as_view()), name='game-list'),
+    path('game/<int:pk>/', cache_page(60 * 60)(views.GameDetailView.as_view()), name='game-detail'),
+    path(
+        'game/<int:pk>/<slug:slug>/',
+        cache_page(60 * 60)(views.GameDetailView.as_view()),
+        name='game-detail-slug',
+    ),
     # path('games/', views.GameListView.as_view(), name='game_list'),
     # path('got/', views.GotView.as_view(), name='got'),
     # path('about/', views.AboutView.as_view(), name='about'),
