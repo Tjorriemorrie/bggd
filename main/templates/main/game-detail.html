@@ -21,7 +21,11 @@
                 <p>Average price: R{{ game.shop_mean }}</p>
             {% endif %}
 
-            {% for listing in game.listings.all %}
+            {% if prices_graph %}
+                {{ prices_graph|safe }}
+            {% endif %}
+
+            {% for listing in listings %}
                 <p class="{% if not listing.in_stock %}text-decoration-line-through{% endif %}">
                     <a href="{{ listing.url }}" target="_blank">
                         {{ listing.shop.name }} &mdash; {{ listing|price }} ({{ listing.name }})

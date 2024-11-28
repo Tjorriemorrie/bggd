@@ -1,48 +1,88 @@
 import logging
+from datetime import datetime
+
+import numpy as np
+import pandas as pd
+from plotly.graph_objs import Figure
+
+from main.models import Game
+from main.selectors import get_today
 
 logger = logging.getLogger(__name__)
 
 
-# def get_game_prices_bar(game: Game):
-#     """Get game prices in bar chart for every shop."""
-#     logger.info(f'Getting price graph for {game}')
-#     fig = go.Figure()
-#     dfs = {}
-#     for shopgame in game.shopgames.all():
-#         name = shopgame.shop.name.replace(' ', '').lower()
-#         values = shopgame.prices.values_list('day__day', 'price', 'status')
-#         if not values:
-#             continue
-#         df = pd.DataFrame(values, columns=['day', f'{name}_price', f'{name}_status'])
-#         df['day'] = pd.to_datetime(df['day'])
-#         df = df.set_index('day')
-#         dfs[name] = df
-#     if not dfs.values():
-#         return
-#     df = None
-#     for df_shop in dfs.values():
-#         if df is None:
-#             df = df_shop
-#         else:
-#             df = pd.merge(df, df_shop, how='outer', left_index=True, right_index=True)
-#     if df.empty:
-#         return
-#     today = Day.get_today()
-#     date_range = pd.date_range(
-#         df.index[0], datetime(today.day.year, today.day.month, today.day.day)
-#     )
-#     df = df.reindex(date_range)
-#     for name in dfs:
-#         df[f'{name}_price'] = df[f'{name}_price'].ffill()
-#         df[f'{name}_status'] = df[f'{name}_status'].ffill()
-#         df.loc[df[f'{name}_status'] == STOCK_OUT, f'{name}_price'] = np.nan
-#         fig.add_scatter(x=df.index, y=df[f'{name}_price'], mode='lines', name=name)
-#     fig.update_layout(
-#         title='Prices from Shops', xaxis_title='Date', yaxis_title='Price', legend_title='Shop Name'
-#     )
-#     return fig
-#
-#
+def get_game_prices_graph(game: Game):
+    """Get game prices graph for every shop."""
+    logger.info(f'Getting price graph for {game}')
+    dfs = {}
+    shop_names = {}  # To map slugs to shop names
+
+    for ix, listing in enumerate(game.listings.all()):
+        shop_name = listing.shop.name
+        slug = f'{listing.shop.slug}_{ix}'
+        shop_names[slug] = shop_name
+
+        values = listing.prices.values_list('day__day', 'price', 'in_stock')
+        if not values:
+            continue
+
+        df = pd.DataFrame(values, columns=['day', f'{slug}_price', f'{slug}_in_stock'])
+        df['day'] = pd.to_datetime(df['day'])
+        df = df.set_index('day')
+        dfs[slug] = df
+
+    # No graph if no dataframes are created
+    if not dfs:
+        return
+
+    # Merge all dataframes from shops into one dataframe
+    df = None
+    for df_shop in dfs.values():
+        if df is None:
+            df = df_shop
+        else:
+            df = pd.merge(df, df_shop, how='outer', left_index=True, right_index=True)
+
+    # Create a date range for the graph
+    today = get_today()
+    date_range = pd.date_range(
+        df.index[0], datetime(today.day.year, today.day.month, today.day.day)
+    )
+    df = df.reindex(date_range)
+
+    # Set prices to NaN where out of stock and drop stock columns
+    fig = Figure()
+    for slug in dfs:
+        df[f'{slug}_price'] = df[f'{slug}_price'].ffill()
+        df[f'{slug}_in_stock'] = df[f'{slug}_in_stock'].ffill().astype(bool)
+
+        # Set price to NaN where in_stock is False
+        df.loc[~df[f'{slug}_in_stock'], f'{slug}_price'] = np.nan
+
+        shop_name = shop_names[slug]
+        fig.add_scatter(
+            x=df.index,
+            y=df[f'{slug}_price'],
+            mode='lines',
+            name=shop_name,  # Legend will display shop name
+            hovertemplate=(
+                f'<b>Shop:</b> {shop_name}<br>'
+                '<b>Date:</b> %{x}<br>'
+                '<b>Price:</b> %{y}<extra></extra>'
+            ),
+        )
+
+    # Update the layout of the graph
+    fig.update_layout(
+        title='Prices from Shops',
+        xaxis_title='Date',
+        yaxis_title='Price',
+        legend_title='Shop Name',
+        height=800,
+    )
+    return fig
+
+
 # def get_shop_sizes():
 #     """Get shop sizes graph."""
 #     df_data = []
@@ -67,10 +107,12 @@ logger = logging.getLogger(__name__)
 #         if name2 not in data:
 #             data[name2] = {}
 #
-#         shopgames_1 = ShopGame.objects.filter(shop__name=name1, current_available=True).values_list(
+#         shopgames_1 = ShopGame.objects.filter(shop__name=name1, current_available=True)
+#         .values_list(
 #             'game', flat=True
 #         )
-#         shopgames_2 = ShopGame.objects.filter(shop__name=name2, current_available=True).values_list(
+#         shopgames_2 = ShopGame.objects.filter(shop__name=name2, current_available=True)
+#         .values_list(
 #             'game', flat=True
 #         )
 #         game_ids = set(shopgames_1) & set(shopgames_2)

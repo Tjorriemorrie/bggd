@@ -7,6 +7,7 @@ from django_filters.views import FilterMixin
 from django_tables2 import SingleTableView
 
 from main.filters import GameFilter, ListingFilter, ShopFilter
+from main.graphs import get_game_prices_graph
 from main.models import Game, Listing, Shop
 from main.selectors import get_best_savings_games, list_newest_games
 from main.tables import GameTable, ListingTable, ShopTable
@@ -126,9 +127,15 @@ class GameDetailView(DetailView):
 
     def get_context_data(self, **kwargs):
         """Get context."""
-        context = super().get_context_data(**kwargs)
-        context['nav'] = 'games'
-        return context
+        ctx = super().get_context_data(**kwargs)
+        ctx['listings'] = ctx['game'].listings.order_by('-in_stock', 'price').all()
+        # graph for prices
+        if prices_fig := get_game_prices_graph(self.object):
+            ctx['prices_graph'] = prices_fig.to_html(full_html=False)
+        else:
+            ctx['prices_graph'] = None
+        ctx['nav'] = 'games'
+        return ctx
 
 
 # class GotView(CachedTemplateViewGet):
