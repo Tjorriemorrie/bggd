@@ -33,7 +33,7 @@ def worker(page: int) -> list:
         img_src = row.find('img')['src']
         name = row.select_one('h2').get_text(separator=' ', strip=True)
         anchor = row.find('a')
-        href = shop_host + anchor['href']
+        href = anchor['href']
         # price details
         in_stock = True
         price_txt = row.select_one('span.price').find_all('bdi')[-1].get_text(strip=True)
