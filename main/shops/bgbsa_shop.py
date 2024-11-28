@@ -24,7 +24,7 @@ def scrape():
         first_game = item['games'][0]
         name = first_game.get('name')
         bgg_id = first_game.get('bgg_id')
-        img_src = first_game.get('image')
+        img_src = first_game.get('image') or first_game.get('resized_image')
         if not img_src:
             logger.info(f'No image for {first_game}')
             continue
