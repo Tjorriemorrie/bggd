@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def get_game_prices_graph(game: Game):
     """Get game prices graph for every shop."""
     logger.info(f'Getting price graph for {game}')
-    cache_key = 'get_game_prices_graph'
+    cache_key = f'get_game_prices_graph_{game.id}'
     if fig := cache.get(cache_key):
         return fig
 
