@@ -56,7 +56,6 @@ def get_game_prices_graph(game: Game):
     df = df.reindex(date_range)
 
     # Set prices to NaN where out of stock and drop stock columns
-    fig = Figure()
     for slug in dfs:
         df[f'{slug}_price'] = df[f'{slug}_price'].ffill()
         df[f'{slug}_in_stock'] = df[f'{slug}_in_stock'].ffill().astype(bool)
@@ -64,6 +63,18 @@ def get_game_prices_graph(game: Game):
         # Set price to NaN where in_stock is False
         df.loc[~df[f'{slug}_in_stock'], f'{slug}_price'] = np.nan
 
+    # Calculate the lowest price per day
+    price_columns = [col for col in df.columns if col.endswith('_price')]
+    df['lowest_price'] = df[price_columns].min(axis=1, skipna=True)
+
+    # Calculate the rolling average of the lowest prices
+    df['average_lowest_price'] = df['lowest_price'].rolling(window=365, min_periods=1).mean()
+
+    # Create the graph
+    fig = Figure()
+
+    # Add shop-specific price lines
+    for slug in dfs:
         shop_name = shop_names[slug]
         fig.add_scatter(
             x=df.index,
@@ -77,13 +88,25 @@ def get_game_prices_graph(game: Game):
             ),
         )
 
+    # Add the average lowest price line
+    fig.add_scatter(
+        x=df.index,
+        y=df['average_lowest_price'],
+        mode='lines',
+        name='Average',
+        line=dict(color='blue', dash='dash'),
+        hovertemplate=(
+            '<b>Average</b><br>' '<b>Date:</b> %{x}<br>' '<b>Price:</b> %{y}<extra></extra>'
+        ),
+    )
+
     # Update the layout of the graph
     fig.update_layout(
         title='Prices from Shops',
         xaxis_title='Date',
         yaxis_title='Price',
         legend_title='Shop Name',
-        height=800,
+        height=700,
     )
 
     cache.set(cache_key, fig, timeout=43200)
