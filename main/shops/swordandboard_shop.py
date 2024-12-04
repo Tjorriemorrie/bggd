@@ -1,4 +1,5 @@
 import logging
+import re
 
 from bs4 import BeautifulSoup
 
@@ -17,8 +18,7 @@ def worker(page: int) -> list:
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-        # noqa E501
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
     url = f'{shop_host}/collections/board-games'
     params = {
@@ -33,6 +33,11 @@ def worker(page: int) -> list:
     container = html.find('ul', id='main-collection-product-grid')
     rows = container.find_all('li', recursive=False)
     for row in rows:
+        row_text = re.sub(r'\n+', ' ', row.text.casefold())
+        if 'pre-order' in row_text:
+            logger.info(f'Skipping pre-order: {row_text}')
+            continue
+
         anchor = row.find('a')
         href = shop_host + anchor['href']
         img_src = 'http:' + anchor.find('img')['src']
@@ -55,6 +60,7 @@ def worker(page: int) -> list:
 
 
 def worker_wrapper(*args, **kwargs):
+    """Worker wrapper."""
     try:
         return worker(*args, **kwargs)
     except Exception:
