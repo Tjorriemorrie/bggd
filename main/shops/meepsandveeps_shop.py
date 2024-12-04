@@ -1,5 +1,6 @@
 import ast
 import logging
+import re
 
 from bs4 import BeautifulSoup
 
@@ -38,6 +39,9 @@ def worker(page: int) -> list:
     containers = html.find_all('div', class_='grid-uniform')
     rows = containers[1].find_all('div', recursive=False)
     for row in rows:
+        row_text = re.sub(r'\n+', '\n', row.text.casefold())
+        if 'pre-order' in row_text:
+            continue
         img_tag = row.find('img')
         if not img_tag:
             logger.info(f'{row.get_text(separator=" ", strip=True)} HAS NO IMAGE '.center(99, '!'))
