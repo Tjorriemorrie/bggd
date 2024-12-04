@@ -39,8 +39,9 @@ def worker(page: int) -> list:
     containers = html.find_all('div', class_='grid-uniform')
     rows = containers[1].find_all('div', recursive=False)
     for row in rows:
-        row_text = re.sub(r'\n+', '\n', row.text.casefold())
+        row_text = re.sub(r'\n+', ' ', row.text.casefold())
         if 'pre-order' in row_text:
+            logger.info(f'Skipping pre-order: {row_text}')
             continue
         img_tag = row.find('img')
         if not img_tag:

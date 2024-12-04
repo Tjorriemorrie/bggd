@@ -1,4 +1,5 @@
 import logging
+import re
 
 from bs4 import BeautifulSoup
 
@@ -29,7 +30,9 @@ def worker(page: int) -> list:
     container = html.find('ul', class_='products columns-4')
     rows = container.find_all('li', recursive=False)
     for row in rows:
-        if 'Pre-Order' in row.text:
+        row_text = re.sub(r'\n+', ' ', row.text.casefold()).strip()
+        if 'pre-order' in row_text:
+            logger.info(f'Skipping pre-order: {row_text}')
             continue
         img_src = row.find('img')['src']
         name_txt = row.find('h2').get_text(separator=' ', strip=True)
