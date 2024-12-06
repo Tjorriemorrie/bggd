@@ -40,7 +40,7 @@ def worker(page: int) -> list:
     rows = containers[1].find_all('div', recursive=False)
     for row in rows:
         row_text = re.sub(r'\n+', ' ', row.text.casefold())
-        if 'pre-order' in row_text:
+        if 'pre-order by' in row_text:
             logger.info(f'Skipping pre-order: {row_text}')
             continue
         img_tag = row.find('img')
