@@ -46,7 +46,7 @@ class OpenGraphMiddleware(MiddlewareMixin):
             else:
                 context['og_title'] = 'BoardGame Price Tracker'
                 context['og_desc'] = 'Find the best deals on board games from local shops.'
-                context['og_img'] = static('main/img/favicon.png')
+                context['og_img'] = request.build_absolute_uri(static('main/img/favicon.png'))
                 context['og_url'] = request.build_absolute_uri()
 
         return response
