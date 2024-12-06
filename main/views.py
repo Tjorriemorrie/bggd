@@ -1,7 +1,7 @@
 import logging
 
 from django.core.handlers.wsgi import WSGIRequest
-from django.shortcuts import render
+from django.template.response import TemplateResponse
 from django.views.generic import DetailView
 from django_filters.views import FilterMixin
 from django_tables2 import SingleTableView
@@ -23,7 +23,7 @@ def home_view(request: WSGIRequest):
         'savings': savings,
         'latest': latest,
     }
-    return render(request, 'main/home.html', ctx)
+    return TemplateResponse(request, 'main/home.html', ctx)
 
 
 class ListingListView(SingleTableView, FilterMixin):
