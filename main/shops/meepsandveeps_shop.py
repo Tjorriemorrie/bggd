@@ -3,6 +3,7 @@ import logging
 import re
 
 from bs4 import BeautifulSoup
+from retry import retry
 
 from main.games import get
 from main.selectors import upsert_shop
@@ -79,6 +80,7 @@ def worker_wrapper(*args, **kwargs):
         raise
 
 
+@retry(Exception, tries=2)
 def scrape():
     """Scrape this site."""
     base_scrape(worker)
