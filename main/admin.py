@@ -45,6 +45,7 @@ class ListingAdmin(admin.ModelAdmin):
         'price',
         'priced_at',
         'url',
+        'updated_at',
     )
     list_filter = ('shop__name', 'in_stock')
     list_editable = ('bgg_id',)

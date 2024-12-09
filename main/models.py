@@ -266,18 +266,6 @@ class Price(Timestamped):
         return unidecode(f'<Price-{self.id} {self.day} {value} {self.listing}>')
 
 
-# class Play(Timestamped):
-#     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='plays')
-#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='plays')
-#     day = models.ForeignKey(Day, on_delete=models.CASCADE, related_name='plays')
-#     bgg_id = models.IntegerField()
-#     duration = models.IntegerField(null=True)
-#     num_players = models.IntegerField(null=True)
-#
-#     def __str__(self):
-#         return f'<Play bggid={self.bgg_id} {self.game.name} by {self.player.nick} {self.day.day}>'
-
-
 class Scrapelog(Timestamped):
     day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='scrapelogs')
     target = models.CharField(max_length=250)
