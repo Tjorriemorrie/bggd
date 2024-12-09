@@ -4,7 +4,8 @@ import multiprocessing
 from itertools import chain
 
 from django.db import transaction
-from django.db.models import QuerySet
+from django.db.models import ExpressionWrapper, F, FloatField, Func, QuerySet, Value
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
@@ -12,6 +13,12 @@ from unidecode import unidecode
 from main.models import Day, Game, Listing, Scrapelog, Shop
 
 logger = logging.getLogger(__name__)
+
+
+class UnixTimestamp(Func):
+    function = 'strftime'
+    template = "%(function)s('%%%%s', %(expressions)s)"  # Escape % with %%
+    output_field = FloatField()  # Explicitly declare the output as FloatField
 
 
 def get_today() -> Day:
@@ -116,7 +123,22 @@ def list_listings_without_games() -> QuerySet[Listing]:
         return listings
 
     # otherwise just rotate from oldest
-    listings = Listing.objects.order_by('bgg_looked_at')
+    listings = (
+        Listing.objects.annotate(
+            bgg_looked_at_timestamp=Coalesce(
+                UnixTimestamp(F('bgg_looked_at')), Value(0.0, output_field=FloatField())
+            ),
+            updated_at_timestamp=Coalesce(
+                UnixTimestamp(F('updated_at')), Value(0.0, output_field=FloatField())
+            ),
+        )
+        .annotate(
+            sum_fields=ExpressionWrapper(
+                F('bgg_looked_at_timestamp') + F('updated_at_timestamp'), output_field=FloatField()
+            )
+        )
+        .order_by('sum_fields')
+    )
     return listings
 
 
