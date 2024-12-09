@@ -6,7 +6,7 @@ from django.urls import reverse
 from django.utils.timezone import now
 from unidecode import unidecode
 
-from main.constants import CHOICES_LABELS, CHOICES_WEIGHTS
+from main.constants import CATEGORY_CHOICES, CHOICES_LABELS, CHOICES_WEIGHTS
 from main.managers import ListingManager
 
 logger = logging.getLogger(__name__)
@@ -225,6 +225,7 @@ class Listing(Timestamped):
     # type
     is_accessory = models.BooleanField(default=False)
     is_new = models.BooleanField(default=True)
+    category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, null=True, blank=True)
 
     # latest price
     in_stock = models.BooleanField(null=True)

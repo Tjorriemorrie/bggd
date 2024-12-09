@@ -3,6 +3,7 @@ import logging
 from django import forms
 from django.utils import timezone
 
+from main.constants import CATEGORY_CHOICES
 from main.models import Listing
 
 logger = logging.getLogger(__name__)
@@ -14,8 +15,11 @@ class LookupForm(forms.Form):
     is_missing = forms.BooleanField(
         required=False, initial=False, label='Is missing?', widget=forms.CheckboxInput()
     )
-    is_accessory = forms.BooleanField(
-        required=False, initial=False, label='Is accessory?', widget=forms.CheckboxInput()
+    category = forms.ChoiceField(
+        required=False,
+        choices=list(CATEGORY_CHOICES),
+        widget=forms.Select(),
+        label='Category',
     )
 
     def save(self) -> Listing:
@@ -37,7 +41,12 @@ class LookupForm(forms.Form):
             listing.game = None
         else:
             listing.bgg_missing = False
-        listing.is_accessory = self.cleaned_data.get('is_accessory', False)
+
+        # Update category
+        category = self.cleaned_data.get('category') or None
+        if listing.category != category:
+            listing.category = category
+
         listing.bgg_looked_at = timezone.now()
         listing.save()
         logger.info(

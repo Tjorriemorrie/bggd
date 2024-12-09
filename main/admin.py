@@ -40,6 +40,7 @@ class ListingAdmin(admin.ModelAdmin):
         'bgg_missing',
         'pic',
         'name_link',
+        'category',
         'in_stock',
         'price',
         'priced_at',
