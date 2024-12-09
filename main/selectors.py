@@ -133,11 +133,11 @@ def list_listings_without_games() -> QuerySet[Listing]:
             ),
         )
         .annotate(
-            sum_fields=ExpressionWrapper(
-                F('bgg_looked_at_timestamp') + F('updated_at_timestamp'), output_field=FloatField()
+            diff_fields=ExpressionWrapper(
+                F('updated_at_timestamp') - F('bgg_looked_at_timestamp'), output_field=FloatField()
             )
         )
-        .order_by('sum_fields')
+        .order_by('diff_fields')
     )
     return listings
 
