@@ -20,6 +20,7 @@ from main.selectors import get_today
 logger = logging.getLogger(__name__)
 
 
+@retry(Exception, tries=4, delay=60)
 def base_scrape(worker):  # noqa: PLR0912, PLR0915
     """Start scraping using multiprocessing with ProcessPoolExecutor."""
     process_pool_size = settings.PROCESS_POOL

@@ -128,13 +128,13 @@ def list_listings_without_games() -> QuerySet[Listing]:
             bgg_looked_at_timestamp=Coalesce(
                 UnixTimestamp(F('bgg_looked_at')), Value(0.0, output_field=FloatField())
             ),
-            updated_at_timestamp=Coalesce(
-                UnixTimestamp(F('updated_at')), Value(0.0, output_field=FloatField())
+            priced_at_timestamp=Coalesce(
+                UnixTimestamp(F('priced_at')), Value(0.0, output_field=FloatField())
             ),
         )
         .annotate(
             diff_fields=ExpressionWrapper(
-                F('updated_at_timestamp') - F('bgg_looked_at_timestamp'), output_field=FloatField()
+                F('priced_at_timestamp') - F('bgg_looked_at_timestamp'), output_field=FloatField()
             )
         )
         .order_by('-diff_fields')
