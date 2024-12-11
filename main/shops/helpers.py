@@ -222,7 +222,8 @@ def upsert_price(listing: Listing, in_stock: bool, value: float) -> tuple[Price,
             return new_price, True
 
         # create new price if value changed
-        if prev_price.price != value or prev_price.in_stock != in_stock:
+        prev_value = float(prev_price.price) if prev_price.price else None
+        if prev_value != value or prev_price.in_stock != in_stock:
             # only update changes on same day
             if prev_price.day == day:
                 prev_price.price = value
