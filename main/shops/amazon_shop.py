@@ -19,8 +19,7 @@ def worker(page: int) -> list:
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-        # noqa E501
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
     url = f'{shop_host}/s'
     params = {
@@ -40,7 +39,8 @@ def worker(page: int) -> list:
     container = html.find('div', class_='s-result-list')
     rows = container.find_all('div', class_='s-result-item')
     for row in rows:
-        if len(row.text) < 100:
+        min_txt_len = 100
+        if len(row.text) < min_txt_len:
             continue
         img_src = row.find('img', class_='s-image')['src']
         href = shop_host + row.find('a', class_='a-link-normal')['href']
@@ -48,11 +48,17 @@ def worker(page: int) -> list:
         name = row.find('h2').get_text(separator=' ', strip=True)
         # price details
         in_stock = True
-        price_txt = (
-            row.select_one('span.a-price').select_one('span.a-offscreen').get_text(strip=True)
-        )
-        price_value = parse_price(price_txt)
-
+        try:
+            price_txt = (
+                row.select_one('span.a-price').select_one('span.a-offscreen').get_text(strip=True)
+            )
+            price_value = parse_price(price_txt)
+        except AttributeError:
+            if 'Currently unavailable.' in row.text:
+                in_stock = False
+                price_value = None
+            else:
+                raise
         handle_item_data(shop, name, href, img_src, in_stock, price_value)
 
     if len(rows) > 0:
@@ -61,6 +67,7 @@ def worker(page: int) -> list:
 
 
 def worker_wrapper(page):
+    """Worker wrapper."""
     try:
         return worker(page)
     except Exception:
