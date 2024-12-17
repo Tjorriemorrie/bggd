@@ -1,9 +1,14 @@
 import logging
 import zoneinfo
 
+from django.http import HttpRequest
+from django.shortcuts import get_object_or_404
 from django.templatetags.static import static
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
+
+from main.models import Game, PageView
+from main.selectors import get_today
 
 logger = logging.getLogger(__name__)
 
@@ -50,3 +55,45 @@ class OpenGraphMiddleware(MiddlewareMixin):
                 context['og_url'] = request.build_absolute_uri()
 
         return response
+
+
+class PageViewMiddleware:
+    """Middleware to record unique page views for a GameDetailView."""
+
+    def __init__(self, get_response):
+        """Init."""
+        self.get_response = get_response
+
+    def __call__(self, request: HttpRequest):
+        """Call middleware."""
+        response = self.get_response(request)
+
+        # Proceed only for the 'game-detail' path
+        if request.resolver_match and request.resolver_match.url_name.startswith('game-detail'):
+            self.record_page_view(request)
+
+        return response
+
+    def record_page_view(self, request: HttpRequest):
+        """Record a unique PageView entry based on IP, day, and game."""
+        # Get client IP address
+        ip_address = self.get_client_ip(request)
+
+        # Get the day object (today's date)
+        day = get_today()
+
+        # Extract the game ID from the path
+        game_id = request.resolver_match.kwargs.get('pk')
+        if not game_id:
+            return
+        game = get_object_or_404(Game, pk=game_id)
+
+        # Check for existence and create if necessary
+        PageView.objects.get_or_create(day=day, game=game, ip=ip_address)
+
+    @staticmethod
+    def get_client_ip(request: HttpRequest):
+        """Retrieve the client IP address from the request headers."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
+        return ip

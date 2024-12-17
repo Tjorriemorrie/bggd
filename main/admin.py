@@ -7,7 +7,7 @@ from django.utils.html import format_html
 
 from main.forms import LookupForm
 from main.games import search_bgg, update_game_shop_prices
-from main.models import Game, Label, Listing, Price, Scrapelog, Shop
+from main.models import Game, Label, Listing, PageView, Price, Scrapelog, Shop
 from main.selectors import list_listings_without_games
 
 logger = logging.getLogger(__name__)
@@ -175,3 +175,10 @@ class ScrapelogAdmin(admin.ModelAdmin):
     search_fields = ['outcome']
     readonly_fields = ['outcome', 'duration']
     ordering = ['-day', 'target']
+
+
+@admin.register(PageView)
+class PageViewAdmin(admin.ModelAdmin):
+    list_display = ['id', 'day', 'ip', 'game']
+    search_fields = ['ip', 'game__name']
+    ordering = ['-day', 'game', 'ip']

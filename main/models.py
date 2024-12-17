@@ -103,115 +103,11 @@ class Game(Timestamped):
         return reverse('game-detail-slug', kwargs={'pk': self.pk, 'slug': self.slug})
 
 
-# class Player(Timestamped):
-#     bgg_id = models.PositiveIntegerField(null=True)
-#     nick = models.CharField(max_length=256, unique=True)
-#
-#     # updated in scrape
-#     name = models.CharField(max_length=256, null=True, blank=True)
-#     country = models.CharField(max_length=150, null=True, blank=True)
-#     area = models.CharField(max_length=150, null=True, blank=True)
-#     avatar = models.CharField(max_length=256, null=True, blank=True)
-#     scraped_at = models.DateTimeField(db_index=True, null=True, blank=True)
-#
-#     # updated in predict (joined with scrape)
-#     reviews_cnt = models.IntegerField(null=True)
-#     reviews_scr = models.FloatField(null=True)
-#     last_review_at = models.DateTimeField(db_index=True, null=True, blank=True)
-#     rec_at = models.DateTimeField(db_index=True, null=True, blank=True)
-#     is_outdated = models.BooleanField(db_index=True, default=False)
-#
-#     # reschedule prediction for cron pickup
-#     redo_requested_at = models.DateTimeField(null=True, blank=True)
-#     redo_started_at = models.DateTimeField(null=True, blank=True)
-#     redo_completed_at = models.DateTimeField(null=True, blank=True)
-#
-#     def __str__(self) -> str:
-#         name = f' ({self.name})' if self.name else ''
-#         return f'Player {self.nick}{name}'
-#
-#     @property
-#     def bgg_link(self):
-#         """Get boardgamegeek url."""
-#         return f'https://www.boardgamegeek.com/user/{self.nick}'
-#
-#     def get_absolute_url(self) -> str:
-#         """Get absolute url for links."""
-#         return f'/players/{self.id}'
-#
-#     def geo(self):
-#         """Get geo location."""
-#         geo = ''
-#         if self.country:
-#             geo = self.country
-#         if self.area:
-#             geo += f' {self.area}'
-#         return geo or ''
-#
-#     def is_rsa(self) -> bool:
-#         """Is south africa country."""
-#         return self.country and self.country == 'South Africa'
-#
-#
-# class PlayerProxy(Player):
-#     class Meta:
-#         proxy = True
-
-
 class Day(Timestamped):
     day = models.DateField(primary_key=True)
 
-    # reviews_cnt = models.IntegerField()
-    # reviews_avg = models.FloatField()
-    # last_review_id = models.IntegerField()
-    # last_review_at = models.DateTimeField()
-    # is_outdated = models.BooleanField(db_index=True, default=False)
-
     def __str__(self) -> str:
         return unidecode(f'{self.day:%y-%m-%d}')
-
-
-# class Review(Timestamped):
-#     player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='reviews')
-#     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='reviews')
-#     gameday = models.ForeignKey(
-#         GameDay, null=True, on_delete=models.SET_NULL, related_name='reviews'
-#     )
-#
-#     bgg_id = models.PositiveIntegerField(db_index=True)
-#     rating = models.FloatField(db_index=True)
-#     comment = models.CharField(max_length=256, null=True)
-#     reviewed_at = models.DateTimeField(db_index=True)
-#     status = models.CharField(max_length=50, choices=REVIEW_STATUS_CHOICES)
-#
-#     # plays
-#     num_plays = models.IntegerField(default=0)
-#     last_played_at = models.DateTimeField(null=True)
-#
-#     predicted = models.FloatField(null=True)
-#
-#     class Meta:
-#         unique_together = ('player', 'game')
-#
-#     def __str__(self) -> str:
-#         return f'<Review-{self.bgg_id} {self.rating} {self.game.name} by {self.player.nick}>'
-#
-#     @property
-#     def diff(self) -> float:
-#         """Get the difference between predicted and rating."""
-#         if not self.predicted:
-#             return 0
-#         return self.predicted - self.rating
-#
-#     @property
-#     def diff_combine(self) -> float:
-#         """Get rating and diff combined."""
-#         return self.rating + self.diff
-#
-#     @property
-#     def day(self) -> datetime:
-#         """Get day of review."""
-#         return self.reviewed_at.replace(hour=0, minute=0, second=0, microsecond=0)
 
 
 class Listing(Timestamped):
@@ -278,3 +174,15 @@ class Scrapelog(Timestamped):
 
     def __str__(self):
         return unidecode(f'<Scrapelog-{self.id} {self.day} {self.target}>')
+
+
+class PageView(Timestamped):
+    day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='pageviews')
+    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='pageviews')
+    ip = models.GenericIPAddressField()
+
+    class Meta:
+        unique_together = ['day', 'game', 'ip']
+
+    def __str__(self):
+        return unidecode(f'<PageView-{self.id} {self.ip} {self.day} {self.game}>')
