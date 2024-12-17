@@ -5,6 +5,7 @@ from django.core.handlers.wsgi import WSGIRequest
 from django.http import HttpResponseBadRequest
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
+from django.utils import timezone
 from django.views.generic import DetailView
 from django_filters.views import FilterMixin
 from django_tables2 import SingleTableView
@@ -138,6 +139,8 @@ class GameDetailView(DetailView):
         else:
             ctx['prices_graph'] = None
         ctx['nav'] = 'games'
+        # Add current timestamp to context to ensure cache busting
+        ctx['current_timestamp'] = timezone.now().timestamp()
         return ctx
 
 
@@ -162,4 +165,6 @@ def fixme_view(request: WSGIRequest):
     messages.success(request, f"Thank you! '{game.name}' has been flagged for review.")
 
     # Redirect back to the game-detail page
+    append = '&' if '?' in url else '?'
+    url += f'{append}ts={timezone.now().timestamp()}'
     return redirect(url)
