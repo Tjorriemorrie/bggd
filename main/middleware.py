@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 
 from main.models import Game, PageView
-from main.selectors import get_today
+from main.selectors import get_client_ip, get_today
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,7 @@ class PageViewMiddleware:
     def record_page_view(self, request: HttpRequest):
         """Record a unique PageView entry based on IP, day, and game."""
         # Get client IP address
-        ip_address = self.get_client_ip(request)
+        ip_address = get_client_ip(request)
 
         # Get the day object (today's date)
         day = get_today()
@@ -89,11 +89,6 @@ class PageViewMiddleware:
         game = get_object_or_404(Game, pk=game_id)
 
         # Check for existence and create if necessary
-        PageView.objects.get_or_create(day=day, game=game, ip=ip_address)
-
-    @staticmethod
-    def get_client_ip(request: HttpRequest):
-        """Retrieve the client IP address from the request headers."""
-        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
-        ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
-        return ip
+        PageView.objects.get_or_create(
+            day=day, game=game, ip=ip_address, defaults={'viewed_at': timezone.now()}
+        )

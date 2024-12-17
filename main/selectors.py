@@ -6,6 +6,7 @@ from itertools import chain
 from django.db import transaction
 from django.db.models import ExpressionWrapper, F, FloatField, Func, QuerySet, Value
 from django.db.models.functions import Coalesce
+from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
@@ -19,6 +20,13 @@ class UnixTimestamp(Func):
     function = 'strftime'
     template = "%(function)s('%%%%s', %(expressions)s)"  # Escape % with %%
     output_field = FloatField()  # Explicitly declare the output as FloatField
+
+
+def get_client_ip(request: HttpRequest):
+    """Retrieve the client IP address from the request headers."""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    ip = x_forwarded_for.split(',')[0] if x_forwarded_for else request.META.get('REMOTE_ADDR')
+    return ip
 
 
 def get_today() -> Day:

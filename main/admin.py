@@ -2,7 +2,7 @@ import logging
 
 from django.contrib import admin
 from django.shortcuts import redirect, render
-from django.urls import path
+from django.urls import path, reverse
 from django.utils.html import format_html
 
 from main.forms import LookupForm
@@ -145,8 +145,17 @@ def update_game_shop_prices_action(modeladmin, request, queryset):
 
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
-    list_display = ('label', 'name_img', 'year', 'rank', 'shop_best', 'shop_price', 'shop_mean')
-    list_filter = ['label']
+    list_display = (
+        'label',
+        'name_img',
+        'year',
+        'rank',
+        'shop_best',
+        'shop_price',
+        'shop_mean',
+        'view_listings_link',
+    )
+    list_filter = ['label', 'fix_me']
     list_editable = []
     search_fields = ['name']
     readonly_fields = ('name',)
@@ -163,6 +172,14 @@ class GameAdmin(admin.ModelAdmin):
             img=obj.img,
             name=obj.name,
         )
+
+    def view_listings_link(self, obj):
+        """Custom link to filter listings for the current game."""
+        # Build the URL for the filtered ListingAdmin
+        url = reverse('admin:main_listing_changelist') + f'?game__id__exact={obj.id}'
+        return format_html('<a href="{}" target="_blank">View Listings</a>', url)
+
+    view_listings_link.short_description = 'Listings'
 
 
 @admin.register(Scrapelog)

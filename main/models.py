@@ -95,6 +95,9 @@ class Game(Timestamped):
     shop_outdated = models.BooleanField(default=True)
     shop_updated_at = models.DateTimeField(null=True, blank=True)
 
+    # fix me
+    fix_me = models.BooleanField(default=False)
+
     def __str__(self) -> str:
         return unidecode(f'{self.name} ({self.year})')
 
@@ -180,6 +183,7 @@ class PageView(Timestamped):
     day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='pageviews')
     game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='pageviews')
     ip = models.GenericIPAddressField()
+    viewed_at = models.DateTimeField()
 
     class Meta:
         unique_together = ['day', 'game', 'ip']

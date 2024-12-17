@@ -38,4 +38,5 @@ urlpatterns = [
         cache_page(VIEW_CACHE)(views.GameDetailView.as_view()),
         name='game-detail-slug',
     ),
+    path('fixme/', views.fixme_view, name='fixme'),
 ]

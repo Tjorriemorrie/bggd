@@ -48,6 +48,18 @@
                 <dd>{{ game.description }}</dd>
             </dl>
 
+            <hr/>
+            <p class="my-3">
+                If you see an issue with the associated listings, click this button to report it:
+                <a
+                    href="{% url 'fixme' %}?slug={{ game.slug }}&url={{ request.build_absolute_uri }}"
+                    class="btn btn-outline-secondary"
+                >
+                    Report Bad Listing
+                </a>
+            </p>
+
+
             <sub><small class="text-muted">Created at: {{ game.created_at }}</small></sub>
         </div>
     </div>

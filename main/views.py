@@ -1,6 +1,9 @@
 import logging
 
+from django.contrib import messages
 from django.core.handlers.wsgi import WSGIRequest
+from django.http import HttpResponseBadRequest
+from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.views.generic import DetailView
 from django_filters.views import FilterMixin
@@ -136,3 +139,27 @@ class GameDetailView(DetailView):
             ctx['prices_graph'] = None
         ctx['nav'] = 'games'
         return ctx
+
+
+def fixme_view(request: WSGIRequest):
+    """Fix me view."""
+    # Get current URL from GET params
+    url = request.GET.get('url', request.build_absolute_uri())
+    if not url:
+        return HttpResponseBadRequest('URL parameter is required.')
+
+    # Validate required params
+    game_slug = request.GET.get('slug')
+    if not game_slug:
+        return HttpResponseBadRequest('Game slug is required.')
+
+    # Retrieve the game and update the 'fix_me' field
+    game = get_object_or_404(Game, slug=game_slug)
+    game.fix_me = True
+    game.save()
+
+    # Add a success message
+    messages.success(request, f"Thank you! '{game.name}' has been flagged for review.")
+
+    # Redirect back to the game-detail page
+    return redirect(url)

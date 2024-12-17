@@ -28,7 +28,20 @@
 <body>
 <div class="container-fluid">
     {% include 'main/snippet_navbar.html' %}
+
+    <!-- Flash messages -->
+    {% if messages %}
+        <div class="alert-container">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
     {% block content %}{% endblock %}
+
     <footer>
         <p>
             Bitcoin donations:<br/>
