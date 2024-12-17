@@ -239,7 +239,7 @@ def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
 
 def search_bgg(name: str) -> dict | None:
     """Search BGG for game by name."""
-    name = re.sub(r'board game', '', name, flags=re.IGNORECASE)
+    name = re.sub(r'board game', '', str(name), flags=re.IGNORECASE)
     host = 'https://boardgamegeek.com/geeksearch.php'
     params = {
         'objecttype': 'boardgame',
