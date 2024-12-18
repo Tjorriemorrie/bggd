@@ -41,12 +41,12 @@ def discount(obj, show_currency: bool = True):
     """Format discount."""
     try:
         if isinstance(obj, Game):
-            if obj.shop_price:
-                saving = obj.shop_saving
-                perc = saving / obj.shop_mean
-            else:
+            if obj.shop_price is None:
                 saving = 0
                 perc = 0.0
+            else:
+                saving = obj.shop_saving
+                perc = saving / obj.shop_mean
         elif isinstance(obj, Listing) and obj.price and obj.game:
             saving = obj.game.shop_mean - obj.price
             perc = saving / obj.game.shop_mean
