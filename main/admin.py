@@ -143,6 +143,14 @@ def update_game_shop_prices_action(modeladmin, request, queryset):
         update_game_shop_prices(obj)
 
 
+@admin.action(description='Mark as fixed')
+def mark_as_fixed_action(modeladmin, request, queryset):
+    """Fix game action."""
+    for obj in queryset:
+        obj.fix_me = True
+        obj.save()
+
+
 @admin.register(Game)
 class GameAdmin(admin.ModelAdmin):
     list_display = (
@@ -160,7 +168,7 @@ class GameAdmin(admin.ModelAdmin):
     search_fields = ['name']
     readonly_fields = ('name',)
     ordering = ('name',)
-    actions = [update_game_shop_prices_action]
+    actions = [update_game_shop_prices_action, mark_as_fixed_action]
 
     def name_img(self, obj: Game):
         """Get name and img."""
