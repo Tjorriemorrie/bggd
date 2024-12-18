@@ -147,7 +147,7 @@ def update_game_shop_prices_action(modeladmin, request, queryset):
 def mark_as_fixed_action(modeladmin, request, queryset):
     """Fix game action."""
     for obj in queryset:
-        obj.fix_me = True
+        obj.fix_me = False
         obj.save()
 
 
