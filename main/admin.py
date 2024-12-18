@@ -148,6 +148,7 @@ def mark_as_fixed_action(modeladmin, request, queryset):
     """Fix game action."""
     for obj in queryset:
         obj.fix_me = False
+        obj.shop_outdated = True
         obj.save()
 
 
