@@ -118,7 +118,7 @@ class Listing(Timestamped):
     slug = models.SlugField(max_length=250)
     url = models.CharField(max_length=250, unique=True)
     img = models.CharField(max_length=250)
-    scraped_at = models.DateField()
+    scraped_at = models.DateTimeField()
 
     # type
     is_accessory = models.BooleanField(default=False)
