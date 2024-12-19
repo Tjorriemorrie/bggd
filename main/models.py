@@ -7,7 +7,6 @@ from django.utils.timezone import now
 from unidecode import unidecode
 
 from main.constants import CATEGORY_CHOICES, CHOICES_LABELS, CHOICES_WEIGHTS
-from main.managers import ListingManager
 
 logger = logging.getLogger(__name__)
 
@@ -140,7 +139,7 @@ class Listing(Timestamped):
     bgg_scraped_at = models.DateTimeField(null=True, blank=True)
     bgg_looked_at = models.DateTimeField(null=True, blank=True)
 
-    objects = ListingManager()
+    # objects = ListingManager()
 
     def __str__(self):
         return unidecode(f'<Listing-{self.id} [{self.shop}] {self.name}>')

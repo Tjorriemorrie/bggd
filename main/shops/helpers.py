@@ -270,6 +270,7 @@ def missed_listings(shop: Shop):
     missings = Listing.objects.prefetch_related('game').filter(
         shop=shop, scraped_at__lt=hours_ago, in_stock=True
     )
+    logger.info(f'Marking {len(missings)} listings as out of stock (missing).')
     today = get_today()
     for missing in missings:
         new_price = Price.objects.create(
