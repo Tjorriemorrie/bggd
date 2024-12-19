@@ -154,7 +154,7 @@ class Price(Timestamped):
     day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='prices')
 
     in_stock = models.BooleanField(default=True)
-    price = models.DecimalField(decimal_places=2, max_digits=9, null=True)
+    price = models.DecimalField(decimal_places=2, max_digits=9, null=True, blank=True)
 
     class Meta:
         unique_together = ('listing', 'day')

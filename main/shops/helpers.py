@@ -273,10 +273,8 @@ def missed_listings(shop: Shop):
     logger.info(f'Marking {len(missings)} listings as out of stock (missing).')
     today = get_today()
     for missing in missings:
-        new_price = Price.objects.create(
-            listing=missing,
-            day=today,
-            in_stock=False,
+        new_price, _ = Price.objects.update_or_create(
+            listing=missing, day=today, defaults={'in_stock': False}
         )
 
         update_listing_with_price(missing, new_price)
