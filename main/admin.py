@@ -47,8 +47,8 @@ class ListingAdmin(admin.ModelAdmin):
         'url',
         'updated_at',
     )
-    list_filter = ('shop__name', 'in_stock')
-    list_editable = ('bgg_id',)
+    list_filter = ('shop__name', 'in_stock', 'category')
+    list_editable = ('bgg_id', 'category')
     search_fields = ('name', 'url')
     readonly_fields = ('shop', 'in_stock', 'price', 'priced_at')
     ordering = (
