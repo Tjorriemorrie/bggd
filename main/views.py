@@ -40,7 +40,7 @@ class ListingListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
-        queryset = super().get_queryset()
+        queryset = Listing.excl_acc
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -168,3 +168,27 @@ def fixme_view(request: WSGIRequest):
     append = '&' if '?' in url else '?'
     url += f'{append}ts={timezone.now().timestamp()}'
     return redirect(url)
+
+
+class AccessoriesListView(SingleTableView, FilterMixin):
+    model = Listing
+    ordering = ['-created_at']
+    filterset_class = ListingFilter
+    table_class = ListingTable
+    template_name = 'main/list.html'
+    paginate_by = 50
+
+    def get_queryset(self):
+        """Get query."""
+        queryset = Listing.only_acc
+        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        """Get context."""
+        messages.info(self.request, 'Not complete - work in progress.')
+        context = super().get_context_data(**kwargs)
+        context['filtering'] = self.filterset
+        context['facet'] = 'accessories'
+        context['nav'] = 'accessories'
+        return context

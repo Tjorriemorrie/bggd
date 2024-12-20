@@ -2,14 +2,17 @@ from django.db import models
 
 
 class ListingManager(models.Manager):
+    def __init__(self, exclude_: str = None, filter_: str = None):
+        """Set filter."""
+        super().__init__()
+        self._exclude = exclude_
+        self._filter = filter_
+
     def get_queryset(self):
-        """Exclude listings that are marked as accessories."""
-        return super().get_queryset().exclude(is_accessory=True)
-
-    def incl_accessories(self):
-        """"""
-        return super().get_queryset()
-
-    def only_accessories(self):
-        """Get only accessories."""
-        return super().get_queryset().filter(is_accessory=True)
+        """Exclude or filter by category."""
+        qset = super().get_queryset()
+        if self._exclude:
+            qset = qset.exclude(category=self._exclude)
+        if self._filter:
+            qset = qset.filter(category=self._filter)
+        return qset

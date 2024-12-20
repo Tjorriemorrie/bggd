@@ -6,7 +6,8 @@ from django.urls import reverse
 from django.utils.timezone import now
 from unidecode import unidecode
 
-from main.constants import CATEGORY_CHOICES, CHOICES_LABELS, CHOICES_WEIGHTS
+from main.constants import CATEGORY_ACCESSORIES, CATEGORY_CHOICES, CHOICES_LABELS, CHOICES_WEIGHTS
+from main.managers import ListingManager
 
 logger = logging.getLogger(__name__)
 
@@ -121,7 +122,6 @@ class Listing(Timestamped):
     scraped_at = models.DateTimeField()
 
     # type
-    is_accessory = models.BooleanField(default=False)
     is_new = models.BooleanField(default=True)
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, null=True, blank=True)
 
@@ -139,7 +139,9 @@ class Listing(Timestamped):
     bgg_scraped_at = models.DateTimeField(null=True, blank=True)
     bgg_looked_at = models.DateTimeField(null=True, blank=True)
 
-    # objects = ListingManager()
+    objects = ListingManager()
+    excl_acc = ListingManager(exclude_=CATEGORY_ACCESSORIES)
+    only_acc = ListingManager(filter_=CATEGORY_ACCESSORIES)
 
     def __str__(self):
         return unidecode(f'<Listing-{self.id} [{self.shop}] {self.name}>')

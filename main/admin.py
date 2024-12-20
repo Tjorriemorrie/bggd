@@ -112,7 +112,7 @@ class ListingAdmin(admin.ModelAdmin):
                     'listing_id': listing.id,
                     'bgg_id': bgg.get('bgg_id'),
                     'is_missing': listing.bgg_missing,
-                    'is_accessory': listing.is_accessory,
+                    'category': listing.category,
                 }
                 form = LookupForm(initial=initial)
                 ctx['listing'] = listing
