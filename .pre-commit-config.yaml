@@ -2,7 +2,7 @@ default_language_version:
   python: python3
 
 default_stages:
-  - commit
+  - pre-commit
 
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit

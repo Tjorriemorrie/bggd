@@ -8,7 +8,8 @@
                 <div class="col-md-4 col-lg-2 mb-4 d-flex align-items-stretch">
                     <div class="card h-100">
                         <a href="{{ game.get_absolute_url }}" class="">
-                            <img src="{{ game.img }}" class="card-img-top {% if not game.shop_in_stock %}card-img-oos{% endif %}">
+                            <img src="{{ game.img }}"
+                                 class="card-img-top {% if not game.shop_in_stock %}card-img-oos{% endif %}">
                         </a>
                         <div class="card-body">
                             <h5 class="card-title">
@@ -19,16 +20,22 @@
                             </h5>
                             <p class="card-text">{{ game|price }}</p>
                         </div>
-                        <div class="card-footer d-flex justify-content-between text-muted">
-                            <span>{{ game.shop_best.name }}</span>
-                            {% if footer == "discount" %}
-                                {% if game.shop_saving %}
-                                    <span>{{ game|discount }}</span>
+                        {% if footer != "none" %}
+                            <div class="card-footer d-flex justify-content-between text-muted">
+                                {% if footer == "pageview" %}
+                                    <span>{{ game.pageview_count }}</span>
+                                {% else %}
+                                    <span>{{ game.shop_best.name }}</span>
+                                    {% if footer == "discount" %}
+                                        {% if game.shop_saving %}
+                                            <span>{{ game|discount }}</span>
+                                        {% endif %}
+                                    {% elif footer == "xdays" %}
+                                        <span>{{ game.created_at|days_ago }}</span>
+                                    {% endif %}
                                 {% endif %}
-                            {% elif footer == "xdays" %}
-                                <span>{{ game.created_at|days_ago }}</span>
-                            {% endif %}
-                        </div>
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             {% endfor %}

@@ -6,8 +6,15 @@
     <div class="row mt-5">
         <div class="col">
 
+            {% if pops %}
+                <h3>Popular games!</h3>
+                {% include 'main/snippet_game_group.html' with games=pops footer="pageview" %}
+            {% endif %}
+
+            <hr class="m-5"/>
+
             {% if savings %}
-                <h3>Best savings on games!</h3>
+                <h3 class="mt-5">Best savings on games!</h3>
                 {% include 'main/snippet_game_group.html' with games=savings footer="discount" %}
             {% endif %}
 

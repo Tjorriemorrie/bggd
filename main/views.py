@@ -13,7 +13,7 @@ from django_tables2 import SingleTableView
 from main.filters import GameFilter, ListingFilter, ShopFilter
 from main.graphs import get_game_prices_graph
 from main.models import Game, Listing, Shop
-from main.selectors import get_best_savings_games, list_newest_games
+from main.selectors import get_best_savings_games, list_newest_games, list_popular_games
 from main.tables import GameTable, ListingTable, ShopTable
 
 logger = logging.getLogger(__name__)
@@ -23,9 +23,11 @@ def home_view(request: WSGIRequest):
     """Home view."""
     savings = get_best_savings_games()
     latest = list_newest_games()
+    pops = list_popular_games()
     ctx = {
         'savings': savings,
         'latest': latest,
+        'pops': pops,
     }
     return TemplateResponse(request, 'main/home.html', ctx)
 

@@ -4,7 +4,7 @@ import multiprocessing
 from itertools import chain
 
 from django.db import transaction
-from django.db.models import ExpressionWrapper, F, FloatField, Func, QuerySet, Value
+from django.db.models import Count, ExpressionWrapper, F, FloatField, Func, QuerySet, Value
 from django.db.models.functions import Coalesce
 from django.http import HttpRequest
 from django.utils import timezone
@@ -178,3 +178,17 @@ def list_newest_games():
         if len(games) >= max_num:
             return games
         days += 1
+
+
+def list_popular_games():
+    """List popular games."""
+    # Calculate the date 4 weeks ago
+    four_weeks_ago = timezone.now() - datetime.timedelta(weeks=52)
+
+    pop_games = (
+        Game.objects.filter(pageviews__viewed_at__gte=four_weeks_ago)
+        .annotate(pageview_count=Count('pageviews'))
+        .order_by('-pageview_count')[:6]
+    )
+
+    return pop_games
