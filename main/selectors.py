@@ -143,15 +143,14 @@ def list_listings_without_games() -> QuerySet[Listing]:
         )
         .annotate(
             diff_fields=ExpressionWrapper(
-                F('priced_at_timestamp')
-                - F('bgg_looked_at_timestamp')
-                + F('now_timestamp')
-                - F('priced_at_timestamp'),
+                (F('now_timestamp') - F('bgg_looked_at_timestamp'))
+                - (F('now_timestamp') - F('priced_at_timestamp')),
                 output_field=FloatField(),
             )
         )
         .order_by('-diff_fields')
     )
+
     return listings
 
 
