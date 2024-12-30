@@ -5,7 +5,7 @@ from itertools import chain
 
 from django.db import transaction
 from django.db.models import Count, ExpressionWrapper, F, FloatField, Func, QuerySet, Value
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Now
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.text import slugify
@@ -139,10 +139,15 @@ def list_listings_without_games() -> QuerySet[Listing]:
             priced_at_timestamp=Coalesce(
                 UnixTimestamp(F('priced_at')), Value(0.0, output_field=FloatField())
             ),
+            now_timestamp=UnixTimestamp(Now()),
         )
         .annotate(
             diff_fields=ExpressionWrapper(
-                F('priced_at_timestamp') - F('bgg_looked_at_timestamp'), output_field=FloatField()
+                F('priced_at_timestamp')
+                - F('bgg_looked_at_timestamp')
+                + F('now_timestamp')
+                - F('priced_at_timestamp'),
+                output_field=FloatField(),
             )
         )
         .order_by('-diff_fields')
