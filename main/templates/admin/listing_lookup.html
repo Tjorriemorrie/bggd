@@ -26,8 +26,9 @@
             </a>
         </p>
         <p>
-            Looked up at: {{ listing.bgg_looked_at }}
-            <br/>Updated at: {{ listing.updated_at }}
+            Looked up at: {{ listing.bgg_looked_at|date:"j M y" }}
+            <br/>Priced at: {{ listing.priced_at|date:"j M y" }}
+            <br/>Updated at: {{ listing.updated_at|date:"j M y" }}
         </p>
 
         <br/>
