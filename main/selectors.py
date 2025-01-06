@@ -184,13 +184,14 @@ def list_newest_games():
         days += 1
 
 
-def list_popular_games():
+def list_popular_games(excl_ids):
     """List popular games."""
     # Calculate the date 4 weeks ago
     four_weeks_ago = timezone.now() - datetime.timedelta(weeks=52)
 
     pop_games = (
         Game.objects.filter(pageviews__viewed_at__gte=four_weeks_ago)
+        .exclude(id__in=excl_ids)
         .annotate(pageview_count=Count('pageviews'))
         .order_by('-pageview_count')[:6]
     )

@@ -1,4 +1,5 @@
 import logging
+from itertools import chain
 
 from django.contrib import messages
 from django.core.handlers.wsgi import WSGIRequest
@@ -23,7 +24,8 @@ def home_view(request: WSGIRequest):
     """Home view."""
     savings = get_best_savings_games()
     latest = list_newest_games()
-    pops = list_popular_games()
+    excl = [g.id for g in chain(savings, latest)]
+    pops = list_popular_games(excl)
     ctx = {
         'savings': savings,
         'latest': latest,
