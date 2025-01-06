@@ -6,8 +6,14 @@ from django.urls import reverse
 from django.utils.timezone import now
 from unidecode import unidecode
 
-from main.constants import CATEGORY_ACCESSORIES, CATEGORY_CHOICES, CHOICES_LABELS, CHOICES_WEIGHTS
-from main.managers import ListingManager
+from main.constants import (
+    CATEGORY_ACCESSORIES,
+    CATEGORY_CHOICES,
+    CATEGORY_RPG,
+    CHOICES_LABELS,
+    CHOICES_WEIGHTS,
+)
+from main.managers import GameManager, ListingManager
 
 logger = logging.getLogger(__name__)
 
@@ -98,6 +104,10 @@ class Game(Timestamped):
     # fix me
     fix_me = models.BooleanField(default=False)
 
+    # managers
+    objects = GameManager()
+    excl_non_board = GameManager(excludes=[CATEGORY_ACCESSORIES, CATEGORY_RPG])
+
     def __str__(self) -> str:
         return unidecode(f'{self.name} ({self.year})')
 
@@ -140,8 +150,9 @@ class Listing(Timestamped):
     bgg_looked_at = models.DateTimeField(null=True, blank=True)
 
     objects = ListingManager()
-    excl_acc = ListingManager(exclude_=CATEGORY_ACCESSORIES)
+    excl_non_board = ListingManager(excludes=[CATEGORY_ACCESSORIES, CATEGORY_RPG])
     only_acc = ListingManager(filter_=CATEGORY_ACCESSORIES)
+    only_rpg = ListingManager(filter_=CATEGORY_RPG)
 
     def __str__(self):
         return unidecode(f'<Listing-{self.id} [{self.shop}] {self.name}>')

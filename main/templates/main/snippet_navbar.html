@@ -25,6 +25,10 @@
                        href="{% url 'game-list' %}">Games</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if nav == 'rpg' %}active{% endif %}"
+                       href="{% url 'rpg-list' %}">RPG</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if nav == 'accessories' %}active{% endif %}"
                        href="{% url 'accessories-list' %}">Accessories</a>
                 </li>

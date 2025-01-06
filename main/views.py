@@ -44,7 +44,7 @@ class ListingListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
-        queryset = Listing.excl_acc
+        queryset = Listing.excl_non_board
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -114,7 +114,7 @@ class GameListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
-        queryset = super().get_queryset()
+        queryset = Game.excl_non_board
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -190,9 +190,31 @@ class AccessoriesListView(SingleTableView, FilterMixin):
 
     def get_context_data(self, **kwargs):
         """Get context."""
-        messages.info(self.request, 'Not complete - work in progress.')
         context = super().get_context_data(**kwargs)
         context['filtering'] = self.filterset
         context['facet'] = 'accessories'
         context['nav'] = 'accessories'
+        return context
+
+
+class RpgListView(SingleTableView, FilterMixin):
+    model = Listing
+    ordering = ['-created_at']
+    filterset_class = ListingFilter
+    table_class = ListingTable
+    template_name = 'main/list.html'
+    paginate_by = 50
+
+    def get_queryset(self):
+        """Get query."""
+        queryset = Listing.only_rpg
+        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        """Get context."""
+        context = super().get_context_data(**kwargs)
+        context['filtering'] = self.filterset
+        context['facet'] = 'rpg'
+        context['nav'] = 'rpg'
         return context

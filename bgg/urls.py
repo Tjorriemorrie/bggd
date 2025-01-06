@@ -44,4 +44,9 @@ urlpatterns = [
         cache_page(VIEW_CACHE)(views.AccessoriesListView.as_view()),
         name='accessories-list',
     ),
+    path(
+        'rpg/',
+        cache_page(VIEW_CACHE)(views.RpgListView.as_view()),
+        name='rpg-list',
+    ),
 ]
