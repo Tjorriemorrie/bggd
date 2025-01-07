@@ -11,6 +11,7 @@ from django.views.generic import DetailView
 from django_filters.views import FilterMixin
 from django_tables2 import SingleTableView
 
+from main.constants import CATEGORY_ACCESSORIES, CATEGORY_RPG
 from main.filters import GameFilter, ListingFilter, ShopFilter
 from main.graphs import get_game_prices_graph
 from main.models import Game, Listing, Shop
@@ -44,7 +45,8 @@ class ListingListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
-        queryset = Listing.excl_non_board
+        queryset = super().get_queryset()
+        queryset = queryset.exclude(category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG])
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -114,7 +116,8 @@ class GameListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
-        queryset = Game.excl_non_board
+        queryset = super().get_queryset()
+        queryset = queryset.exclude(listings__category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG])
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -176,7 +179,7 @@ def fixme_view(request: WSGIRequest):
 
 class AccessoriesListView(SingleTableView, FilterMixin):
     model = Listing
-    ordering = ['-created_at']
+    ordering = ['-in_stock', '-created_at']
     filterset_class = ListingFilter
     table_class = ListingTable
     template_name = 'main/list.html'
@@ -184,7 +187,8 @@ class AccessoriesListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
-        queryset = Listing.only_acc
+        queryset = super().get_queryset()
+        queryset = queryset.filter(category=CATEGORY_ACCESSORIES)
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -199,7 +203,7 @@ class AccessoriesListView(SingleTableView, FilterMixin):
 
 class RpgListView(SingleTableView, FilterMixin):
     model = Listing
-    ordering = ['-created_at']
+    ordering = ['-in_stock', '-created_at']
     filterset_class = ListingFilter
     table_class = ListingTable
     template_name = 'main/list.html'
@@ -207,7 +211,8 @@ class RpgListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
-        queryset = Listing.only_rpg
+        queryset = super().get_queryset()
+        queryset = queryset.filter(category=CATEGORY_RPG)
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -215,6 +220,6 @@ class RpgListView(SingleTableView, FilterMixin):
         """Get context."""
         context = super().get_context_data(**kwargs)
         context['filtering'] = self.filterset
-        context['facet'] = 'rpg'
+        context['facet'] = 'RPG'
         context['nav'] = 'rpg'
         return context
