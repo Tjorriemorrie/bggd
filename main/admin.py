@@ -8,7 +8,7 @@ from django.utils.html import format_html
 from main.forms import LookupForm
 from main.games import search_bgg, update_game_shop_prices
 from main.models import Game, Label, Listing, PageView, Price, Scrapelog, Shop
-from main.selectors import list_listings_without_games
+from main.selectors import list_listings_rated_today, list_listings_without_games
 
 logger = logging.getLogger(__name__)
 
@@ -96,32 +96,30 @@ class ListingAdmin(admin.ModelAdmin):
                 return redirect('admin:listing-lookup')
         else:
             listing = list_listings_without_games().first()
-            if listing:
-                if not listing.game:
-                    bgg = search_bgg(listing.bgg_id or listing.name)
-                else:
-                    bgg = {
-                        'name': listing.game.name,
-                        'bgg_id': listing.bgg_id,
-                        'missing': False,
-                        'image': listing.game.img,
-                        'search': f'https://boardgamegeek.com/geeksearch.php?'
-                        f'objecttype=boardgame&action=search&q={listing.bgg_id}',
-                    }
-                initial = {
-                    'listing_id': listing.id,
-                    'bgg_id': bgg.get('bgg_id'),
-                    'is_missing': listing.bgg_missing,
-                    'category': listing.category,
-                }
-                form = LookupForm(initial=initial)
-                ctx['listing'] = listing
-                ctx['bgg'] = bgg
-                ctx['form'] = form
+            if not listing.game:
+                bgg = search_bgg(listing.bgg_id or listing.name)
             else:
-                ctx['finished'] = True
+                bgg = {
+                    'name': listing.game.name,
+                    'bgg_id': listing.bgg_id,
+                    'missing': False,
+                    'image': listing.game.img,
+                    'search': f'https://boardgamegeek.com/geeksearch.php?'
+                    f'objecttype=boardgame&action=search&q={listing.bgg_id}',
+                }
+            initial = {
+                'listing_id': listing.id,
+                'bgg_id': bgg.get('bgg_id'),
+                'is_missing': listing.bgg_missing,
+                'category': listing.category,
+            }
+            form = LookupForm(initial=initial)
+            ctx['listing'] = listing
+            ctx['bgg'] = bgg
+            ctx['form'] = form
 
         ctx['remaining'] = list_listings_without_games().count()
+        ctx['count_today'] = list_listings_rated_today().count()
 
         return render(request, 'admin/listing_lookup.html', ctx)
 

@@ -1,6 +1,6 @@
-import datetime
 import logging
 import multiprocessing
+from datetime import datetime, time, timedelta
 from itertools import chain
 
 from django.db import transaction
@@ -33,7 +33,7 @@ def get_today() -> Day:
     """Get today as model instance."""
     today = timezone.now()
     day, _ = Day.objects.get_or_create(
-        day=datetime.datetime(today.year, today.month, today.day),
+        day=datetime(today.year, today.month, today.day),
         defaults={
             # 'reviews_cnt': 0,
             # 'reviews_avg': 0,
@@ -118,7 +118,7 @@ def list_listings_without_games() -> QuerySet[Listing]:
         return listings
 
     # recently created listings
-    days_ago = timezone.now() - datetime.timedelta(days=7)
+    days_ago = timezone.now() - timedelta(days=7)
     listings = Listing.objects.filter(bgg_looked_at__isnull=True, created_at__gt=days_ago).order_by(
         '-price'
     )
@@ -154,6 +154,13 @@ def list_listings_without_games() -> QuerySet[Listing]:
     return listings
 
 
+def list_listings_rated_today() -> QuerySet[Listing]:
+    """Gives listings without bgg_ids."""
+    start_of_day = datetime.combine(timezone.now().date(), time.min, tzinfo=timezone.now().tzinfo)
+    listings = Listing.objects.filter(bgg_looked_at__gte=start_of_day).order_by('bgg_looked_at')
+    return listings
+
+
 def best_listing_by_game(game: Game) -> Listing | None:
     """Returns best listing with available stock."""
     return game.listings.filter(in_stock=True, price__isnull=False).order_by('price').first()
@@ -171,7 +178,7 @@ def list_newest_games():
     max_num = 18
     days = 4
     while True:
-        days_ago = timezone.now() - datetime.timedelta(days=days)
+        days_ago = timezone.now() - timedelta(days=days)
         games = (
             Game.objects.filter(
                 created_at__gt=days_ago, shop_in_stock=True, shop_price__gt=price_cutoff
@@ -187,7 +194,7 @@ def list_newest_games():
 def list_popular_games(excl_ids):
     """List popular games."""
     # Calculate the date 4 weeks ago
-    four_weeks_ago = timezone.now() - datetime.timedelta(weeks=52)
+    four_weeks_ago = timezone.now() - timedelta(weeks=52)
 
     pop_games = (
         Game.objects.filter(pageviews__viewed_at__gte=four_weeks_ago)
