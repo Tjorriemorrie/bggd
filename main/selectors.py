@@ -11,6 +11,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
 
+from main.constants import CATEGORY_BUNDLE
 from main.models import Day, Game, Listing, Scrapelog, Shop
 
 logger = logging.getLogger(__name__)
@@ -204,3 +205,11 @@ def list_popular_games(excl_ids):
     )
 
     return pop_games
+
+
+def list_bundle_listings():
+    """List bundled listings."""
+    bundles = Listing.objects.filter(category=CATEGORY_BUNDLE, in_stock=True).order_by(
+        '-created_at'
+    )
+    return bundles

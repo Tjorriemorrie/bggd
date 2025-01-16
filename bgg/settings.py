@@ -224,3 +224,6 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'
 CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 PROCESS_POOL = env.int('PROCESS_POOL')
+
+# 10 minutes
+VIEW_CACHE = 1 if DEVELOPER else 60 * 10

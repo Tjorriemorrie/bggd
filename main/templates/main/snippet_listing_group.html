@@ -1,0 +1,44 @@
+{% load humanize %}
+{% load fmt %}
+
+{% if listings %}
+    <div class="container-fluid mt-4">
+        <div class="row">
+            {% for listing in listings %}
+                <div class="col-md-4 col-lg-2 mb-4 d-flex align-items-stretch">
+                    <div class="card h-100">
+                        <a href="{{ listing.get_absolute_url }}" class="">
+                            <img src="{{ listing.img }}"
+                                 class="card-img-top {% if not listing.in_stock %}card-img-oos{% endif %}">
+                        </a>
+                        <div class="card-body">
+                            <h5 class="card-title">
+                                <a href="{{ listing.get_absolute_url }}"
+                                   class="{% if not listing.in_stock %}card-title-oos{% endif %}">
+                                    {{ listing.name }}
+                                </a>
+                            </h5>
+                            <p class="card-text">{{ listing|price }}</p>
+                        </div>
+                        {% if footer != "none" %}
+                            <div class="card-footer d-flex justify-content-between text-muted">
+                                {% if footer == "pageview" %}
+                                    <span>{{ listing.pageview_count }}</span>
+                                {% else %}
+                                    <span>{{ listing.shop_best.name }}</span>
+                                    {% if footer == "discount" %}
+                                        {% if listing.shop_saving %}
+                                            <span>{{ listing|discount }}</span>
+                                        {% endif %}
+                                    {% elif footer == "xdays" %}
+                                        <span>{{ listing.created_at|days_ago }}</span>
+                                    {% endif %}
+                                {% endif %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+{% endif %}

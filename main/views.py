@@ -15,7 +15,12 @@ from main.constants import CATEGORY_ACCESSORIES, CATEGORY_RPG
 from main.filters import GameFilter, ListingFilter, ShopFilter
 from main.graphs import get_game_prices_graph
 from main.models import Game, Listing, Shop
-from main.selectors import get_best_savings_games, list_newest_games, list_popular_games
+from main.selectors import (
+    get_best_savings_games,
+    list_bundle_listings,
+    list_newest_games,
+    list_popular_games,
+)
 from main.tables import GameTable, ListingTable, ShopTable
 
 logger = logging.getLogger(__name__)
@@ -27,10 +32,12 @@ def home_view(request: WSGIRequest):
     latest = list_newest_games()
     excl = [g.id for g in chain(savings, latest)]
     pops = list_popular_games(excl)
+    bundles = list_bundle_listings()
     ctx = {
         'savings': savings,
         'latest': latest,
         'pops': pops,
+        'bundles': bundles,
     }
     return TemplateResponse(request, 'main/home.html', ctx)
 

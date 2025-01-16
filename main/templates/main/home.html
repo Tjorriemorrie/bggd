@@ -11,16 +11,23 @@
                 {% include 'main/snippet_game_group.html' with games=savings footer="discount" %}
             {% endif %}
 
-            <hr class="m-5"/>
+
+            {% if bundles %}
+                <hr class="m-5"/>
+                <h3 class="mt-5">Bundled listings!</h3>
+                {% include 'main/snippet_listing_group.html' with listings=bundles footer="none" %}
+            {% endif %}
+
 
             {% if latest %}
+                <hr class="m-5"/>
                 <h3 class="mt-5">Newest games!</h3>
                 {% include 'main/snippet_game_group.html' with games=latest footer="xdays" %}
             {% endif %}
 
-            <hr class="m-5"/>
 
             {% if pops %}
+                <hr class="m-5"/>
                 <h3 class="mt-5">Other popular games!</h3>
                 {% include 'main/snippet_game_group.html' with games=pops footer="pageview" %}
             {% endif %}
