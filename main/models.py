@@ -190,3 +190,12 @@ class PageView(Timestamped):
 
     def __str__(self):
         return unidecode(f'<PageView-{self.id} {self.ip} {self.day} {self.game}>')
+
+
+class Saffa(Timestamped):
+    name = models.CharField(max_length=250)
+    username = models.CharField(max_length=250)
+    link = models.URLField(unique=True)
+
+    def __str__(self):
+        return unidecode(f'<Saffa {self.username}>')
