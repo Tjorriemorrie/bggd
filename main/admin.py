@@ -45,7 +45,7 @@ class ListingAdmin(admin.ModelAdmin):
         'price',
         'priced_at',
         'url',
-        'updated_at',
+        'last_price',
     )
     list_filter = ('shop__name', 'in_stock', 'category')
     list_editable = ('bgg_id', 'category')
@@ -74,6 +74,14 @@ class ListingAdmin(admin.ModelAdmin):
             url=obj.url,
             name=obj.name,
         )
+
+    @admin.display(ordering='price')
+    def last_price(self, obj: Listing):
+        """Last price."""
+        last_price = obj.prices.filter(in_stock=True).last()
+        if not last_price:
+            return 'never'
+        return last_price.price
 
     def get_urls(self):
         """Get urls."""
