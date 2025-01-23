@@ -46,6 +46,7 @@ class ListingAdmin(admin.ModelAdmin):
         'priced_at',
         'url',
         'last_price',
+        'view_prices_link',
     )
     list_filter = ('shop__name', 'in_stock', 'category')
     list_editable = ('bgg_id', 'category')
@@ -82,6 +83,12 @@ class ListingAdmin(admin.ModelAdmin):
         if not last_price:
             return 'never'
         return last_price.price
+
+    @admin.display()
+    def view_prices_link(self, obj):
+        """Custom link to go to prices."""
+        url = reverse('admin:main_price_changelist') + f'?listing__id__exact={obj.id}'
+        return format_html('<a href="{}" target="_blank">View Prices</a>', url)
 
     def get_urls(self):
         """Get urls."""
