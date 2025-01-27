@@ -8,7 +8,6 @@ from retry import retry
 from main.games import get
 from main.selectors import upsert_shop
 from main.shops.helpers import (
-    base_scrape,
     handle_item_data,
     missed_listings,
     parse_price,
@@ -83,6 +82,6 @@ def worker_wrapper(*args, **kwargs):
 @retry(Exception, tries=2)
 def scrape():
     """Scrape this site."""
-    base_scrape(worker)
+    # base_scrape(worker)
     shop = upsert_shop(shop_name)
     missed_listings(shop)
