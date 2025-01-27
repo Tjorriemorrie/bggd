@@ -15,6 +15,7 @@ from main.shops.helpers import (
 
 logger = logging.getLogger(__name__)
 
+enabled = False
 shop_name = 'Meeps and Veeps'
 shop_host = 'https://meepsandveeps.co.za'
 

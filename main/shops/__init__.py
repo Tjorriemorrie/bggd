@@ -1,10 +1,13 @@
 import importlib
+import logging
 import os
 from pathlib import Path
 
 import django
 
 django.setup()
+
+logger = logging.getLogger(__name__)
 
 # Define a dictionary to hold shop data
 shop_names = []
@@ -19,6 +22,10 @@ for filename in os.listdir(shops_dir):
     if filename.endswith('_shop.py'):
         module_name = filename[:-3]  # Remove the .py extension
         module = importlib.import_module(f'main.shops.{module_name}')
+
+        if not getattr(module, 'enabled', True):
+            logger.info(f'Skipping disabled shop {module_name}')
+            continue
 
         # Append shop name to the list
         shop_names.append(module.shop_name)
