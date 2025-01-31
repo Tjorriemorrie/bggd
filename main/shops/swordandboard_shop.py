@@ -42,6 +42,8 @@ def worker(page: int) -> list:
         href = shop_host + anchor['href']
         img_src = 'http:' + anchor.find('img')['src']
         name = row.find('div', class_='product-detail').get_text(separator=' ', strip=True)
+        if 'Preorder' in name or 'preorder' in href:
+            continue
         # price details
         sold_out_tag = row.find('option')
         if sold_out_tag and 'Sold Out' in sold_out_tag.text:

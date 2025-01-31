@@ -43,6 +43,8 @@ def worker(page: int) -> list:
         name = anchor.get_text(separator=' ', strip=True)
         # Remove newlines and extra whitespace
         name = re.sub(r'\s+', ' ', name).strip()
+        if 'Preorder' in name:
+            continue
         # price details
         sold_out_wrapper = row.find('div', class_='card__badge bottom left')
         sold_out_tag = sold_out_wrapper.find('span', text='Sold out') if sold_out_wrapper else False
