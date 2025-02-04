@@ -14,7 +14,7 @@ from main.shops.helpers import (
 
 logger = logging.getLogger(__name__)
 
-enabled = True
+enabled = 0
 shop_name = 'Meeps and Veeps'
 shop_host = 'https://meepsandveeps.co.za'
 
@@ -91,6 +91,6 @@ def scrape_site():
 
 def scrape():
     """Scrape this site."""
-    # scrape_site()
+    scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)
