@@ -263,6 +263,7 @@ def update_listing_with_price(listing: Listing, price: Price):
             listing.game.save()
 
 
+@retry((OperationalError,), tries=99, delay=1, logger=logger)
 def missed_listings(shop: Shop):
     """Set missing listings as out of stock."""
     hours_ago = timezone.now() - timedelta(hours=1)
