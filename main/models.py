@@ -63,6 +63,7 @@ class Game(Timestamped):
         validators=[MinValueValidator(-2500), MaxValueValidator(now().year + 1)]
     )
     url = models.CharField(max_length=250)
+    is_expansion = models.BooleanField(default=False)
     rank = models.PositiveIntegerField(null=True, blank=True)
     rating = models.FloatField(null=True, blank=True)
 

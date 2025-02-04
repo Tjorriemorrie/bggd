@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 from main.games import get
 from main.selectors import upsert_shop
-from main.shops.helpers import base_scrape, handle_item_data, missed_listings, parse_price
+from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
@@ -13,7 +13,7 @@ shop_name = 'Sword and Board'
 shop_host = 'https://swordandboard.co.za'
 
 
-def worker(page: int) -> list:
+def worker(page: int) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -27,11 +27,13 @@ def worker(page: int) -> list:
     res = get(url, headers=headers, params=params)
     logger.info(f'Scraped {res.request.url}...')
     if 'No Products Found' in res.text:
-        return []
+        return False
 
     html = BeautifulSoup(res.text, 'html.parser')
     container = html.find('ul', id='main-collection-product-grid')
     rows = container.find_all('li', recursive=False)
+    if not rows:
+        return False
     for row in rows:
         row_text = re.sub(r'\n+', ' ', row.text.casefold())
         if 'pre-order' in row_text:
@@ -56,9 +58,7 @@ def worker(page: int) -> list:
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value)
 
-    if len(rows) > 0:
-        return [page + 1, page + 2]
-    return []
+    return True
 
 
 def worker_wrapper(*args, **kwargs):
@@ -70,8 +70,18 @@ def worker_wrapper(*args, **kwargs):
         raise
 
 
+def scrape_site():
+    """Scrape pages."""
+    page = 0
+    while True:
+        page += 1
+        outcome = worker(page)
+        if not outcome:
+            break
+
+
 def scrape():
     """Scrape this site."""
-    base_scrape(worker)
+    scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)

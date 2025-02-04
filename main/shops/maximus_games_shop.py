@@ -2,11 +2,10 @@ import logging
 import re
 
 from bs4 import BeautifulSoup
-from django.conf import settings
 
 from main.games import get
 from main.selectors import upsert_shop
-from main.shops.helpers import base_scrape, handle_item_data, missed_listings, parse_price
+from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +13,7 @@ shop_name = 'Maximus Games'
 shop_host = 'https://maximusgames.co.za'
 
 
-def worker(page: int) -> list:
+def worker(page: int) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -28,11 +27,13 @@ def worker(page: int) -> list:
     res = get(url, params=params, headers=headers)
     logger.info(f'Scraped {res.request.url}...')
     if 'No products found' in res.text:
-        return []
+        return False
 
     html = BeautifulSoup(res.text, 'html.parser')
     container = html.find('ul', id='product-grid')
     rows = container.find_all('li', recursive=False)
+    if not rows:
+        return False
     for row in rows:
         anchor = row.find_all('a')[-1]
         href = shop_host + anchor['href']
@@ -61,9 +62,7 @@ def worker(page: int) -> list:
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value)
 
-    if len(rows) > 0:
-        return [page + i for i in range(1, settings.PROCESS_POOL + 1)]
-    return []
+    return True
 
 
 def worker_wrapper(page):
@@ -75,8 +74,18 @@ def worker_wrapper(page):
         raise
 
 
+def scrape_site():
+    """Scrape pages."""
+    page = 0
+    while True:
+        page += 1
+        outcome = worker(page)
+        if not outcome:
+            break
+
+
 def scrape():
     """Scrape this site."""
-    base_scrape(worker_wrapper)
+    scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)

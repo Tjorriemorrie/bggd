@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from main.games import get
 from main.selectors import upsert_shop
-from main.shops.helpers import base_scrape, handle_item_data, missed_listings, parse_price
+from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ shop_name = 'Wizards World'
 shop_host = 'https://wizardsworld.co.za'
 
 
-def worker(page: int) -> list:
+def worker(page: int) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -24,11 +24,13 @@ def worker(page: int) -> list:
     res = get(url, headers=headers)
     logger.info(f'Scraped {res.request.url}...')
     if 'No Results Found' in res.text:
-        return []
+        return False
 
     html = BeautifulSoup(res.text, 'html.parser')
     container = html.select_one('ul.products')
     rows = container.find_all('li', recursive=False)
+    if not rows:
+        return False
     for row in rows:
         img_src = row.find('img')['src']
         name = row.select_one('h2').get_text(separator=' ', strip=True)
@@ -41,9 +43,7 @@ def worker(page: int) -> list:
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value)
 
-    if len(rows):
-        return [page + 1, page + 2]
-    return []
+    return True
 
 
 def worker_wrapper(*args, **kwargs):
@@ -55,8 +55,18 @@ def worker_wrapper(*args, **kwargs):
         raise
 
 
+def scrape_site():
+    """Scrape pages."""
+    page = 0
+    while True:
+        page += 1
+        outcome = worker(page)
+        if not outcome:
+            break
+
+
 def scrape():
     """Scrape this site."""
-    base_scrape(worker)
+    scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)

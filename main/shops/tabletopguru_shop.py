@@ -6,7 +6,6 @@ from bs4 import BeautifulSoup
 from main.games import get
 from main.selectors import upsert_shop
 from main.shops.helpers import (
-    base_scrape,
     handle_item_data,
     missed_listings,
     parse_price,
@@ -18,13 +17,12 @@ shop_name = 'Table Top Guru'
 shop_host = 'https://tabletopguru.co.za'
 
 
-def worker(page: int) -> list:
+def worker(page: int) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',
-        # noqa E501
+        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
 
     url = f'{shop_host}/collections/board-games'
@@ -34,11 +32,13 @@ def worker(page: int) -> list:
     res = get(url, params=params, headers=headers)
     logger.info(f'Scraped {res.request.url}...')
     if 'there are no products matching your search' in res.text:
-        return []
+        return False
 
     html = BeautifulSoup(res.text, 'html.parser')
     containers = html.find_all('div', class_='grid-uniform')
     rows = containers[-1].find_all('div', class_='grid-item')
+    if not rows:
+        return False
     for row in rows:
         img_tag = row.find('img')
         if not img_tag:
@@ -61,10 +61,11 @@ def worker(page: int) -> list:
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value)
 
-    return [page + 1, page + 2]
+    return True
 
 
 def worker_wrapper(*args, **kwargs):
+    """Worker wrapper."""
     try:
         return worker(*args, **kwargs)
     except Exception:
@@ -72,8 +73,18 @@ def worker_wrapper(*args, **kwargs):
         raise
 
 
+def scrape_site():
+    """Scrape pages."""
+    page = 0
+    while True:
+        page += 1
+        outcome = worker(page)
+        if not outcome:
+            break
+
+
 def scrape():
     """Scrape this site."""
-    base_scrape(worker_wrapper)
+    scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)

@@ -34,7 +34,7 @@ class Command(BaseCommand):
                 shop_scraper()
             except Exception as exc:
                 logger.exception(f'Problem scraping {name}')
-                msg = str(exc).strip()
+                msg = str(exc).strip() or exc.__class__.__name__
             dur = round(time.time() - start_at)
             today = get_today()
             scrapelog, created = Scrapelog.objects.update_or_create(

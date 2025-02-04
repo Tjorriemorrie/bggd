@@ -20,7 +20,6 @@ from main.selectors import get_today
 logger = logging.getLogger(__name__)
 
 
-@retry(Exception, tries=4, delay=60)
 def base_scrape(worker):  # noqa: PLR0912, PLR0915
     """Start scraping using multiprocessing with ProcessPoolExecutor."""
     process_pool_size = settings.PROCESS_POOL
@@ -59,7 +58,7 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
         for future in list(future_to_page):
             page = future_to_page[future]
             try:
-                new_pages = future.result(timeout=300)
+                new_pages = future.result(timeout=30)
                 # Add new pages to pages_to_scrape (if not already processed)
                 for new_page in new_pages:
                     if (

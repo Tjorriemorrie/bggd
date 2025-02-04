@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from main.games import get
 from main.selectors import upsert_shop
-from main.shops.helpers import base_scrape, handle_item_data, missed_listings, parse_price
+from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
@@ -12,7 +12,7 @@ shop_name = 'Timeless'
 shop_host = 'https://www.timelessboardgames.co.za'
 
 
-def worker(page: int) -> list:
+def worker(page: int) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -27,10 +27,12 @@ def worker(page: int) -> list:
     res = get(url, params=params, headers=headers)
     logger.info(f'Scraped {res.request.url}...')
     if 'No games met your criteria' in res.text:
-        return []
+        return False
 
     html = BeautifulSoup(res.text, 'html.parser')
     rows = html.find_all('div', class_='w3-card')
+    if not rows:
+        return False
     for row in rows[2:-2]:
         img_src = row.find_all('img')[0]['src']
         name = row.find_all('p', class_='w3-small')[0].get_text(separator=' ', strip=True)
@@ -48,7 +50,7 @@ def worker(page: int) -> list:
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
 
-    return [page + 1, page + 2]
+    return True
 
 
 def worker_wrapper(*args, **kwargs):
@@ -60,8 +62,18 @@ def worker_wrapper(*args, **kwargs):
         raise
 
 
+def scrape_site():
+    """Scrape pages."""
+    page = 0
+    while True:
+        page += 1
+        outcome = worker(page)
+        if not outcome:
+            break
+
+
 def scrape():
     """Scrape this site."""
-    base_scrape(worker_wrapper)
+    scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)

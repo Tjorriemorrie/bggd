@@ -3,7 +3,6 @@ import logging
 import re
 
 from bs4 import BeautifulSoup
-from retry import retry
 
 from main.games import get
 from main.selectors import upsert_shop
@@ -15,12 +14,12 @@ from main.shops.helpers import (
 
 logger = logging.getLogger(__name__)
 
-enabled = False
+enabled = True
 shop_name = 'Meeps and Veeps'
 shop_host = 'https://meepsandveeps.co.za'
 
 
-def worker(page: int) -> list:
+def worker(page: int) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -34,11 +33,13 @@ def worker(page: int) -> list:
     res = get(url, params=params, headers=headers)
     logger.info(f'Scraped {res.request.url}...')
     if 'there are no products matching your search' in res.text:
-        return []
+        return False
 
     html = BeautifulSoup(res.text, 'html.parser')
     containers = html.find_all('div', class_='grid-uniform')
     rows = containers[1].find_all('div', recursive=False)
+    if not rows:
+        return False
     for row in rows:
         row_text = re.sub(r'\n+', ' ', row.text.casefold())
         if 'pre-order by' in row_text:
@@ -66,9 +67,7 @@ def worker(page: int) -> list:
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value, **{'is_new': is_new})
 
-    if len(rows) > 0:
-        return [page + 1, page + 2]
-    return []
+    return True
 
 
 def worker_wrapper(*args, **kwargs):
@@ -80,9 +79,18 @@ def worker_wrapper(*args, **kwargs):
         raise
 
 
-@retry(Exception, tries=2)
+def scrape_site():
+    """Scrape pages."""
+    page = 0
+    while True:
+        page += 1
+        outcome = worker(page)
+        if not outcome:
+            break
+
+
 def scrape():
     """Scrape this site."""
-    # base_scrape(worker)
+    # scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)
