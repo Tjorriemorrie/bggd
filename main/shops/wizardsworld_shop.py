@@ -67,6 +67,6 @@ def scrape_site():
 
 def scrape():
     """Scrape this site."""
-    scrape_site()
+    # scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)
