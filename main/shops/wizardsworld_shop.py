@@ -8,6 +8,7 @@ from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
+enabled = 0
 shop_name = 'Wizards World'
 shop_host = 'https://wizardsworld.co.za'
 
@@ -67,6 +68,6 @@ def scrape_site():
 
 def scrape():
     """Scrape this site."""
-    # scrape_site()
+    scrape_site()
     shop = upsert_shop(shop_name)
     missed_listings(shop)
