@@ -9,7 +9,7 @@ from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
-enabled = 0
+enabled = 1
 shop_name = 'Grinning Gargoyle'
 shop_host = 'https://grinning-gargoyle.co.za'
 
