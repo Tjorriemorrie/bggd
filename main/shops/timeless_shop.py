@@ -35,7 +35,7 @@ def worker(page: int) -> bool:
         return False
     for row in rows[2:-2]:
         img_src = row.find_all('img')[0]['src']
-        name = row.find_all('p', class_='w3-small')[0].get_text(separator=' ', strip=True)
+        name = row.find_all('p', class_='w3-medium')[0].get_text(separator=' ', strip=True)
         href = shop_host + '/' + row.find_all('a')[0]['href']
         is_new = 'Pre-loved' not in row.text
         # price details
@@ -44,7 +44,7 @@ def worker(page: int) -> bool:
             price_value = None
         else:
             in_stock = True
-            price_txt = row.find_all('p', class_='w3-medium')[0].find('strong').get_text(strip=True)
+            price_txt = row.find_all('p', class_='w3-medium')[1].find('strong').get_text(strip=True)
             price_value = parse_price(price_txt)
         params = {'is_new': is_new}
 
