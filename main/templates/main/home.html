@@ -25,13 +25,6 @@
                 {% include 'main/snippet_game_group.html' with games=latest footer="xdays" %}
             {% endif %}
 
-
-            {% if pops %}
-                <hr class="m-5"/>
-                <h3 class="mt-5">Other popular games!</h3>
-                {% include 'main/snippet_game_group.html' with games=pops footer="pageview" %}
-            {% endif %}
-
         </div>
     </div>
 {% endblock %}

@@ -1,5 +1,4 @@
 import logging
-from itertools import chain
 
 from django.contrib import messages
 from django.core.handlers.wsgi import WSGIRequest
@@ -19,7 +18,6 @@ from main.selectors import (
     get_best_savings_games,
     list_bundle_listings,
     list_newest_games,
-    list_popular_games,
 )
 from main.tables import GameTable, ListingTable, ShopTable
 
@@ -30,13 +28,10 @@ def home_view(request: WSGIRequest):
     """Home view."""
     savings = get_best_savings_games()
     latest = list_newest_games()
-    excl = [g.id for g in chain(savings, latest)]
-    pops = list_popular_games(excl)
     bundles = list_bundle_listings()
     ctx = {
         'savings': savings,
         'latest': latest,
-        'pops': pops,
         'bundles': bundles,
     }
     return TemplateResponse(request, 'main/home.html', ctx)
