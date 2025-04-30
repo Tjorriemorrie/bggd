@@ -174,21 +174,16 @@ def get_last_scrape(shop: Shop) -> Scrapelog | None:
 
 def list_newest_games():
     """List newest games."""
-    price_cutoff = 1_100
     max_num = 18
-    days = 4
-    while True:
-        days_ago = timezone.now() - timedelta(days=days)
-        games = (
-            Game.objects.filter(
-                created_at__gt=days_ago, shop_in_stock=True, shop_price__gt=price_cutoff
-            )
-            .order_by('-created_at')
-            .all()[:max_num]
-        )
-        if len(games) >= max_num:
-            return games
-        days += 1
+    rank_cutoff = 3_000
+    days_to_fix = 1
+    days_ago = timezone.now() - timedelta(days=days_to_fix)
+    games = (
+        Game.objects.filter(created_at__lt=days_ago, shop_in_stock=True, rank__lte=rank_cutoff)
+        .order_by('-created_at')
+        .all()[:max_num]
+    )
+    return games
 
 
 def list_popular_games(excl_ids):

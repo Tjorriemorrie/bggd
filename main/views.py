@@ -27,12 +27,12 @@ logger = logging.getLogger(__name__)
 def home_view(request: WSGIRequest):
     """Home view."""
     savings = get_best_savings_games()
-    latest = list_newest_games()
     bundles = list_bundle_listings()
+    latest = list_newest_games()
     ctx = {
         'savings': savings,
-        'latest': latest,
         'bundles': bundles,
+        'latest': latest,
     }
     return TemplateResponse(request, 'main/home.html', ctx)
 
