@@ -56,4 +56,9 @@ urlpatterns = [
         cache_page(settings.VIEW_CACHE)(views.RpgListView.as_view()),
         name='rpg-list',
     ),
+    path(
+        'other/',
+        cache_page(settings.VIEW_CACHE)(views.OtherListView.as_view()),
+        name='other-list',
+    ),
 ]

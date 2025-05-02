@@ -10,7 +10,7 @@ from django.views.generic import DetailView
 from django_filters.views import FilterMixin
 from django_tables2 import SingleTableView
 
-from main.constants import CATEGORY_ACCESSORIES, CATEGORY_RPG
+from main.constants import CATEGORY_ACCESSORIES, CATEGORY_OTHER, CATEGORY_RPG
 from main.filters import GameFilter, ListingFilter, ShopFilter
 from main.graphs import get_game_prices_graph
 from main.models import Game, Listing, Shop
@@ -48,7 +48,9 @@ class ListingListView(SingleTableView, FilterMixin):
     def get_queryset(self):
         """Get query."""
         queryset = super().get_queryset()
-        queryset = queryset.exclude(category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG])
+        queryset = queryset.exclude(
+            category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG, CATEGORY_OTHER]
+        )
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -119,7 +121,9 @@ class GameListView(SingleTableView, FilterMixin):
     def get_queryset(self):
         """Get query."""
         queryset = super().get_queryset()
-        queryset = queryset.exclude(listings__category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG])
+        queryset = queryset.exclude(
+            listings__category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG, CATEGORY_OTHER]
+        )
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -224,4 +228,28 @@ class RpgListView(SingleTableView, FilterMixin):
         context['filtering'] = self.filterset
         context['facet'] = 'RPG'
         context['nav'] = 'rpg'
+        return context
+
+
+class OtherListView(SingleTableView, FilterMixin):
+    model = Listing
+    ordering = ['-in_stock', '-created_at']
+    filterset_class = ListingFilter
+    table_class = ListingTable
+    template_name = 'main/list.html'
+    paginate_by = 50
+
+    def get_queryset(self):
+        """Get query."""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(category=CATEGORY_OTHER)
+        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        """Get context."""
+        context = super().get_context_data(**kwargs)
+        context['filtering'] = self.filterset
+        context['facet'] = 'Other'
+        context['nav'] = 'other'
         return context
