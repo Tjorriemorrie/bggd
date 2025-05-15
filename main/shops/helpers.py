@@ -133,12 +133,13 @@ def verify_image_url(url: str) -> bool:
 
 def parse_price(price_txt) -> float:
     """Parse price."""
-    match = re.search(r'R\s?([\d\s\xa0]+(?:[.,]\d{2})?)', price_txt)
+    price_txt = re.sub(r'\s+', '', price_txt)
+    match = re.search(r'R\s*([\d.,]+)', price_txt)
     if not match:
         raise ValueError(f'Could not extract price: {price_txt}')
     # Remove all whitespace characters including non-breaking space
     raw_amount = match.group(1)
-    cleaned_amount = raw_amount.translate(str.maketrans('', '', ' \xa0')).replace(',', '.')
+    cleaned_amount = raw_amount.replace(',', '').replace('\xa0', '').replace(' ', '')
     amount = float(cleaned_amount)
     return amount
 
