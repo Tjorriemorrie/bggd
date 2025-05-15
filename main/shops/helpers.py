@@ -136,7 +136,7 @@ def parse_price(price_txt) -> float:
     match = re.search(r'R\s?([\d,]+(\.\d{2})?)', price_txt)
     if not match:
         raise ValueError(f'Could not extract price: {price_txt}')
-    price = float(match.group(1).replace(',', ''))
+    price = float(match.group(1).replace(',', '').replace(' ', ''))
     return price
 
 
