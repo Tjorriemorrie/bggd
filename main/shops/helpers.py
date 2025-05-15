@@ -139,7 +139,10 @@ def parse_price(price_txt) -> float:
         raise ValueError(f'Could not extract price: {price_txt}')
     # Remove all whitespace characters including non-breaking space
     raw_amount = match.group(1)
-    cleaned_amount = raw_amount.replace(',', '').replace('\xa0', '').replace(' ', '')
+    cleaned_amount = raw_amount.replace('\xa0', '').replace(' ', '')
+    if ',' in cleaned_amount and '.' not in cleaned_amount:
+        cleaned_amount = cleaned_amount.replace(',', '.')
+    cleaned_amount = cleaned_amount.replace(',', '')
     amount = float(cleaned_amount)
     return amount
 
