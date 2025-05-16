@@ -134,6 +134,7 @@ def verify_image_url(url: str) -> bool:
 def parse_price(price_txt) -> float:
     """Parse price."""
     price_txt = re.sub(r'\s+', '', price_txt)
+    price_txt = price_txt.replace(',', '')
     match = re.search(r'R\s*([\d.,]+)', price_txt)
     if not match:
         raise ValueError(f'Could not extract price: {price_txt}')
