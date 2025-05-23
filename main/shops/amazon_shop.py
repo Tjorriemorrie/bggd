@@ -54,6 +54,7 @@ def worker(page: int) -> bool:
                 row.select_one('span.a-price').select_one('span.a-offscreen').get_text(strip=True)
             )
             price_value = parse_price(price_txt)
+            price_value /= 100
         except AttributeError:
             if 'Currently unavailable.' in row.text:
                 in_stock = False
