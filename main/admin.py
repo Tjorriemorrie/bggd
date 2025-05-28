@@ -177,7 +177,7 @@ class GameAdmin(admin.ModelAdmin):
         'shop_mean',
         'view_listings_link',
     )
-    list_filter = ['label', 'fix_me']
+    list_filter = ['label', 'shop_best']
     list_editable = []
     search_fields = ['name']
     readonly_fields = ('name',)
