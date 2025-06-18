@@ -7,7 +7,13 @@ from django.views.generic import DetailView
 from django_filters.views import FilterMixin
 from django_tables2 import SingleTableView
 
-from main.constants import CATEGORY_ACCESSORIES, CATEGORY_OTHER, CATEGORY_RPG
+from main.constants import (
+    CATEGORY_ACCESSORIES,
+    CATEGORY_CARD_GAME,
+    CATEGORY_OTHER,
+    CATEGORY_RPG,
+    CATEGORY_TABLETOP,
+)
 from main.filters import GameFilter, ListingFilter, ShopFilter
 from main.graphs import get_game_prices_graph
 from main.models import Game, Listing, Shop
@@ -46,7 +52,13 @@ class ListingListView(SingleTableView, FilterMixin):
         """Get query."""
         queryset = super().get_queryset()
         queryset = queryset.exclude(
-            category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG, CATEGORY_OTHER]
+            category__in=[
+                CATEGORY_CARD_GAME,
+                CATEGORY_TABLETOP,
+                CATEGORY_RPG,
+                CATEGORY_ACCESSORIES,
+                CATEGORY_OTHER,
+            ]
         )
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
@@ -119,7 +131,13 @@ class GameListView(SingleTableView, FilterMixin):
         """Get query."""
         queryset = super().get_queryset()
         queryset = queryset.exclude(
-            listings__category__in=[CATEGORY_ACCESSORIES, CATEGORY_RPG, CATEGORY_OTHER]
+            listings__category__in=[
+                CATEGORY_CARD_GAME,
+                CATEGORY_TABLETOP,
+                CATEGORY_RPG,
+                CATEGORY_ACCESSORIES,
+                CATEGORY_OTHER,
+            ]
         )
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
@@ -152,6 +170,54 @@ class GameDetailView(DetailView):
         # Add current timestamp to context to ensure cache busting
         ctx['current_timestamp'] = timezone.now().timestamp()
         return ctx
+
+
+class CardListView(SingleTableView, FilterMixin):
+    model = Listing
+    ordering = ['-in_stock', '-created_at']
+    filterset_class = ListingFilter
+    table_class = ListingTable
+    template_name = 'main/list.html'
+    paginate_by = 50
+
+    def get_queryset(self):
+        """Get query."""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(category=CATEGORY_CARD_GAME)
+        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        """Get context."""
+        context = super().get_context_data(**kwargs)
+        context['filtering'] = self.filterset
+        context['facet'] = 'Card Games'
+        context['nav'] = 'card'
+        return context
+
+
+class TabletopListView(SingleTableView, FilterMixin):
+    model = Listing
+    ordering = ['-in_stock', '-created_at']
+    filterset_class = ListingFilter
+    table_class = ListingTable
+    template_name = 'main/list.html'
+    paginate_by = 50
+
+    def get_queryset(self):
+        """Get query."""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(category=CATEGORY_TABLETOP)
+        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
+        return self.filterset.qs
+
+    def get_context_data(self, **kwargs):
+        """Get context."""
+        context = super().get_context_data(**kwargs)
+        context['filtering'] = self.filterset
+        context['facet'] = 'Tabletop'
+        context['nav'] = 'tabletop'
+        return context
 
 
 class RpgListView(SingleTableView, FilterMixin):

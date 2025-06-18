@@ -46,14 +46,24 @@ urlpatterns = [
         name='game-detail-slug',
     ),
     path(
-        'accessories/',
-        cache_page(settings.VIEW_CACHE)(views.AccessoriesListView.as_view()),
-        name='accessories-list',
+        'card/',
+        cache_page(settings.VIEW_CACHE)(views.CardListView.as_view()),
+        name='card-list',
+    ),
+    path(
+        'tabletop/',
+        cache_page(settings.VIEW_CACHE)(views.TabletopListView.as_view()),
+        name='tabletop-list',
     ),
     path(
         'rpg/',
         cache_page(settings.VIEW_CACHE)(views.RpgListView.as_view()),
         name='rpg-list',
+    ),
+    path(
+        'accessories/',
+        cache_page(settings.VIEW_CACHE)(views.AccessoriesListView.as_view()),
+        name='accessories-list',
     ),
     path(
         'other/',

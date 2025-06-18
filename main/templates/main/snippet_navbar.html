@@ -25,6 +25,14 @@
                        href="{% url 'game-list' %}">Games</a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if nav == 'card' %}active{% endif %}"
+                       href="{% url 'card-list' %}">Card games</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if nav == 'tabletop' %}active{% endif %}"
+                       href="{% url 'tabletop-list' %}">Tabletop</a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link {% if nav == 'rpg' %}active{% endif %}"
                        href="{% url 'rpg-list' %}">RPG</a>
                 </li>
