@@ -1,9 +1,6 @@
 import logging
 
-from django.contrib import messages
 from django.core.handlers.wsgi import WSGIRequest
-from django.http import HttpResponseBadRequest
-from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.views.generic import DetailView
@@ -157,30 +154,28 @@ class GameDetailView(DetailView):
         return ctx
 
 
-def fixme_view(request: WSGIRequest):
-    """Fix me view."""
-    # Get current URL from GET params
-    url = request.GET.get('url', request.build_absolute_uri())
-    if not url:
-        return HttpResponseBadRequest('URL parameter is required.')
+class RpgListView(SingleTableView, FilterMixin):
+    model = Listing
+    ordering = ['-in_stock', '-created_at']
+    filterset_class = ListingFilter
+    table_class = ListingTable
+    template_name = 'main/list.html'
+    paginate_by = 50
 
-    # Validate required params
-    game_slug = request.GET.get('slug')
-    if not game_slug:
-        return HttpResponseBadRequest('Game slug is required.')
+    def get_queryset(self):
+        """Get query."""
+        queryset = super().get_queryset()
+        queryset = queryset.filter(category=CATEGORY_RPG)
+        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
+        return self.filterset.qs
 
-    # Retrieve the game and update the 'fix_me' field
-    game = get_object_or_404(Game, slug=game_slug)
-    game.fix_me = True
-    game.save()
-
-    # Add a success message
-    messages.success(request, f"Thank you! '{game.name}' has been flagged for review.")
-
-    # Redirect back to the game-detail page
-    append = '&' if '?' in url else '?'
-    url += f'{append}ts={timezone.now().timestamp()}'
-    return redirect(url)
+    def get_context_data(self, **kwargs):
+        """Get context."""
+        context = super().get_context_data(**kwargs)
+        context['filtering'] = self.filterset
+        context['facet'] = 'RPG'
+        context['nav'] = 'rpg'
+        return context
 
 
 class AccessoriesListView(SingleTableView, FilterMixin):
@@ -204,30 +199,6 @@ class AccessoriesListView(SingleTableView, FilterMixin):
         context['filtering'] = self.filterset
         context['facet'] = 'accessories'
         context['nav'] = 'accessories'
-        return context
-
-
-class RpgListView(SingleTableView, FilterMixin):
-    model = Listing
-    ordering = ['-in_stock', '-created_at']
-    filterset_class = ListingFilter
-    table_class = ListingTable
-    template_name = 'main/list.html'
-    paginate_by = 50
-
-    def get_queryset(self):
-        """Get query."""
-        queryset = super().get_queryset()
-        queryset = queryset.filter(category=CATEGORY_RPG)
-        self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
-        return self.filterset.qs
-
-    def get_context_data(self, **kwargs):
-        """Get context."""
-        context = super().get_context_data(**kwargs)
-        context['filtering'] = self.filterset
-        context['facet'] = 'RPG'
-        context['nav'] = 'rpg'
         return context
 
 

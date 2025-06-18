@@ -99,9 +99,6 @@ class Game(Timestamped):
     shop_outdated = models.BooleanField(default=True)
     shop_updated_at = models.DateTimeField(null=True, blank=True)
 
-    # fix me
-    fix_me = models.BooleanField(default=False)
-
     def __str__(self) -> str:
         return unidecode(f'{self.name} ({self.year})')
 
