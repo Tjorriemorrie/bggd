@@ -47,7 +47,7 @@ def discount(obj, show_currency: bool = True):
             else:
                 saving = obj.shop_saving
                 perc = saving / obj.shop_mean
-        elif isinstance(obj, Listing) and obj.price and obj.game:
+        elif isinstance(obj, Listing) and obj.price and obj.game and obj.game.shop_mean:
             saving = obj.game.shop_mean - obj.price
             perc = saving / obj.game.shop_mean
         elif isinstance(obj, Listing):
