@@ -174,7 +174,7 @@ class GameDetailView(DetailView):
 
 class CardListView(SingleTableView, FilterMixin):
     model = Listing
-    ordering = ['-in_stock', '-created_at']
+    ordering = ['-in_stock', '-bgg_looked_at', '-updated_at', '-created_at']
     filterset_class = ListingFilter
     table_class = ListingTable
     template_name = 'main/list.html'
@@ -198,7 +198,7 @@ class CardListView(SingleTableView, FilterMixin):
 
 class TabletopListView(SingleTableView, FilterMixin):
     model = Listing
-    ordering = ['-in_stock', '-created_at']
+    ordering = ['-in_stock', '-bgg_looked_at', '-updated_at', '-created_at']
     filterset_class = ListingFilter
     table_class = ListingTable
     template_name = 'main/list.html'
@@ -222,7 +222,7 @@ class TabletopListView(SingleTableView, FilterMixin):
 
 class RpgListView(SingleTableView, FilterMixin):
     model = Listing
-    ordering = ['-in_stock', '-created_at']
+    ordering = ['-in_stock', '-bgg_looked_at', '-updated_at', '-created_at']
     filterset_class = ListingFilter
     table_class = ListingTable
     template_name = 'main/list.html'
@@ -246,7 +246,7 @@ class RpgListView(SingleTableView, FilterMixin):
 
 class AccessoriesListView(SingleTableView, FilterMixin):
     model = Listing
-    ordering = ['-in_stock', '-created_at']
+    ordering = ['-in_stock', '-bgg_looked_at', '-updated_at', '-created_at']
     filterset_class = ListingFilter
     table_class = ListingTable
     template_name = 'main/list.html'
@@ -270,7 +270,7 @@ class AccessoriesListView(SingleTableView, FilterMixin):
 
 class OtherListView(SingleTableView, FilterMixin):
     model = Listing
-    ordering = ['-in_stock', '-created_at']
+    ordering = ['-in_stock', '-bgg_looked_at', '-updated_at', '-created_at']
     filterset_class = ListingFilter
     table_class = ListingTable
     template_name = 'main/list.html'
