@@ -9,6 +9,7 @@ from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
+enabled = False
 shop_name = 'Amazon'
 shop_host = 'https://www.amazon.co.za'
 
