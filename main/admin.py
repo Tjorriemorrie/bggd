@@ -204,7 +204,7 @@ class ScrapelogAdmin(admin.ModelAdmin):
     list_editable = []
     search_fields = ['outcome']
     readonly_fields = ['outcome', 'duration']
-    ordering = ['-day', 'target']
+    ordering = ['outcome', '-scraped_at']
 
 
 @admin.register(PageView)
