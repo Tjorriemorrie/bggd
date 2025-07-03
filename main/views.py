@@ -15,13 +15,15 @@ from main.constants import (
     CATEGORY_TABLETOP,
 )
 from main.filters import GameFilter, ListingFilter, ShopFilter
-from main.graphs import get_game_prices_graph
+from main.graphs import get_game_prices_graph, shop_price_index_graph
 from main.models import Game, Listing, Shop
 from main.selectors import (
     get_best_savings_games,
     list_bundle_listings,
+    list_expensive_unique_by_shop,
     list_newest_games,
 )
+from main.shops import shop_names
 from main.tables import GameTable, ListingTable, ShopTable
 
 logger = logging.getLogger(__name__)
@@ -95,6 +97,7 @@ class ShopListView(SingleTableView, FilterMixin):
     def get_queryset(self):
         """Get query."""
         queryset = super().get_queryset()
+        queryset = queryset.filter(name__in=shop_names)
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
@@ -116,6 +119,10 @@ class ShopDetailView(DetailView):
         """Get context."""
         context = super().get_context_data(**kwargs)
         context['nav'] = 'shops'
+        context['unique'] = list_expensive_unique_by_shop(self.object)
+
+        inflation_graph = shop_price_index_graph(self.object)
+        context['inflation_graph'] = inflation_graph.to_html(full_html=False)
         return context
 
 

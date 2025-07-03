@@ -207,3 +207,14 @@ def list_bundle_listings():
         '-created_at'
     )
     return bundles
+
+
+def list_expensive_unique_by_shop(shop: Shop) -> QuerySet[Game]:
+    """Return list of most expensive unique games."""
+    top_12_expensive_exclusive_games = (
+        Game.objects.filter(shop_best=shop)
+        .annotate(listing_shops=Count('listings__shop', distinct=True))
+        .filter(listing_shops=1)
+        .order_by('-shop_price')[:24]
+    )
+    return top_12_expensive_exclusive_games

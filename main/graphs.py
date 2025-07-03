@@ -1,12 +1,15 @@
 import logging
+from collections import defaultdict
 from datetime import datetime
+from decimal import Decimal
 
 import numpy as np
 import pandas as pd
 from django.core.cache import cache
-from plotly.graph_objs import Figure
+from django.db.models import Count
+from plotly.graph_objs import Figure, Scatter
 
-from main.models import Game
+from main.models import Game, Listing, Shop
 from main.selectors import get_today
 
 logger = logging.getLogger(__name__)
@@ -231,3 +234,94 @@ def get_game_prices_graph(game: Game):
 #     )
 #     # fig.update_yaxes(tick0=1, dtick=1)
 #     return fig
+
+
+def shop_price_index_graph(shop: Shop) -> Figure:
+    """Price index plot by shop."""
+    cache_key = f'shop_price_index_graph_{shop.id}'
+    if fig := cache.get(cache_key):
+        return fig
+
+    # Use defaultdict to collect daily deltas
+    daily_deltas = defaultdict(list)
+
+    # Top 500 listings by number of price records and currently in stock
+    sampled_listings = (
+        Listing.objects.filter(shop=shop)
+        .filter(prices__in_stock=True)
+        .annotate(num_prices=Count('prices'))
+        .order_by('-num_prices')[:500]
+        .prefetch_related('prices')
+    )
+
+    for listing in sampled_listings:
+        prices = sorted(listing.prices.all(), key=lambda p: p.day.day)
+
+        # Initialize price history
+        previous_price = None
+        total_deltas = Decimal(0)
+
+        for price_obj in prices:
+            # in stock
+            if price_obj.in_stock:
+                # price change detected
+                if previous_price:
+                    delta = price_obj.price - previous_price
+                    total_deltas += delta
+                    daily_deltas[price_obj.day.day].append(delta)
+                    previous_price = price_obj.price
+                # first price
+                else:
+                    # add as base
+                    daily_deltas[price_obj.day.day].append(Decimal(0))
+                    previous_price = price_obj.price
+            # out of stock
+            else:
+                daily_deltas[price_obj.day.day].append(-total_deltas)
+                total_deltas = Decimal(0)
+
+    # Sum deltas for each day
+    delta_series = {
+        day: sum(values)
+        for day, values in sorted(daily_deltas.items())  # sorted ensures chronological order
+    }
+
+    # Build cumulative index from deltas
+    index = []
+    total = Decimal(0)
+    for day, delta in delta_series.items():
+        total += delta
+        index.append({'date': day, 'index': float(total)})
+
+    df = pd.DataFrame(index)
+
+    fig = Figure()
+
+    if not df.empty:
+        fig.add_trace(
+            Scatter(
+                x=df['date'],
+                y=df['index'],
+                mode='lines+markers',
+                name='Price Index',
+                line=dict(color='seagreen'),
+                marker=dict(size=6),
+            )
+        )
+
+        fig.update_layout(
+            title=f'Price Index for {shop.name}',
+            xaxis_title='Date',
+            yaxis_title='Cumulative Price Movement',
+            template='plotly_white',
+            height=700,
+        )
+    else:
+        fig.update_layout(
+            title='No price data available',
+            template='plotly_white',
+            height=400,
+        )
+
+    cache.set(cache_key, fig, timeout=43200)
+    return fig
