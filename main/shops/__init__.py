@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 # Define a dictionary to hold shop data
 shop_names = []
+shop_enabled = {}
 shop_hosts = {}
 shop_scrapers = {}
 
@@ -23,12 +24,10 @@ for filename in os.listdir(shops_dir):
         module_name = filename[:-3]  # Remove the .py extension
         module = importlib.import_module(f'main.shops.{module_name}')
 
-        if not getattr(module, 'enabled', True):
-            logger.info(f'Skipping disabled shop {module_name}')
-            continue
-
         # Append shop name to the list
         shop_names.append(module.shop_name)
+
+        shop_enabled[module.shop_name] = getattr(module, 'enabled', True)
 
         # Append shop host to the list
         shop_hosts[module.shop_name] = module.shop_host
@@ -37,4 +36,4 @@ for filename in os.listdir(shops_dir):
         shop_scrapers[module.shop_name] = module.scrape
 
 # Specify the exported names
-__all__ = ['shop_names', 'shop_hosts', 'shop_scrapers']
+__all__ = ['shop_names', 'shop_enabled', 'shop_hosts', 'shop_scrapers']

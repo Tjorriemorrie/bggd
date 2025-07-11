@@ -63,6 +63,7 @@ ignore = [
     "D104",  # Missing docstring in public package
     "D106",  # Missing docstring in public nested class
     "S308",  # Use of `mark_safe` may expose cross-site scripting vulnerabilities
+    "S311",  # Standard pseudo-random generators are not suitable for cryptographic purposes
 ]
 # Allow auto-fixing of all enabled rules when using the `--fix` option.
 fixable = ["ALL"]

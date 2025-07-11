@@ -19,6 +19,7 @@ repos:
       - id: check-ast
         exclude: '.*.jinja.py'
       - id: check-json
+        exclude: ^\.vscode/launch\.json$
       - id: check-toml
       - id: check-xml
       - id: check-yaml
