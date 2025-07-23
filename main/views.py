@@ -23,7 +23,7 @@ from main.selectors import (
     list_expensive_unique_by_shop,
     list_newest_games,
 )
-from main.shops import shop_names
+from main.shops import shop_enabled
 from main.tables import GameTable, ListingTable, ShopTable
 
 logger = logging.getLogger(__name__)
@@ -96,8 +96,9 @@ class ShopListView(SingleTableView, FilterMixin):
 
     def get_queryset(self):
         """Get query."""
+        open_shop_names = [k for k, v in shop_enabled.items() if v]
         queryset = super().get_queryset()
-        queryset = queryset.filter(name__in=shop_names)
+        queryset = queryset.filter(name__in=open_shop_names)
         self.filterset = self.filterset_class(self.request.GET, queryset=queryset)
         return self.filterset.qs
 
