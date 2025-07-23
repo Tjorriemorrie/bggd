@@ -158,6 +158,8 @@ STATIC_ROOT = BASE_DIR / 'static'
 
 # logging
 warnings.simplefilter(action='ignore', category=FutureWarning)
+LOG_DIR = BASE_DIR / 'logs'
+LOG_DIR.mkdir(exist_ok=True)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -166,14 +168,14 @@ LOGGING = {
             'format': '%(asctime)s %(levelname)-8s %(message)s {%(filename)s:%(lineno)d}',
         },
         'compact': {
-            'format': '%(levelname)-7s %(message)s',
+            'format': '%(asctime)s %(levelname)-8s %(message)s',
         },
     },
     'handlers': {
         'file': {
             'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
-            'filename': BASE_DIR / '.logs' / 'wsgi.log',
+            'filename': str(LOG_DIR / 'app.log'),
             'when': 'midnight',
             'backupCount': 30,
             'delay': True,

@@ -157,6 +157,9 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
     with transaction.atomic():
         try:
             listing = Listing.objects.get(shop=shop, url=href)
+            for key, value in params.items():
+                setattr(listing, key, value)
+            listing.img = img_src
             listing.scraped_at = timezone.now()
             listing.save()
             return listing

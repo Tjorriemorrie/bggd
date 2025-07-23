@@ -16,16 +16,24 @@ logger = logging.getLogger(__name__)
 shop_name = 'Table Top Guru'
 shop_host = 'https://tabletopguru.co.za'
 
+urls = [
+    f'{shop_host}/collections/board-games',
+    f'{shop_host}/collections/pre-loved-games',
+    f'{shop_host}/collections/card-collecting-games',
+    f'{shop_host}/collections/role-playing-games',
+    f'{shop_host}/collections/exit-games',
+    f'{shop_host}/collections/board-game-accessories',
+]
 
-def worker(page: int) -> bool:
+
+def worker(url: str, page: int) -> bool:
     """Scrape page."""
-    logger.info(f' Scraping page {page} '.center(99, '='))
+    logger.info(f' Scraping {url} page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
 
-    url = f'{shop_host}/collections/board-games'
     params = {
         'page': page,
     }
@@ -48,6 +56,7 @@ def worker(page: int) -> bool:
         img_src_raw = 'https:' + img_tag['data-src']
         img_src = img_src_raw.replace('{width}', str(img_widths[-1]))
         name = row.find('p').get_text(separator=' ', strip=True)
+        is_new = 'Pre-Loved' not in name
         anchor = row.find('a')
         href = shop_host + anchor['href']
         # price details
@@ -59,7 +68,7 @@ def worker(page: int) -> bool:
             price_txt = row.find_all('span', class_='visually-hidden')[-1].get_text(strip=True)
             price_value = parse_price(price_txt)
 
-        handle_item_data(shop, name, href, img_src, in_stock, price_value)
+        handle_item_data(shop, name, href, img_src, in_stock, price_value, is_new=is_new)
 
     return True
 
@@ -75,12 +84,13 @@ def worker_wrapper(*args, **kwargs):
 
 def scrape_site():
     """Scrape pages."""
-    page = 0
-    while True:
-        page += 1
-        outcome = worker(page)
-        if not outcome:
-            break
+    for url in urls:
+        page = 0
+        while True:
+            page += 1
+            outcome = worker(url, page)
+            if not outcome:
+                break
 
 
 def scrape():
