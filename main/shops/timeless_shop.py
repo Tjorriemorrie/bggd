@@ -36,7 +36,13 @@ def worker(page: int) -> bool:
     for row in rows[2:-2]:
         img_src = row.find_all('img')[0]['src']
         name = row.find_all('p', class_='w3-medium')[0].get_text(separator=' ', strip=True)
-        href = shop_host + '/' + row.find_all('a')[0]['href']
+        for anchor in row.find_all('a'):
+            if 'boardgames/' in anchor['href']:
+                href = shop_host + '/' + anchor['href']
+                break
+        else:
+            logger.error(f'No valid href found {name}')
+            continue
         is_new = 'Pre-loved' not in row.text
         # price details
         if 'Out of stock' in row.text:
