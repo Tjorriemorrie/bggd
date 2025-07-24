@@ -658,6 +658,7 @@ def auto_assign_games():
     for ix, listing in enumerate(listings):
         name = listing.name
         name = name.replace('(Pre-loved)', '')
+        name = name.replace('(Pre-Loved)', '')
         name = name.replace('Bundle', '')
         bgg = search_bgg(name.strip())
         if not bgg['bgg_id']:
