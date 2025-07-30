@@ -69,9 +69,7 @@ def worker_wrapper(*args, **kwargs):
 def scrape_site():
     """Scrape pages."""
     urls = [
-        f'{shop_host}/collections/enthusiast-and-adult-games',
-        f'{shop_host}/collections/games-with-intermediate-difficulty',
-        f'{shop_host}/collections/getting-started-with-board-games-1',
+        f'{shop_host}/collections/board-games',
     ]
     for url in urls:
         logger.info(f' Scraping {url} '.center(99, '='))

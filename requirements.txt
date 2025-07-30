@@ -1,5 +1,6 @@
 # app
 beautifulsoup4==4.12.3
+colorlog==6.9.0
 crispy_bootstrap5==2024.10
 django~=5.1.0
 django-crispy-forms==2.3

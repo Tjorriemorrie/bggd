@@ -9,6 +9,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.0/ref/settings/
 """
 
+import io
 import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -160,20 +161,25 @@ STATIC_ROOT = BASE_DIR / 'static'
 warnings.simplefilter(action='ignore', category=FutureWarning)
 LOG_DIR = BASE_DIR / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
         'standard': {
-            'format': '%(asctime)s %(levelname)-8s %(message)s {%(filename)s:%(lineno)d}',
+            '()': 'colorlog.ColoredFormatter',
+            'format': '%(log_color)s%(asctime)s %(levelname)-8s %(message)s {%(filename)s:%(lineno)d}',  # noqa: E501
         },
         'compact': {
-            'format': '%(asctime)s %(levelname)-8s %(message)s',
+            '()': 'colorlog.ColoredFormatter',
+            'format': '%(log_color)s%(asctime)s %(levelname)-8s %(message)s',
         },
     },
     'handlers': {
         'file': {
-            'level': 'INFO',
+            'level': 'DEBUG',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': str(LOG_DIR / 'app.log'),
             'when': 'midnight',
@@ -190,19 +196,23 @@ LOGGING = {
     },
     'root': {
         'handlers': ['file', 'console'],
-        'level': 'INFO',
+        'level': 'DEBUG',
         'propagate': False,
     },
     'loggers': {
         'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
             'propagate': False,
         },
-        'django.db.backends': {
+        'django.server': {
+            'handlers': ['file'],
             'level': 'DEBUG',
-            'handlers': ['console'],
+            'propagate': False,
         },
     },
 }
+
 
 # EMAIL
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
