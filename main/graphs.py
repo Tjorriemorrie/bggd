@@ -5,11 +5,12 @@ from decimal import Decimal
 
 import numpy as np
 import pandas as pd
+import plotly.express as px
 from django.core.cache import cache
 from django.db.models import Count
 from plotly.graph_objs import Figure, Scatter
 
-from main.models import Game, Listing, Shop
+from main.models import Game, Listing, Shop, VisitorLog
 from main.selectors import get_today
 
 logger = logging.getLogger(__name__)
@@ -324,4 +325,25 @@ def shop_price_index_graph(shop: Shop) -> Figure:
         )
 
     cache.set(cache_key, fig, timeout=43200)
+    return fig
+
+
+def get_ip_request_chart():
+    """Returns a Plotly Figure for total requests by IP."""
+    qs = VisitorLog.objects.values('ip_address')
+    df = pd.DataFrame.from_records(qs)
+
+    if df.empty:
+        return None
+
+    ip_counts = df['ip_address'].value_counts().reset_index()
+    ip_counts.columns = ['ip_address', 'count']
+
+    fig = px.bar(
+        ip_counts,
+        x='ip_address',
+        y='count',
+        title='Total Requests by IP',
+        labels={'ip_address': 'IP Address', 'count': 'Requests'},
+    )
     return fig

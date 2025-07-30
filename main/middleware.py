@@ -7,7 +7,7 @@ from django.templatetags.static import static
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 
-from main.models import Game, PageView
+from main.models import Game, PageView, VisitorLog
 from main.selectors import get_client_ip, get_today
 
 logger = logging.getLogger(__name__)
@@ -92,3 +92,36 @@ class PageViewMiddleware:
         PageView.objects.get_or_create(
             day=day, game=game, ip=ip_address, defaults={'viewed_at': timezone.now()}
         )
+
+
+class VisitorLoggingMiddleware:
+    def __init__(self, get_response):
+        """Get response."""
+        self.get_response = get_response
+
+    def __call__(self, request):
+        """Log visit."""
+        response = self.get_response(request)
+
+        if request.method == 'GET' and not request.path.startswith('/admin/'):
+            ip = self.get_client_ip(request)
+            user_agent = request.META.get('HTTP_USER_AGENT', '')
+            referrer = request.META.get('HTTP_REFERER', '')
+            path = request.path
+
+            VisitorLog.objects.create(
+                ip_address=ip,
+                user_agent=user_agent,
+                referrer=referrer,
+                path=path,
+                timestamp=timezone.now(),
+            )
+
+        return response
+
+    def get_client_ip(self, request):
+        """Get IP."""
+        x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+        if x_forwarded_for:
+            return x_forwarded_for.split(',')[0]
+        return request.META.get('REMOTE_ADDR', '')

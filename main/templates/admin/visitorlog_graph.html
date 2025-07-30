@@ -1,0 +1,12 @@
+{% extends "admin/base_site.html" %}
+
+{% block title %}Visitor Log{% endblock %}
+
+{% block content %}
+    <h1>Visitor Logs By IP</h1>
+    {% if chart %}
+        <div style="width: 100%; max-width: 1400px; margin: auto;">
+            {{ chart|safe }}
+        </div>
+    {% endif %}
+{% endblock %}

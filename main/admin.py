@@ -7,7 +7,8 @@ from django.utils.html import format_html
 
 from main.forms import LookupForm
 from main.games import search_bgg, update_game_shop_prices
-from main.models import Game, Label, Listing, PageView, Price, Scrapelog, Shop
+from main.graphs import get_ip_request_chart
+from main.models import Game, Label, Listing, PageView, Price, Scrapelog, Shop, VisitorLog
 from main.selectors import list_listings_rated_today, list_listings_without_games
 
 logger = logging.getLogger(__name__)
@@ -212,3 +213,60 @@ class PageViewAdmin(admin.ModelAdmin):
     list_display = ['id', 'day', 'ip', 'game']
     search_fields = ['ip', 'game__name']
     ordering = ['-day', 'game', 'ip']
+
+
+@admin.register(VisitorLog)
+class VisitorLogAdmin(admin.ModelAdmin):
+    list_display = ('ip_address', 'path', 'timestamp', 'referrer_short', 'user_agent_short')
+    list_filter = ('timestamp',)
+    search_fields = ('ip_address', 'path', 'referrer', 'user_agent')
+    readonly_fields = ('ip_address', 'path', 'timestamp', 'referrer', 'user_agent')
+    ordering = ('-timestamp',)
+    change_list_template = 'admin/visitorlog_change_list.html'
+
+    def referrer_short(self, obj):
+        """Get referrer short."""
+        cut_off = 50
+        return (
+            obj.referrer[:cut_off] + '...'
+            if obj.referrer and len(obj.referrer) > cut_off
+            else obj.referrer
+        )
+
+    referrer_short.short_description = 'Referrer'
+
+    def user_agent_short(self, obj):
+        """Get user agent short."""
+        cut_off = 50
+        return (
+            obj.user_agent[:cut_off] + '...'
+            if obj.user_agent and len(obj.user_agent) > cut_off
+            else obj.user_agent
+        )
+
+    user_agent_short.short_description = 'User Agent'
+
+    def get_urls(self):
+        """Get urls."""
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                r'visitorlog/graph',
+                self.admin_site.admin_view(self.visitorlog_graph_view),
+                name='visitorlog-graph',
+            )
+        ]
+        return custom_urls + urls
+
+    def visitorlog_graph_view(self, request):
+        """Graph of visitor log."""
+        fig = get_ip_request_chart()
+        chart_html = fig.to_html(
+            full_html=False, include_plotlyjs='cdn', config={'responsive': True}
+        )
+
+        ctx = dict(
+            self.admin_site.each_context(request),
+            chart=chart_html,
+        )
+        return render(request, 'admin/visitorlog_graph.html', ctx)
