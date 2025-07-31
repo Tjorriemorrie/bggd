@@ -107,7 +107,7 @@ class VisitorLoggingMiddleware:
             ip = self.get_client_ip(request)
             user_agent = request.META.get('HTTP_USER_AGENT', '')
             referrer = request.META.get('HTTP_REFERER', '')
-            path = request.path
+            path = request.get_full_path()
 
             VisitorLog.objects.create(
                 ip_address=ip,
