@@ -7,7 +7,12 @@ from django.utils.html import format_html
 
 from main.forms import LookupForm
 from main.games import search_bgg, update_game_shop_prices
-from main.graphs import get_ip_request_chart
+from main.graphs import (
+    get_daily_unique_ips_chart,
+    get_ip_request_chart,
+    get_pageviews_per_day_chart,
+    get_top_paths_chart,
+)
 from main.models import Game, Label, Listing, PageView, Price, Scrapelog, Shop, VisitorLog
 from main.selectors import list_listings_rated_today, list_listings_without_games
 
@@ -251,22 +256,41 @@ class VisitorLogAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path(
-                r'visitorlog/graph',
+                'graph/',
                 self.admin_site.admin_view(self.visitorlog_graph_view),
                 name='visitorlog-graph',
-            )
+            ),
         ]
         return custom_urls + urls
 
     def visitorlog_graph_view(self, request):
         """Graph of visitor log."""
-        fig = get_ip_request_chart()
-        chart_html = fig.to_html(
-            full_html=False, include_plotlyjs='cdn', config={'responsive': True}
-        )
+        pageviews_chart = get_pageviews_per_day_chart()
+        ip_chart = get_ip_request_chart()
+        unique_chart = get_daily_unique_ips_chart()
+        top_paths_chart = get_top_paths_chart()
 
         ctx = dict(
             self.admin_site.each_context(request),
-            chart=chart_html,
+            pageviews_chart=pageviews_chart.to_html(
+                full_html=False, include_plotlyjs='cdn', config={'responsive': True}
+            )
+            if pageviews_chart
+            else '<p>No pageview data.</p>',
+            unique_chart=unique_chart.to_html(
+                full_html=False, include_plotlyjs=False, config={'responsive': True}
+            )
+            if unique_chart
+            else '<p>No unique IP data.</p>',
+            ip_chart=ip_chart.to_html(
+                full_html=False, include_plotlyjs=False, config={'responsive': True}
+            )
+            if ip_chart
+            else '<p>No IP data.</p>',
+            top_paths_chart=top_paths_chart.to_html(
+                full_html=False, include_plotlyjs=False, config={'responsive': True}
+            )
+            if top_paths_chart
+            else '<p>No path data.</p>',
         )
         return render(request, 'admin/visitorlog_graph.html', ctx)

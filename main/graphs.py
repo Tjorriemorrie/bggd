@@ -1,13 +1,15 @@
 import logging
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 from decimal import Decimal
 
 import numpy as np
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 from django.core.cache import cache
 from django.db.models import Count
+from django.utils import timezone
 from plotly.graph_objs import Figure, Scatter
 
 from main.models import Game, Listing, Shop, VisitorLog
@@ -328,22 +330,172 @@ def shop_price_index_graph(shop: Shop) -> Figure:
     return fig
 
 
-def get_ip_request_chart():
-    """Returns a Plotly Figure for total requests by IP."""
-    qs = VisitorLog.objects.values('ip_address')
+def get_top_paths_chart():
+    """Returns a Plotly Figure for top 30 most visited paths in the last 30 days."""
+    thirty_days_ago = timezone.now().date() - timedelta(days=30)
+
+    qs = VisitorLog.objects.filter(timestamp__date__gte=thirty_days_ago).values('path')
     df = pd.DataFrame.from_records(qs)
 
     if df.empty:
         return None
 
+    path_counts = df['path'].value_counts().head(30).reset_index()
+    path_counts.columns = ['path', 'count']
+
+    fig = px.bar(
+        path_counts,
+        x='count',
+        y='path',
+        orientation='h',
+        title='Top 30 Visited Paths (Last 30 Days)',
+        labels={'path': 'URL Path', 'count': 'Visits'},
+        height=800,
+    )
+
+    fig.update_layout(
+        yaxis=dict(autorange='reversed'),  # Highest at the top
+        margin=dict(l=200, r=50, t=50, b=50),
+    )
+
+    return fig
+
+
+def get_pageviews_per_day_chart():
+    """Returns a Plotly Figure showing total pageviews per day with an average line."""
+    thirty_days_ago = timezone.now().date() - timedelta(days=30)
+
+    qs = VisitorLog.objects.filter(timestamp__date__gte=thirty_days_ago).values('timestamp')
+    df = pd.DataFrame.from_records(qs)
+
+    if df.empty:
+        return None
+
+    df['date'] = pd.to_datetime(df['timestamp']).dt.date
+    pageviews = df.groupby('date').size().reset_index(name='pageviews')
+
+    # Calculate average
+    average = pageviews['pageviews'].mean()
+
+    fig = go.Figure()
+
+    # Line for pageviews
+    fig.add_trace(
+        go.Scatter(
+            x=pageviews['date'],
+            y=pageviews['pageviews'],
+            mode='lines+markers',
+            name='Pageviews',
+            line=dict(color='royalblue'),
+        )
+    )
+
+    # Horizontal average line
+    fig.add_trace(
+        go.Scatter(
+            x=pageviews['date'],
+            y=[average] * len(pageviews),
+            mode='lines',
+            name='Average',
+            line=dict(color='orange', dash='dash'),
+        )
+    )
+
+    fig.update_layout(
+        title='Daily Pageviews (Last 30 Days)',
+        xaxis_title='Date',
+        yaxis_title='Pageviews',
+        xaxis=dict(tickformat='%b %d'),
+        hovermode='x unified',
+    )
+
+    return fig
+
+
+def get_daily_unique_ips_chart():
+    """Returns a Plotly Figure of unique IPs per day for the last 30 days."""
+    thirty_days_ago = timezone.now() - timedelta(days=30)
+    qs = VisitorLog.objects.filter(timestamp__gte=thirty_days_ago).values('ip_address', 'timestamp')
+    df = pd.DataFrame.from_records(qs)
+
+    if df.empty:
+        return None
+
+    # Convert timestamp to just the date
+    df['date'] = pd.to_datetime(df['timestamp']).dt.date
+
+    # Count unique IPs per day
+    daily_counts = df.groupby('date')['ip_address'].nunique().reset_index()
+    daily_counts.columns = ['date', 'unique_ips']
+
+    avg_value = daily_counts['unique_ips'].mean()
+
+    # Create bar chart
+    fig = px.bar(
+        daily_counts,
+        x='date',
+        y='unique_ips',
+        title='Unique IPs per Day (Last 30 Days)',
+        labels={'date': 'Date', 'unique_ips': 'Unique IPs'},
+    )
+
+    # Add average line
+    fig.add_scatter(
+        x=daily_counts['date'],
+        y=[avg_value] * len(daily_counts),
+        mode='lines',
+        name='Average',
+        line=dict(dash='dash', color='red'),
+    )
+
+    fig.update_layout(
+        autosize=True,
+        height=400,
+        margin=dict(l=40, r=20, t=50, b=40),
+    )
+
+    return fig
+
+
+def get_ip_request_chart():
+    """Returns a Plotly Figure for total requests by IP."""
+    cnt = 30
+    qs = VisitorLog.objects.values('ip_address', 'user_agent')
+    df = pd.DataFrame.from_records(qs)
+
+    if df.empty:
+        return None
+
+    # Count number of requests per IP
     ip_counts = df['ip_address'].value_counts().reset_index()
     ip_counts.columns = ['ip_address', 'count']
 
+    # Add most common user agent per IP
+    most_common_agents = (
+        df.groupby('ip_address')['user_agent']
+        .agg(lambda x: x.value_counts().idxmax())
+        .reset_index()
+    )
+
+    # Merge counts and agents
+    ip_data = pd.merge(ip_counts, most_common_agents, on='ip_address')
+
+    # Limit to top 20
+    ip_data = ip_data.head(cnt)
+
     fig = px.bar(
-        ip_counts,
+        ip_data,
         x='ip_address',
         y='count',
-        title='Total Requests by IP',
+        title=f'Top {cnt} IPs by Request Count',
         labels={'ip_address': 'IP Address', 'count': 'Requests'},
+        hover_data={'user_agent': True},
     )
+
+    fig.update_layout(
+        autosize=True,
+        height=400,
+        margin=dict(l=40, r=20, t=50, b=40),
+    )
+
     return fig
