@@ -38,7 +38,8 @@ def worker(page: int) -> bool:
     for row in rows:
         anchor = row.find_all('a')[0]
         href = anchor['href']
-        img_src = row.find('img')['src']
+        img_tag = row.find('img')
+        img_src = img_tag.get('data-src') or img_tag.get('data-lazy-src') or img_tag.get('src')
         name = row.find('h3', class_='woocommerce-loop-product__title').get_text(strip=True)
         # Remove newlines and extra whitespace
         name = re.sub(r'\s+', ' ', name).strip()
