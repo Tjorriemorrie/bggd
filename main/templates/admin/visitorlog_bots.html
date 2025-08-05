@@ -1,0 +1,120 @@
+{% extends "admin/base_site.html" %}
+{% load i18n static %}
+
+{% block title %}Visitor Log – Top Bots{% endblock %}
+
+{% block breadcrumbs %}
+    <div class="breadcrumbs">
+        <a href="{% url 'admin:index' %}">{% translate 'Home' %}</a>
+        &rsaquo; Visitor Log Bots
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div id="content-main">
+        <h1>Top Bot Requests (Past 7 Days)</h1>
+
+        <h4>Bad user agents</h4>
+        {% if ua_bots %}
+            <div class="results">
+                <table id="result_list">
+                    <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>User Agent</th>
+                        <th style="text-align:right">Requests</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for bot in ua_bots %}
+                        <tr>
+                            <td>{{ bot.prefix }}</td>
+                            <td><small>{{ bot.user_agent|truncatechars:280 }}</small></td>
+                            <td>{{ bot.requests }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="paginator">No bot traffic recorded in the last 7 days.</p>
+        {% endif %}
+
+        <h4>Bad admin pages</h4>
+        {% if admin_bots %}
+            <div class="results">
+                <table id="result_list">
+                    <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Path</th>
+                        <th style="text-align:right">Requests</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for bot in admin_bots %}
+                        <tr>
+                            <td>{{ bot.prefix }}</td>
+                            <td>{{ bot.matched_path }}</td>
+                            <td>{{ bot.requests }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="paginator">No bot traffic recorded in the last 7 days.</p>
+        {% endif %}
+
+        <h4>Bad burst bots</h4>
+        {% if burst_bots %}
+            <div class="results">
+                <table id="result_list">
+                    <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th>Burst</th>
+                        <th style="text-align:right">Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for bot in burst_bots %}
+                        <tr>
+                            <td>{{ bot.prefix }}</td>
+                            <td>{{ bot.max_burst }}</td>
+                            <td>{{ bot.total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="paginator">No bot traffic recorded in the last 7 days.</p>
+        {% endif %}
+
+        <h4>No homepage bots</h4>
+        {% if home_bots %}
+            <div class="results">
+                <table id="result_list">
+                    <thead>
+                    <tr>
+                        <th>IP Address</th>
+                        <th style="text-align:right">Total</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for bot in home_bots %}
+                        <tr>
+                            <td>{{ bot.prefix }}</td>
+                            <td style="text-align:right">{{ bot.total }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="paginator">No bot traffic recorded in the last 7 days.</p>
+        {% endif %}
+
+    </div>
+{% endblock %}

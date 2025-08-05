@@ -14,7 +14,14 @@ from main.graphs import (
     get_top_paths_chart,
 )
 from main.models import Game, Label, Listing, PageView, Price, Scrapelog, Shop, VisitorLog
-from main.selectors import list_listings_rated_today, list_listings_without_games
+from main.selectors import (
+    list_listings_rated_today,
+    list_listings_without_games,
+    top_bad_bot_by_admin_scanner_past_week,
+    top_bad_bot_by_burst_past_week,
+    top_bad_bot_by_homepage_past_week,
+    top_bad_bot_by_user_agent_past_week,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -256,12 +263,28 @@ class VisitorLogAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path(
+                'bots/',
+                self.admin_site.admin_view(self.visitorlog_bots_view),
+                name='visitorlog-bots',
+            ),
+            path(
                 'graph/',
                 self.admin_site.admin_view(self.visitorlog_graph_view),
                 name='visitorlog-graph',
             ),
         ]
         return custom_urls + urls
+
+    def visitorlog_bots_view(self, request):
+        """Calculate bots from logs."""
+        ctx = dict(
+            self.admin_site.each_context(request),
+            ua_bots=top_bad_bot_by_user_agent_past_week(),
+            admin_bots=top_bad_bot_by_admin_scanner_past_week(),
+            burst_bots=top_bad_bot_by_burst_past_week(),
+            home_bots=top_bad_bot_by_homepage_past_week(),
+        )
+        return render(request, 'admin/visitorlog_bots.html', ctx)
 
     def visitorlog_graph_view(self, request):
         """Graph of visitor log."""

@@ -1,55 +1,57 @@
 {% extends "admin/base_site.html" %}
+{% load i18n admin_urls static admin_list %}
 
 {% block title %}Visitor Log{% endblock %}
 
 {% block content %}
-    <h1>Visitor Logs By IP</h1>
+    <div id="content-main">
+        <h1>Visitor Logs By IP</h1>
 
-    <div style="display: flex; flex-direction: column; gap: 2rem;">
+        <div style="display: flex; flex-direction: column; gap: 2rem;">
 
-        {% if pageviews_chart %}
-            <div style="width: 100%; overflow-x: auto;">
-                {{ pageviews_chart|safe }}
-            </div>
-        {% endif %}
-
-        {% if top_paths_chart %}
-            <div style="width: 100%; overflow-x: auto;">
-                {{ top_paths_chart|safe }}
-            </div>
-        {% endif %}
-
-        {% if unique_chart %}
-            <div style="width: 100%; overflow-x: auto;">
-                <div style="min-width: 600px; width: 100%;">
-                    {{ unique_chart|safe }}
+            {% if pageviews_chart %}
+                <div style="width: 100%; overflow-x: auto;">
+                    {{ pageviews_chart|safe }}
                 </div>
-            </div>
-        {% endif %}
+            {% endif %}
 
-        {% if ip_chart %}
-            <div style="width: 100%; overflow-x: auto;">
-                <div style="min-width: 600px; width: 100%;">
-                    {{ ip_chart|safe }}
+            {% if top_paths_chart %}
+                <div style="width: 100%; overflow-x: auto;">
+                    {{ top_paths_chart|safe }}
                 </div>
-            </div>
-        {% endif %}
-    </div>
+            {% endif %}
 
-    <script>
-        function resizePlotlyCharts() {
-            if (window.Plotly) {
-                document.querySelectorAll('.js-plotly-plot').forEach(el => {
-                    Plotly.Plots.resize(el);
-                });
+            {% if unique_chart %}
+                <div style="width: 100%; overflow-x: auto;">
+                    <div style="min-width: 600px; width: 100%;">
+                        {{ unique_chart|safe }}
+                    </div>
+                </div>
+            {% endif %}
+
+            {% if ip_chart %}
+                <div style="width: 100%; overflow-x: auto;">
+                    <div style="min-width: 600px; width: 100%;">
+                        {{ ip_chart|safe }}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <script>
+            function resizePlotlyCharts() {
+                if (window.Plotly) {
+                    document.querySelectorAll('.js-plotly-plot').forEach(el => {
+                        Plotly.Plots.resize(el);
+                    });
+                }
             }
-        }
 
-        window.addEventListener('resize', resizePlotlyCharts);
-        window.addEventListener('load', resizePlotlyCharts); // Run on full page load
+            window.addEventListener('resize', resizePlotlyCharts);
+            window.addEventListener('load', resizePlotlyCharts); // Run on full page load
 
-        // Also run immediately in case load has already fired
-        resizePlotlyCharts();
-    </script>
-
+            // Also run immediately in case load has already fired
+            resizePlotlyCharts();
+        </script>
+    </div>
 {% endblock %}
