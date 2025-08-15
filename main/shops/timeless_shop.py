@@ -34,7 +34,7 @@ def worker(page: int) -> bool:
     if not rows:
         return False
     for row in rows[2:-2]:
-        img_src = row.find_all('img')[0]['src']
+        img_src = row.find_all('img', class_='w3-image')[0]['src']
         name = row.find_all('p', class_='w3-medium')[0].get_text(separator=' ', strip=True)
         for anchor in row.find_all('a'):
             if 'boardgames/' in anchor['href']:
