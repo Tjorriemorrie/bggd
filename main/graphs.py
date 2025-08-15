@@ -12,6 +12,7 @@ from django.db.models import Count
 from django.utils import timezone
 from plotly.graph_objs import Figure, Scatter
 
+import main.constants as c
 from main.models import Game, Listing, Shop, VisitorLog
 from main.selectors import get_today
 
@@ -74,7 +75,9 @@ def get_game_prices_graph(game: Game):
     df['lowest_price'] = df[price_columns].min(axis=1, skipna=True)
 
     # Calculate the rolling average of the lowest prices
-    df['average_lowest_price'] = df['lowest_price'].rolling(window=365, min_periods=1).mean()
+    df['average_lowest_price'] = (
+        df['lowest_price'].rolling(window=c.ROLLING_AVERAGE, min_periods=1).mean()
+    )
 
     # Create the graph
     fig = Figure()

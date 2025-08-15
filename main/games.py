@@ -16,7 +16,7 @@ from django.utils.text import slugify
 from retry import retry
 from unidecode import unidecode
 
-from main.constants import LABEL_CATEGORY, LABEL_FAMILY, LABEL_MECHANIC, LABEL_SUBDOMAIN
+import main.constants as c
 from main.errors import (
     BggGameNotFoundError,
     RedirectError,
@@ -226,10 +226,10 @@ def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
         game.id = bgg_id
         game.save()
     game_links_labels = {
-        'boardgamecategory': ('categories', LABEL_CATEGORY),
-        'boardgamemechanic': ('mechanics', LABEL_MECHANIC),
-        'boardgamefamily': ('families', LABEL_FAMILY),
-        'boardgamesubdomain': ('subdomains', LABEL_SUBDOMAIN),
+        'boardgamecategory': ('categories', c.LABEL_CATEGORY),
+        'boardgamemechanic': ('mechanics', c.LABEL_MECHANIC),
+        'boardgamefamily': ('families', c.LABEL_FAMILY),
+        'boardgamesubdomain': ('subdomains', c.LABEL_SUBDOMAIN),
     }
     for key, val in game_links_labels.items():
         data = []
@@ -612,7 +612,7 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
     df = df.dropna(axis=0, how='all')
     # df = df.dropna(axis=1, how='all')
     df['best'] = df.min(axis=1)
-    df['mean'] = df['best'].rolling(window=365, min_periods=1).mean()
+    df['mean'] = df['best'].rolling(window=c.ROLLING_AVERAGE, min_periods=1).mean()
     df['saving'] = df['mean'] - df['best']
 
     # finally update game

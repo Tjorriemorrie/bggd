@@ -1,3 +1,5 @@
+ROLLING_AVERAGE = 90
+
 LABEL_CATEGORY = 'category'
 LABEL_MECHANIC = 'mechanic'
 LABEL_FAMILY = 'family'
