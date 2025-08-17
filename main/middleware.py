@@ -103,7 +103,7 @@ class VisitorLoggingMiddleware:
         """Log visit."""
         response = self.get_response(request)
 
-        if request.method == 'GET' and not request.path.startswith('/admin/'):
+        if request.method == 'GET':
             ip = self.get_client_ip(request)
             user_agent = request.META.get('HTTP_USER_AGENT', '')
             referrer = request.META.get('HTTP_REFERER', '')

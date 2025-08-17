@@ -224,7 +224,12 @@ def list_expensive_unique_by_shop(shop: Shop) -> QuerySet[Game]:
 _BOT_UA_RE = re.compile(
     r'bot|crawler|scraper|spider|wget|curl|python-requests|aiohttp|headless', re.I
 )
-_ADMIN_PATHS = {'xmlrpc.php', 'wp-login.php'}
+_ADMIN_PATHS = {
+    'xmlrpc.php',
+    'wp-login.php',
+    'admin',
+    'robots',
+}
 
 
 def _three_octet_expr():
@@ -265,13 +270,13 @@ def top_bad_bot_by_user_agent_past_week(limit: int = 7):
 
 
 def top_bad_bot_by_admin_scanner_past_week(limit: int = 7):
-    """Look for requests whose path ends with xmlrpc.php or wp-login.php."""
+    """Look for requests whose path contains admin-related substrings."""
     since = timezone.now() - timedelta(days=7)
 
-    # Build a single Q object that matches *either* path
+    # Build a single Q object that matches any substring
     path_q = Q()
     for p in _ADMIN_PATHS:
-        path_q |= Q(path__iendswith=p)
+        path_q |= Q(path__icontains=p)
 
     qs = (
         VisitorLog.objects.filter(timestamp__gte=since)
@@ -289,7 +294,6 @@ def top_bad_bot_by_admin_scanner_past_week(limit: int = 7):
         .order_by('-requests')
     )
 
-    # Convert queryset to list and slice
     return list(qs[:limit])
 
 
