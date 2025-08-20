@@ -279,10 +279,10 @@ class VisitorLogAdmin(admin.ModelAdmin):
         """Calculate bots from logs."""
         ctx = dict(
             self.admin_site.each_context(request),
-            ua_bots=top_bad_bot_by_user_agent_past_week(),
-            admin_bots=top_bad_bot_by_admin_scanner_past_week(),
-            burst_bots=top_bad_bot_by_burst_past_week(),
-            home_bots=top_bad_bot_by_homepage_past_week(),
+            ua_bots=top_bad_bot_by_user_agent_past_week(3),
+            admin_bots=top_bad_bot_by_admin_scanner_past_week(3),
+            burst_bots=top_bad_bot_by_burst_past_week(limit=3),
+            home_bots=top_bad_bot_by_homepage_past_week(3),
         )
         return render(request, 'admin/visitorlog_bots.html', ctx)
 
