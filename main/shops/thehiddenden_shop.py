@@ -8,6 +8,7 @@ from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
+enabled = False
 shop_name = 'The Hidden Den'
 shop_host = 'https://thehiddenden.co.za'
 
