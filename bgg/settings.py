@@ -184,7 +184,7 @@ LOGGING = {
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': str(LOG_DIR / 'app.log'),
             'when': 'midnight',
-            'backupCount': 30,
+            'backupCount': 7,
             'delay': True,
             'formatter': 'standard',
         },
