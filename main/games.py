@@ -267,6 +267,13 @@ def search_bgg(name: str) -> dict | None:
         }
 
     table = soup.find('table', id='collectionitems')
+    if not table:
+        return {
+            'name': 'not_found',
+            'bgg_id': None,
+            'image': None,
+            'search': res.request.url,
+        }
     first_row = table.find_all('tr')[1]
     tds = first_row.find_all('td')
     second_cell = tds[1]
