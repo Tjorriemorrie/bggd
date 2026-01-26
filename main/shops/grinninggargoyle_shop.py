@@ -28,7 +28,7 @@ def worker(page: int) -> bool:
         return False
 
     html = BeautifulSoup(res.text, 'html.parser')
-    container = html.find('ul', class_='products columns-4')
+    container = html.find('ul', class_='products columns-5')
     rows = container.find_all('li', recursive=False)
     if not rows:
         return False
@@ -44,7 +44,23 @@ def worker(page: int) -> bool:
 
         # price details
         in_stock = True
-        price_txt = row.find('span', class_='price').select_one('span.amount').get_text(strip=True)
+        price_container = row.find('span', class_='price')
+        if not price_container:
+            logger.warning(f'No price container for {name}')
+            continue
+
+        sale = price_container.select_one('ins span.amount')
+        if sale:
+            price_txt = sale.get_text(strip=True)
+        else:
+            amount = price_container.select_one(
+                ':scope > span.amount'
+            ) or price_container.select_one('span.amount')
+            if not amount:
+                logger.warning(f'No price amount for {name}')
+                continue
+            price_txt = amount.get_text(strip=True)
+
         price_value = parse_price(price_txt)
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value)

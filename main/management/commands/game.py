@@ -65,7 +65,6 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         """Handle subcommands and call the appropriate method."""
         subcommand = options['subcommand']
-        msg = 'OK'
         start_at = time.time()
 
         try:
@@ -83,21 +82,22 @@ class Command(BaseCommand):
                 self.scrape_clean(*args, **options)
             else:
                 raise NotImplementedError(f'No such cmd found: {subcommand}')
-        except Exception as exc:
+
+        except Exception:
             logger.exception(f'Problem with {subcommand}')
-            msg = str(exc)
 
-        dur = round(time.time() - start_at)
-        today = get_today()
+        else:
+            dur = round(time.time() - start_at)
+            today = get_today()
 
-        scrapelog, created = Scrapelog.objects.update_or_create(
-            day=today,
-            target=target,
-            defaults={
-                'scraped_at': timezone.now(),
-                'outcome': msg,
-                'duration': dur,
-            },
-        )
+            scrapelog, created = Scrapelog.objects.update_or_create(
+                day=today,
+                target=target,
+                defaults={
+                    'scraped_at': timezone.now(),
+                    'outcome': 'ok',
+                    'duration': dur,
+                },
+            )
 
-        logger.info(f'{"Created" if created else "Updated"} {scrapelog}')
+            logger.info(f'{"Created" if created else "Updated"} {scrapelog}')
