@@ -148,6 +148,6 @@ logs/
 fabfile.py
 
 # backup files
-db.sqlite3.bck
+db.sqlite3
 model.pkl.bck
 model.dmp

@@ -70,14 +70,19 @@ def get_game_prices_graph(game: Game):
         # Set price to NaN where in_stock is False
         df.loc[~df[f'{slug}_in_stock'], f'{slug}_price'] = np.nan
 
-    # Calculate the lowest price per day
+    # Calculate the lowest price per day (same as updater logic)
     price_columns = [col for col in df.columns if col.endswith('_price')]
     df['lowest_price'] = df[price_columns].min(axis=1, skipna=True)
 
-    # Calculate the rolling average of the lowest prices
-    df['average_lowest_price'] = (
-        df['lowest_price'].rolling(window=c.ROLLING_AVERAGE, min_periods=1).mean()
+    # Create the SAME reduced DF used by update_game_shop_prices
+    avg_df = df[['lowest_price']].dropna(how='all')
+
+    avg_df['average_lowest_price'] = (
+        avg_df['lowest_price'].rolling(window=c.ROLLING_AVERAGE, min_periods=1).mean()
     )
+
+    # Re-align WITHOUT filling gaps
+    df['average_lowest_price'] = avg_df['average_lowest_price']
 
     # Create the graph
     fig = Figure()
