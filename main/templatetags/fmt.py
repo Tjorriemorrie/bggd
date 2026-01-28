@@ -37,6 +37,29 @@ def price(obj, show_currency: bool = True):
 
 
 @register.filter
+def last_price(obj, show_currency: bool = True):
+    """Format price, but for out of stock items, so it looks up last active price."""
+    if not isinstance(obj, Listing):
+        raise NotImplementedError(f'last_price only supports Listing objects, got {type(obj)}')
+
+    last_active_price = obj.prices.filter(in_stock=True).last()
+    if not last_active_price:
+        return mark_safe('<span>Unknown</span>')
+
+    price = last_active_price.price
+
+    if price >= FORMAT_PRICE_THOUSANDS:
+        price = round(price / 100) * 100
+    elif price >= FORMAT_PRICE_HUNDREDS:
+        price = round(price / 50) * 50
+
+    # Determine if the currency should be shown
+    currency = 'R' if show_currency else ''
+
+    return mark_safe(f'<span class="price">{currency}{price:.0f}</span>')
+
+
+@register.filter
 def discount(obj, show_currency: bool = True):
     """Format discount."""
     try:
