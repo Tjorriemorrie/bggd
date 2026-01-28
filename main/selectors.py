@@ -88,7 +88,7 @@ def get_latest_new_games() -> QuerySet[Game]:
 
 def get_best_savings_games(reverse: bool = False) -> QuerySet[Game]:
     """Get the best savings games."""
-    games = Game.objects.order_by(f'{"" if reverse else "-"}shop_saving', '-shop_price').all()[:24]
+    games = Game.objects.order_by(f'{"" if reverse else "-"}shop_saving', '-shop_price').all()[:30]
     return games
 
 
