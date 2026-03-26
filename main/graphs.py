@@ -247,6 +247,51 @@ def get_game_prices_graph(game: Game):
 #     return fig
 
 
+def get_listing_prices_graph(listing: Listing) -> Figure | None:
+    """Get price history graph for a single listing."""
+    cache_key = f'get_listing_prices_graph_{listing.id}'
+    if fig := cache.get(cache_key):
+        return fig
+
+    values = listing.prices.order_by('day__day').values_list('day__day', 'price', 'in_stock')
+    if not values:
+        return None
+
+    df = pd.DataFrame(list(values), columns=['day', 'price', 'in_stock'])
+    df['day'] = pd.to_datetime(df['day'])
+
+    # Set price to NaN where out of stock
+    df.loc[~df['in_stock'], 'price'] = np.nan
+
+    fig = Figure()
+    fig.add_scatter(
+        x=df['day'],
+        y=df['price'],
+        mode='lines+markers',
+        name='Price',
+        line=dict(color='#6b4226', width=2),
+        marker=dict(size=5, color='#c8a45c'),
+        fill='tozeroy',
+        fillcolor='rgba(200, 164, 92, 0.08)',
+        hovertemplate='<b>Date:</b> %{x}<br><b>Price:</b> R%{y:,.0f}<extra></extra>',
+    )
+
+    fig.update_layout(
+        margin=dict(l=0, r=0, t=10, b=0),
+        xaxis_title=None,
+        yaxis_title=None,
+        height=280,
+        template='plotly_white',
+        showlegend=False,
+        yaxis=dict(tickprefix='R', separatethousands=True),
+        plot_bgcolor='rgba(0,0,0,0)',
+        paper_bgcolor='rgba(0,0,0,0)',
+    )
+
+    cache.set(cache_key, fig, timeout=43200)
+    return fig
+
+
 def shop_price_index_graph(shop: Shop) -> Figure:
     """Price index plot by shop."""
     cache_key = f'shop_price_index_graph_{shop.id}'

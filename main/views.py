@@ -15,7 +15,7 @@ from main.constants import (
     CATEGORY_TABLETOP,
 )
 from main.filters import GameFilter, ListingFilter, ShopFilter
-from main.graphs import get_game_prices_graph, shop_price_index_graph
+from main.graphs import get_game_prices_graph, get_listing_prices_graph, shop_price_index_graph
 from main.models import Game, Listing, Shop
 from main.selectors import (
     get_best_savings_games,
@@ -76,6 +76,7 @@ class ListingListView(SingleTableView, FilterMixin):
 
 class ListingDetailView(DetailView):
     model = Listing
+    queryset = Listing.objects.select_related('shop', 'game')
     template_name = 'main/listing_detail.html'
     context_object_name = 'listing'
 
@@ -83,6 +84,18 @@ class ListingDetailView(DetailView):
         """Get context."""
         context = super().get_context_data(**kwargs)
         context['nav'] = 'listings'
+        listing = self.object
+        # price history graph
+        if prices_fig := get_listing_prices_graph(listing):
+            context['prices_graph'] = prices_fig.to_html(full_html=False)
+        # other listings for the same game
+        if listing.game:
+            context['sibling_listings'] = (
+                listing.game.listings.filter(in_stock=True)
+                .exclude(pk=listing.pk)
+                .select_related('shop')
+                .order_by('price')[:5]
+            )
         return context
 
 
