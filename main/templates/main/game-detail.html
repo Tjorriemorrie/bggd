@@ -1,181 +1,225 @@
 {% extends 'main/base.html' %}
 {% load fmt %}
-
 {% load static %}
 
+{% block title %}{{ game.name }} - BGG Data{% endblock %}
+
 {% block content %}
-    <div class="row container-shop-detail mt-2">
-        <div class="col">
-            {% if game.url %}
-                <a href="{{ game.url }}" target="_blank"
-                   class="btn btn-outline-danger float-end mb-2">
-                    <img src="{% static "main/img/bgg.png" %}"/>
-                    Visit BoardGameGeek
-                </a>
-            {% endif %}
+    <div class="listing-detail">
+        {# ── BREADCRUMB ── #}
+        <nav class="ld-breadcrumb" aria-label="breadcrumb">
+            <a href="{% url 'game-list' %}">Games</a>
+            <span class="ld-sep">/</span>
+            <span>{{ game.name|truncatechars:60 }}</span>
+        </nav>
 
-            <h1>{{ game.name }}</h1>
+        {# ── HERO SECTION ── #}
+        <div class="ld-hero">
+            <div class="ld-hero-img-wrap">
+                {% if game.is_expansion %}
+                    <span class="ld-badge-preowned">Expansion</span>
+                {% endif %}
+                {% if game.img %}
+                    <img class="ld-hero-img"
+                         src="{{ game.img }}"
+                         alt="{{ game.name }}"/>
+                {% endif %}
+            </div>
 
-            {% if game.pitch %}
-                <h6 class="text-muted mb-2">{{ game.pitch }}</h6>
-            {% endif %}
+            <div class="ld-hero-body">
+                {% if game.label %}
+                    <span class="ld-category">{{ game.label }}</span>
+                {% endif %}
 
-            {% if game.img %}
-                <div class="mb-3">
-                    <img src="{{ game.img }}" class="img-fluid" style="max-width: 15em;"/>
-                </div>
-            {% endif %}
+                <h1 class="ld-title">{{ game.name }}</h1>
 
-            {% if game.shop_mean %}
-                <p class="fs-5">
-                    Average price: <strong>R{{ game.shop_mean }}</strong>
-                </p>
-            {% endif %}
+                {% if game.pitch %}
+                    <p class="ld-game-pitch" style="margin-bottom: 0.6rem;">{{ game.pitch }}</p>
+                {% endif %}
 
-            {% if prices_graph %}
-                {{ prices_graph|safe }}
-            {% endif %}
-
-            <ul class=" nav nav-tabs" id="listingTabs" role="tablist">
-                <li class="nav-item" role="presentation">
-                    <button
-                            class="nav-link active"
-                            id="in-stock-tab"
-                            data-bs-toggle="tab"
-                            data-bs-target="#in-stock"
-                            type="button"
-                            role="tab"
-                    >
-                        In stock
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button
-                            class="nav-link"
-                            id="out-of-stock-tab"
-                            data-bs-toggle="tab"
-                            data-bs-target="#out-of-stock"
-                            type="button"
-                            role="tab"
-                    >
-                        Out of stock
-                    </button>
-                </li>
-            </ul>
-
-            <div class="row">
-                <div class="col-auto" style="min-width: 50%;">
-
-                    <div class="tab-content mt-3" id="listingTabsContent">
-                        <div
-                                class="tab-pane fade show active"
-                                id="in-stock"
-                                role="tabpanel"
-                                aria-labelledby="in-stock-tab"
-                        >
-                            <table class="table table-sm table-striped align-middle">
-                                <thead>
-                                <tr>
-                                    <th>Shop</th>
-                                    <th>Listing</th>
-                                    <th>Price</th>
-                                    <th class="text-end">Action</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {% for listing in listings %}
-                                    {% if listing.in_stock %}
-                                        <tr>
-                                            <td>{{ listing.shop.name }}</td>
-                                            <td>
-                                                <img src="{{ listing.img }}" style="width: 4em;"
-                                                     class="me-2"/>
-                                                {{ listing.name }}
-                                            </td>
-                                            <td>{{ listing|price }}</td>
-                                            <td class="text-end">
-                                                <a
-                                                        href="{{ listing.url }}"
-                                                        target="_blank"
-                                                        class="btn btn-sm btn-secondary"
-                                                >
-                                                    Go to site
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        <div
-                                class="tab-pane fade"
-                                id="out-of-stock"
-                                role="tabpanel"
-                                aria-labelledby="out-of-stock-tab"
-                        >
-                            <table class="table table-sm table-striped align-middle">
-                                <thead>
-                                <tr>
-                                    <th>Shop</th>
-                                    <th>Listing</th>
-                                    <th>Last price</th>
-                                    <th class="text-end">Action</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                {% for listing in listings %}
-                                    {% if not listing.in_stock %}
-                                        <tr>
-                                            <td>{{ listing.shop.name }}</td>
-                                            <td>
-                                                <img src="{{ listing.img }}" style="width: 4em;"
-                                                     class="me-2"/>
-                                                {{ listing.name }}
-                                            </td>
-                                            <td>{{ listing|last_price }}</td>
-                                            <td class="text-end">
-                                                <a
-                                                        href="{{ listing.url }}"
-                                                        target="_blank"
-                                                        class="btn btn-sm btn-secondary"
-                                                >
-                                                    Go to site
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    {% endif %}
-                                {% endfor %}
-                                </tbody>
-                            </table>
-                        </div>
-
+                {% if game.year %}
+                    <div class="ld-shop-row">
+                        <span class="ld-shop-label">Published</span>
+                        <span class="ld-shop-name" style="border: none; cursor: default;">{{ game.year }}</span>
                     </div>
-                    {# end tab-content #}
+                {% endif %}
+
+                {# ── PRICE BLOCK ── #}
+                {% if game.shop_mean %}
+                    <div class="ld-price-block">
+                        <span class="ld-price">R{{ game.shop_mean }}</span>
+                        <span class="ld-last-price">average across shops</span>
+                    </div>
+                {% endif %}
+
+                {# ── STOCK INDICATOR ── #}
+                {% if game.shop_in_stock is not None %}
+                    <div class="ld-stock-indicator">
+                        {% if game.shop_in_stock %}
+                            <span class="ld-dot ld-dot-green"></span>
+                            <span>In stock</span>
+                        {% else %}
+                            <span class="ld-dot ld-dot-red"></span>
+                            <span>Currently unavailable</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+
+                {% if game.url %}
+                    <a href="{{ game.url }}" target="_blank" rel="noopener" class="ld-cta">
+                        <img src="{% static 'main/img/bgg.png' %}" alt="BGG" class="ld-bgg-icon"/>
+                        View on BoardGameGeek
+                    </a>
+                {% endif %}
+
+                {# ── GAME STATS ── #}
+                <div class="ld-game-stats" style="margin-top: 0.6rem;">
+                    {% if game.rating %}
+                        <div class="ld-stat">
+                            <span class="ld-stat-val">{{ game.rating|floatformat:1 }}</span>
+                            <span class="ld-stat-lbl">Rating</span>
+                        </div>
+                    {% endif %}
+                    {% if game.rank %}
+                        <div class="ld-stat">
+                            <span class="ld-stat-val">#{{ game.rank }}</span>
+                            <span class="ld-stat-lbl">BGG Rank</span>
+                        </div>
+                    {% endif %}
+                    {% if game.weight_avg %}
+                        <div class="ld-stat">
+                            <span class="ld-stat-val">{{ game.weight_avg|floatformat:1 }}</span>
+                            <span class="ld-stat-lbl">Weight</span>
+                        </div>
+                    {% endif %}
+                    {% if game.min_players and game.max_players %}
+                        <div class="ld-stat">
+                            <span class="ld-stat-val">{{ game.min_players }}-{{ game.max_players }}</span>
+                            <span class="ld-stat-lbl">Players</span>
+                        </div>
+                    {% endif %}
+                    {% if game.min_play_time and game.max_play_time %}
+                        <div class="ld-stat">
+                            <span class="ld-stat-val">{{ game.min_play_time }}-{{ game.max_play_time }}</span>
+                            <span class="ld-stat-lbl">Minutes</span>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# ── PRICE HISTORY ── #}
+        {% if prices_graph %}
+            <div class="ld-section">
+                <h2 class="ld-section-title">
+                    <i class="bi bi-graph-up"></i>
+                    Price History
+                </h2>
+                <div class="ld-chart-wrap">
+                    {{ prices_graph|safe }}
+                </div>
+            </div>
+        {% endif %}
+
+        {# ── LISTINGS ── #}
+        <div class="ld-section">
+            <h2 class="ld-section-title">
+                <i class="bi bi-shop"></i>
+                Where to Buy
+            </h2>
+
+            <div class="gd-tabs">
+                <a href="#" class="gd-tab gd-tab-active" data-tab="gd-in-stock">
+                    <span class="ld-dot ld-dot-green"></span>
+                    In Stock
+                </a>
+                <a href="#" class="gd-tab" data-tab="gd-out-of-stock">
+                    <span class="ld-dot ld-dot-red"></span>
+                    Out of Stock
+                </a>
+            </div>
+
+            <div class="gd-tab-panel gd-tab-panel-active" id="gd-in-stock">
+                <div class="ld-siblings">
+                    {% for listing in listings %}
+                        {% if listing.in_stock %}
+                            <div class="ld-sib-row gd-listing-row">
+                                <img class="ld-sib-img" src="{{ listing.img }}" alt="{{ listing.name }}"/>
+                                <div class="ld-sib-info">
+                                    <span class="ld-sib-shop">{{ listing.shop.name }}</span>
+                                    <a href="{{ listing.get_absolute_url }}" class="ld-sib-name gd-listing-link">
+                                        {{ listing.name|truncatechars:55 }}
+                                    </a>
+                                </div>
+                                <span class="ld-sib-price">{{ listing|price }}</span>
+                                <a href="{{ listing.url }}" target="_blank" rel="noopener" class="gd-go-btn">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
                 </div>
             </div>
 
-            <div class="row mt-4">
-                <div class="col">
-                    <dl>
-                        <dt>Type:</dt>
-                        <dd>{{ game.label }}</dd>
-                        <dt>Year:</dt>
-                        <dd>{{ game.year }}</dd>
-                        <dt>Rank:</dt>
-                        <dd>{{ game.rank }}</dd>
-                        <dt>Rating:</dt>
-                        <dd>{{ game.rating|floatformat:1 }}</dd>
-                        <dt>Weight:</dt>
-                        <dd>{{ game.weight_avg }}</dd>
-                        <dt>Description:</dt>
-                        <dd>{{ game.description }}</dd>
-                    </dl>
+            <div class="gd-tab-panel" id="gd-out-of-stock">
+                <div class="ld-siblings">
+                    {% for listing in listings %}
+                        {% if not listing.in_stock %}
+                            <div class="ld-sib-row gd-listing-row">
+                                <img class="ld-sib-img ld-img-oos" src="{{ listing.img }}" alt="{{ listing.name }}"/>
+                                <div class="ld-sib-info">
+                                    <span class="ld-sib-shop">{{ listing.shop.name }}</span>
+                                    <a href="{{ listing.get_absolute_url }}" class="ld-sib-name gd-listing-link">
+                                        {{ listing.name|truncatechars:55 }}
+                                    </a>
+                                </div>
+                                <span class="ld-sib-price" style="color: var(--ld-muted);">{{ listing|last_price }}</span>
+                                <a href="{{ listing.url }}" target="_blank" rel="noopener" class="gd-go-btn">
+                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </a>
+                            </div>
+                        {% endif %}
+                    {% endfor %}
                 </div>
             </div>
+        </div>
 
-            <sub><small class="text-muted">Created at: {{ game.created_at }}</small></sub>
+        {# ── DESCRIPTION ── #}
+        {% if game.description %}
+            <div class="ld-section">
+                <h2 class="ld-section-title">
+                    <i class="bi bi-book"></i>
+                    About This Game
+                </h2>
+                <div class="gd-description">
+                    {{ game.description }}
+                </div>
+            </div>
+        {% endif %}
+
+        {# ── FOOTER META ── #}
+        <div class="ld-footer-meta">
+            <span>Added {{ game.created_at|days_ago|default:game.created_at }}</span>
+            {% if game.scraped_at %}
+                <span>Last scraped {{ game.scraped_at|days_ago|default:game.scraped_at }}</span>
+            {% endif %}
         </div>
     </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var tabs = document.querySelectorAll('.gd-tab');
+            var panels = document.querySelectorAll('.gd-tab-panel');
+            tabs.forEach(function(btn) {
+                btn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    tabs.forEach(function(t) { t.classList.remove('gd-tab-active'); });
+                    panels.forEach(function(p) { p.classList.remove('gd-tab-panel-active'); });
+                    btn.classList.add('gd-tab-active');
+                    var target = document.getElementById(btn.getAttribute('data-tab'));
+                    if (target) { target.classList.add('gd-tab-panel-active'); }
+                });
+            });
+        });
+    </script>
 {% endblock %}

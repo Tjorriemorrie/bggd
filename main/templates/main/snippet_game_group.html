@@ -2,43 +2,38 @@
 {% load fmt %}
 
 {% if games %}
-    <div class="container-fluid mt-4">
-        <div class="row">
-            {% for game in games %}
-                <div class="col-md-4 col-lg-2 mb-4 d-flex align-items-stretch">
-                    <div class="card h-100">
-                        <a href="{{ game.get_absolute_url }}" class="">
-                            <img src="{{ game.img }}"
-                                 class="card-img-top {% if not game.shop_in_stock %}card-img-oos{% endif %}">
-                        </a>
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <a href="{{ game.get_absolute_url }}"
-                                   class="{% if not game.shop_in_stock %}card-title-oos{% endif %}">
-                                    {{ game.name }}
-                                </a>
-                            </h5>
-                            <p class="card-text">{{ game|price }}</p>
-                        </div>
-                        {% if footer != "none" %}
-                            <div class="card-footer d-flex justify-content-between text-muted">
-                                {% if footer == "pageview" %}
-                                    <span>{{ game.pageview_count }}</span>
-                                {% else %}
-                                    <span>{{ game.shop_best.name }}</span>
-                                    {% if footer == "discount" %}
-                                        {% if game.shop_saving %}
-                                            <span>{{ game|discount }}</span>
-                                        {% endif %}
-                                    {% elif footer == "xdays" %}
-                                        <span>{{ game.created_at|days_ago }}</span>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        {% endif %}
+    <div class="hp-grid">
+        {% for game in games %}
+            <a href="{{ game.get_absolute_url }}" class="hp-card {% if not game.shop_in_stock %}hp-card-oos{% endif %}">
+                <div class="hp-card-img-wrap">
+                    <img src="{{ game.img }}"
+                         class="hp-card-img {% if not game.shop_in_stock %}hp-card-img-oos{% endif %}"
+                         alt="{{ game.name }}"/>
+                    {% if not game.shop_in_stock %}
+                        <span class="hp-card-badge hp-card-badge-oos">Out of stock</span>
+                    {% elif game.shop_saving and footer == "discount" %}
+                        <span class="hp-card-badge hp-card-badge-save">{{ game|discount }}</span>
+                    {% endif %}
+                </div>
+                <div class="hp-card-body">
+                    <h3 class="hp-card-title">{{ game.name }}</h3>
+                    <div class="hp-card-price-row">
+                        <span class="hp-card-price">{{ game|price }}</span>
                     </div>
                 </div>
-            {% endfor %}
-        </div>
+                {% if footer != "none" %}
+                    <div class="hp-card-foot">
+                        {% if footer == "pageview" %}
+                            <span>{{ game.pageview_count }} views</span>
+                        {% else %}
+                            <span class="hp-card-shop">{{ game.shop_best.name }}</span>
+                            {% if footer == "xdays" %}
+                                <span class="hp-card-meta">{{ game.created_at|days_ago }}</span>
+                            {% endif %}
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </a>
+        {% endfor %}
     </div>
 {% endif %}

@@ -2,43 +2,32 @@
 {% load fmt %}
 
 {% if listings %}
-    <div class="container-fluid mt-4">
-        <div class="row">
-            {% for listing in listings %}
-                <div class="col-md-4 col-lg-2 mb-4 d-flex align-items-stretch">
-                    <div class="card h-100">
-                        <a href="{{ listing.get_absolute_url }}" class="">
-                            <img src="{{ listing.img }}"
-                                 class="card-img-top {% if not listing.in_stock %}card-img-oos{% endif %}">
-                        </a>
-                        <div class="card-body">
-                            <h5 class="card-title">
-                                <a href="{{ listing.get_absolute_url }}"
-                                   class="{% if not listing.in_stock %}card-title-oos{% endif %}">
-                                    {{ listing.name }}
-                                </a>
-                            </h5>
-                            <p class="card-text">{{ listing|price }}</p>
-                        </div>
-                        {% if footer != "none" %}
-                            <div class="card-footer d-flex justify-content-between text-muted">
-                                {% if footer == "pageview" %}
-                                    <span>{{ listing.pageview_count }}</span>
-                                {% else %}
-                                    <span>{{ listing.shop_best.name }}</span>
-                                    {% if footer == "discount" %}
-                                        {% if listing.shop_saving %}
-                                            <span>{{ listing|discount }}</span>
-                                        {% endif %}
-                                    {% elif footer == "xdays" %}
-                                        <span>{{ listing.created_at|days_ago }}</span>
-                                    {% endif %}
-                                {% endif %}
-                            </div>
-                        {% endif %}
+    <div class="hp-grid">
+        {% for listing in listings %}
+            <a href="{{ listing.get_absolute_url }}" class="hp-card {% if not listing.in_stock %}hp-card-oos{% endif %}">
+                <div class="hp-card-img-wrap">
+                    <img src="{{ listing.img }}"
+                         class="hp-card-img {% if not listing.in_stock %}hp-card-img-oos{% endif %}"
+                         alt="{{ listing.name }}"/>
+                    {% if not listing.in_stock %}
+                        <span class="hp-card-badge hp-card-badge-oos">Out of stock</span>
+                    {% endif %}
+                </div>
+                <div class="hp-card-body">
+                    <h3 class="hp-card-title">{{ listing.name }}</h3>
+                    <div class="hp-card-price-row">
+                        <span class="hp-card-price">{{ listing|price }}</span>
                     </div>
                 </div>
-            {% endfor %}
-        </div>
+                {% if footer != "none" %}
+                    <div class="hp-card-foot">
+                        <span class="hp-card-shop">{{ listing.shop.name }}</span>
+                        {% if footer == "xdays" %}
+                            <span class="hp-card-meta">{{ listing.created_at|days_ago }}</span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </a>
+        {% endfor %}
     </div>
 {% endif %}

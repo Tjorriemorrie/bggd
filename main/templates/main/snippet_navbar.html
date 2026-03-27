@@ -1,50 +1,60 @@
-<nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container-fluid">
-        <span class="navbar-brand">BGG <small>Data</small></span>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent"
-                aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
+<nav class="sn">
+    <div class="sn-inner">
+        <a href="{% url 'home' %}" class="sn-brand">
+            <span class="sn-brand-icon"><i class="bi bi-dice-5-fill"></i></span>
+            <span class="sn-brand-txt">BGG<span class="sn-brand-thin">Data</span></span>
+        </a>
+
+        <button class="sn-toggle" id="sn-toggle" aria-label="Toggle navigation">
+            <span class="sn-toggle-bar"></span>
+            <span class="sn-toggle-bar"></span>
+            <span class="sn-toggle-bar"></span>
         </button>
-        <div class="collapse navbar-collapse" id="navbarSupportedContent">
-            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'home' %}active{% endif %}"
-                       href="{% url 'home' %}">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'shops' %}active{% endif %}"
-                       href="{% url 'shop-list' %}">Shops</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'listings' %}active{% endif %}"
-                       href="{% url 'listing-list' %}">Listings</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'games' %}active{% endif %}"
-                       href="{% url 'game-list' %}">Games</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'card' %}active{% endif %}"
-                       href="{% url 'card-list' %}">Card games</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'tabletop' %}active{% endif %}"
-                       href="{% url 'tabletop-list' %}">Tabletop</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'rpg' %}active{% endif %}"
-                       href="{% url 'rpg-list' %}">RPG</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'accessories' %}active{% endif %}"
-                       href="{% url 'accessories-list' %}">Accessories</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link {% if nav == 'other' %}active{% endif %}"
-                       href="{% url 'other-list' %}">Other</a>
-                </li>
-            </ul>
+
+        <div class="sn-links" id="sn-links">
+            <a href="{% url 'home' %}" class="sn-link {% if nav == 'home' %}sn-link-active{% endif %}">
+                <i class="bi bi-house-door"></i><span>Home</span>
+            </a>
+            <a href="{% url 'shop-list' %}" class="sn-link {% if nav == 'shops' %}sn-link-active{% endif %}">
+                <i class="bi bi-shop-window"></i><span>Shops</span>
+            </a>
+            <a href="{% url 'listing-list' %}" class="sn-link {% if nav == 'listings' %}sn-link-active{% endif %}">
+                <i class="bi bi-tags"></i><span>Listings</span>
+            </a>
+            <a href="{% url 'game-list' %}" class="sn-link {% if nav == 'games' %}sn-link-active{% endif %}">
+                <i class="bi bi-controller"></i><span>Games</span>
+            </a>
+
+            <span class="sn-divider"></span>
+
+            <a href="{% url 'card-list' %}" class="sn-link sn-link-sub {% if nav == 'card' %}sn-link-active{% endif %}">
+                <span>Card Games</span>
+            </a>
+            <a href="{% url 'tabletop-list' %}" class="sn-link sn-link-sub {% if nav == 'tabletop' %}sn-link-active{% endif %}">
+                <span>Tabletop</span>
+            </a>
+            <a href="{% url 'rpg-list' %}" class="sn-link sn-link-sub {% if nav == 'rpg' %}sn-link-active{% endif %}">
+                <span>RPG</span>
+            </a>
+            <a href="{% url 'accessories-list' %}" class="sn-link sn-link-sub {% if nav == 'accessories' %}sn-link-active{% endif %}">
+                <span>Accessories</span>
+            </a>
+            <a href="{% url 'other-list' %}" class="sn-link sn-link-sub {% if nav == 'other' %}sn-link-active{% endif %}">
+                <span>Other</span>
+            </a>
         </div>
     </div>
 </nav>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var toggle = document.getElementById('sn-toggle');
+        var links = document.getElementById('sn-links');
+        if (toggle && links) {
+            toggle.addEventListener('click', function() {
+                toggle.classList.toggle('sn-toggle-open');
+                links.classList.toggle('sn-links-open');
+            });
+        }
+    });
+</script>

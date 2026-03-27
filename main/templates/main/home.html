@@ -3,28 +3,44 @@
 {% load humanize %}
 
 {% block content %}
-    <div class="row mt-5">
-        <div class="col">
-
-            {% if savings %}
-                <h3 class="">Best savings on games!</h3>
+    <div class="hp">
+        {% if savings %}
+            <section class="hp-section">
+                <div class="hp-section-header">
+                    <h2 class="hp-section-title">
+                        <i class="bi bi-piggy-bank"></i>
+                        Best Savings
+                    </h2>
+                    <p class="hp-section-sub">Games priced well below the average</p>
+                </div>
                 {% include 'main/snippet_game_group.html' with games=savings footer="discount" %}
-            {% endif %}
+            </section>
+        {% endif %}
 
-
-            {% if bundles %}
-                <hr class="m-5"/>
-                <h3 class="mt-5">Bundled listings!</h3>
+        {% if bundles %}
+            <section class="hp-section">
+                <div class="hp-section-header">
+                    <h2 class="hp-section-title">
+                        <i class="bi bi-box-seam"></i>
+                        Bundles
+                    </h2>
+                    <p class="hp-section-sub">Multi-game packs and collections</p>
+                </div>
                 {% include 'main/snippet_listing_group.html' with listings=bundles footer="none" %}
-            {% endif %}
+            </section>
+        {% endif %}
 
-
-            {% if latest %}
-                <hr class="m-5"/>
-                <h3 class="mt-5">Newest games!</h3>
+        {% if latest %}
+            <section class="hp-section">
+                <div class="hp-section-header">
+                    <h2 class="hp-section-title">
+                        <i class="bi bi-stars"></i>
+                        Just Added
+                    </h2>
+                    <p class="hp-section-sub">Recently discovered games</p>
+                </div>
                 {% include 'main/snippet_game_group.html' with games=latest footer="xdays" %}
-            {% endif %}
-
-        </div>
+            </section>
+        {% endif %}
     </div>
 {% endblock %}

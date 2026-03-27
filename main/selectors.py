@@ -88,7 +88,7 @@ def get_latest_new_games() -> QuerySet[Game]:
 
 def get_best_savings_games(reverse: bool = False) -> QuerySet[Game]:
     """Get the best savings games."""
-    games = Game.objects.order_by(f'{"" if reverse else "-"}shop_saving', '-shop_price').all()[:30]
+    games = Game.objects.order_by(f'{"" if reverse else "-"}shop_saving', '-shop_price').all()[:32]
     return games
 
 
@@ -175,7 +175,7 @@ def get_last_scrape(shop: Shop) -> Scrapelog | None:
 
 def list_newest_games():
     """List newest games."""
-    max_num = 18
+    max_num = 24
     rank_cutoff = 3_000
     days_to_fix = 1
     days_ago = timezone.now() - timedelta(days=days_to_fix)
