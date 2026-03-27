@@ -2,8 +2,8 @@
 
 ## Line Endings
 
-- Always use **CRLF** line endings. This is a Windows project with `core.autocrlf=true`.
-- `.gitattributes` enforces `eol=crlf`.
+- `.gitattributes` enforces `eol=crlf` for most files, but **shell scripts (`*.sh`) must use LF**.
+- Never change shell scripts to CRLF — they run on Linux and will break.
 
 ## Linting
 
