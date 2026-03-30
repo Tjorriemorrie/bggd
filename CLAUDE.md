@@ -9,6 +9,7 @@
 
 - This project uses **ruff** via pre-commit hooks.
 - Max line length is **100 characters** (E501). Keep all Python lines within this limit.
+- All public functions must have a **docstring** (D103). Add a one-line docstring to every `def` that isn't prefixed with `_`.
 - Run `pre-commit run ruff --files <file>` to check before committing.
 
 ## Project
