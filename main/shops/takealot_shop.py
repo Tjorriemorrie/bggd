@@ -1,7 +1,7 @@
+import json
 import logging
-import time
 
-from botasaurus_requests import request as bot_request
+from botasaurus.browser import Driver, browser
 
 from main.selectors import upsert_shop
 from main.shops.helpers import handle_item_data, missed_listings
@@ -17,30 +17,48 @@ api_base = (
 )
 IMG_SIZE = 'fb'
 
-_request_delay = 1.0
 
+@browser(headless=True, reuse_driver=True, close_on_crash=True)
+def fetch_all_pages(driver: Driver, _data):
+    """Fetch all pages using the browser to bypass bot detection."""
+    shop = upsert_shop(shop_name)
+    after = None
+    max_pages = 100
+    page = 0
+    while True:
+        page += 1
+        if page > max_pages:
+            logger.info(f'Reached max pages ({max_pages}), stopping.')
+            break
+        logger.info(f' Scraping page {page} '.center(99, '='))
 
-def fetch_page(after=None):
-    """Fetch a single page of results from the Takealot API."""
-    global _request_delay  # noqa: PLW0603
-    url = api_base
-    if after:
-        url += f'&after={after}'
-    forbidden = 403
-    max_retries = 3
-    for attempt in range(max_retries):
-        time.sleep(_request_delay)
-        res = bot_request.get(url, headers={})
-        ok = 200
-        if res.status_code == ok:
-            return res.json()
-        if res.status_code == forbidden and attempt < max_retries - 1:
-            _request_delay += 1.0
-            logger.warning(f'Got 403, retrying (delay now {_request_delay}s)')
-            continue
-        logger.warning(f'Got status {res.status_code}')
-        return None
-    return None
+        url = api_base
+        if after:
+            url += f'&after={after}'
+
+        driver.get(url)
+        try:
+            raw = driver.page_text
+            data = json.loads(raw)
+        except (json.JSONDecodeError, Exception):
+            logger.warning('Failed to parse JSON response')
+            break
+
+        products = data.get('sections', {}).get('products', {})
+        results = products.get('results', [])
+        if not results:
+            logger.info('No results found, stopping.')
+            break
+
+        logger.info(f'Got {len(results)} results on page {page}')
+        process_results(shop, results)
+
+        # next page cursor
+        paging = products.get('paging', {})
+        after = paging.get('next_is_after')
+        if not after:
+            logger.info('No more pages.')
+            break
 
 
 def process_results(shop, results):
@@ -74,41 +92,8 @@ def process_results(shop, results):
         handle_item_data(shop, title, href, img_src, in_stock, price_value)
 
 
-def scrape_site():
-    """Scrape all pages via cursor-based pagination."""
-    shop = upsert_shop(shop_name)
-    after = None
-    max_pages = 100
-    page = 0
-    while True:
-        page += 1
-        if page > max_pages:
-            logger.info(f'Reached max pages ({max_pages}), stopping.')
-            break
-        logger.info(f' Scraping page {page} '.center(99, '='))
-        data = fetch_page(after)
-        if not data:
-            break
-
-        products = data.get('sections', {}).get('products', {})
-        results = products.get('results', [])
-        if not results:
-            logger.info('No results found, stopping.')
-            break
-
-        logger.info(f'Got {len(results)} results on page {page}')
-        process_results(shop, results)
-
-        # next page cursor
-        paging = products.get('paging', {})
-        after = paging.get('next_is_after')
-        if not after:
-            logger.info('No more pages.')
-            break
-
-
 def scrape():
     """Scrape this site."""
-    scrape_site()
+    fetch_all_pages()
     shop = upsert_shop(shop_name)
     missed_listings(shop)
