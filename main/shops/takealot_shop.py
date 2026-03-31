@@ -18,7 +18,23 @@ api_base = (
 IMG_SIZE = 'fb'
 
 
-@browser(headless=True, reuse_driver=True, close_on_crash=True)
+_chrome_flags = [
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-gpu',
+    '--disable-extensions',
+    '--single-process',
+    '--js-flags=--max-old-space-size=128',
+]
+
+
+@browser(
+    headless=True,
+    reuse_driver=True,
+    close_on_crash=True,
+    block_images_and_css=True,
+    add_arguments=_chrome_flags,
+)
 def fetch_all_pages(driver: Driver, _data):
     """Fetch all pages using the browser to bypass bot detection."""
     shop = upsert_shop(shop_name)
