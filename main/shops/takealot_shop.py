@@ -1,4 +1,5 @@
 import logging
+import time
 
 from botasaurus_requests import request as bot_request
 
@@ -16,18 +17,30 @@ api_base = (
 )
 IMG_SIZE = 'fb'
 
+_request_delay = 1.0
+
 
 def fetch_page(after=None):
     """Fetch a single page of results from the Takealot API."""
+    global _request_delay  # noqa: PLW0603
     url = api_base
     if after:
         url += f'&after={after}'
-    res = bot_request.get(url, headers={})
-    ok = 200
-    if res.status_code != ok:
+    forbidden = 403
+    max_retries = 3
+    for attempt in range(max_retries):
+        time.sleep(_request_delay)
+        res = bot_request.get(url)
+        ok = 200
+        if res.status_code == ok:
+            return res.json()
+        if res.status_code == forbidden and attempt < max_retries - 1:
+            _request_delay += 1.0
+            logger.warning(f'Got 403, retrying (delay now {_request_delay}s)')
+            continue
         logger.warning(f'Got status {res.status_code}')
         return None
-    return res.json()
+    return None
 
 
 def process_results(shop, results):

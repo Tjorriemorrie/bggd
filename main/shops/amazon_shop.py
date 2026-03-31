@@ -16,18 +16,32 @@ shop_host = 'https://www.amazon.co.za'
 # https://www.amazon.co.za/s?i=toys&rh=n:28002628031,p_72:28056829031,p_6:A34KVLZUJN6MA,p_n_availability:28056815031&dc=&page=1
 
 
-def _request_with_backoff(url, max_retries=5, base_delay=3):
-    """GET with exponential backoff on 503 responses."""
+_request_delay = 1.0
+_scrape_start = None
+_timeout_minutes = 30
+
+
+def _timed_out():
+    """Check if the scrape has exceeded the timeout."""
+    elapsed = (time.time() - _scrape_start) / 60
+    return elapsed >= _timeout_minutes
+
+
+def _request_with_backoff(url):
+    """GET with linear backoff on 503 responses."""
+    global _request_delay  # noqa: PLW0603
     service_unavailable = 503
-    for attempt in range(max_retries):
+    while True:
+        time.sleep(_request_delay)
         res = bot_request.get(url, headers={})
         logger.info(f'Scraped {url} (status {res.status_code})...')
         if res.status_code != service_unavailable:
             return res
-        delay = base_delay * (2**attempt)
-        logger.warning(f'Got 503, retrying in {delay}s (attempt {attempt + 1}/{max_retries})')
-        time.sleep(delay)
-    return res
+        _request_delay += 0.5
+        logger.warning(f'Got 503, delay now {_request_delay}s')
+        if _timed_out():
+            logger.warning('Timeout reached, giving up')
+            return res
 
 
 def worker(page: int) -> bool:
@@ -103,12 +117,18 @@ def worker_wrapper(page):
 
 def scrape_site():
     """Scrape pages."""
+    global _scrape_start, _request_delay  # noqa: PLW0603
+    _scrape_start = time.time()
+    _request_delay = 1.0
     max_pages = 50
     page = 0
     while True:
         page += 1
         if page > max_pages:
             logger.info(f'Reached max pages ({max_pages}), stopping.')
+            break
+        if _timed_out():
+            logger.info('Timeout reached, stopping.')
             break
         outcome = worker(page)
         if not outcome:
