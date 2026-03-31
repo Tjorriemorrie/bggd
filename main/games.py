@@ -243,58 +243,53 @@ def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
     return game
 
 
-def search_bgg(name: str) -> dict | None:
-    """Search BGG for game by name."""
-    name = re.sub(r'board game', '', str(name), flags=re.IGNORECASE)
-    host = 'https://boardgamegeek.com/geeksearch.php'
+def _not_found(name: str) -> dict:
+    """Return a not-found result dict."""
+    return {
+        'name': 'not_found',
+        'bgg_id': None,
+        'image': None,
+        'search': f'https://boardgamegeek.com/xmlapi2/search?type=boardgame&query={name}',
+    }
+
+
+def search_bgg(name: str) -> dict:
+    """Search BGG for game by name using the XML API2."""
+    name = re.sub(r'board game', '', str(name), flags=re.IGNORECASE).strip()
+    if not name:
+        return _not_found(name)
+
+    host = 'https://boardgamegeek.com/xmlapi2/search'
     params = {
-        'objecttype': 'boardgame',
-        'action': 'search',
-        'q': name,
+        'type': 'boardgame',
+        'query': name,
+        'exact': 1,
     }
     res = get(host, params)
+    soup = BeautifulSoup(res.content, 'xml')
+    items = soup.find_all('item')
 
-    soup = BeautifulSoup(res.content, 'html.parser')
-    if 'No Items Found' in soup.text:
+    # If exact match fails, try non-exact search
+    if not items:
+        params.pop('exact')
+        res = get(host, params)
+        soup = BeautifulSoup(res.content, 'xml')
+        items = soup.find_all('item')
+
+    if not items:
+        # Retry with fewer words (trim first and last word)
         name_cut = ' '.join(name.split()[1:-1]).strip()
         if name_cut:
             return search_bgg(name_cut)
-        return {
-            'name': 'not_found',
-            'bgg_id': None,
-            'image': None,
-            'search': res.request.url,
-        }
+        return _not_found(name)
 
-    table = soup.find('table', id='collectionitems')
-    if not table:
-        return {
-            'name': 'not_found',
-            'bgg_id': None,
-            'image': None,
-            'search': res.request.url,
-        }
-    first_row = table.find_all('tr')[1]
-    tds = first_row.find_all('td')
-    second_cell = tds[1]
-    try:
-        image_url = second_cell.find('img')['src']
-    except TypeError:
-        return {
-            'name': 'not_found',
-            'bgg_id': None,
-            'image': None,
-            'search': res.request.url,
-        }
-    third_cell = tds[2]
-    anchor = third_cell.find('a')
-    game_name = anchor.text.strip()
-    href = anchor['href']
-    bgg_id = href.split('/')[2]
+    item = items[0]
+    bgg_id = item['id']
+    game_name = item.find('name')['value']
     return {
         'name': game_name,
         'bgg_id': bgg_id,
-        'image': image_url,
+        'image': None,
         'search': res.request.url,
     }
 
