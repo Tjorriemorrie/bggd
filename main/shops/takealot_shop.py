@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 
 from botasaurus.browser import Driver, browser
 
@@ -25,6 +26,8 @@ _chrome_flags = [
     '--single-process',
 ]
 
+_proxy = os.environ.get('TAKEALOT_PROXY')
+
 
 @browser(
     headless=True,
@@ -32,6 +35,7 @@ _chrome_flags = [
     close_on_crash=True,
     block_images_and_css=True,
     add_arguments=_chrome_flags,
+    proxy=_proxy,
 )
 def fetch_all_pages(driver: Driver, _data):
     """Fetch all pages using the browser to bypass Cloudflare."""
@@ -111,6 +115,11 @@ def process_results(shop, results):
 
 def scrape():
     """Scrape this site."""
+    if not _proxy:
+        logger.warning(
+            'TAKEALOT_PROXY not set — Takealot blocks datacenter IPs. '
+            'Set TAKEALOT_PROXY=http://user:pass@host:port to use a proxy.'
+        )
     fetch_all_pages()
     shop = upsert_shop(shop_name)
     missed_listings(shop)
