@@ -288,11 +288,15 @@ def _search_bgg_api(name: str) -> dict | None:
 
 def _search_bgg_web(name: str) -> dict | None:
     """Search BGG by scraping the web search page via botasaurus."""
+    from urllib.parse import quote_plus
+
     from botasaurus_requests import request as bot_request
 
-    host = 'https://boardgamegeek.com/geeksearch.php'
-    params = {'objecttype': 'boardgame', 'action': 'search', 'q': name}
-    res = bot_request.get(host, params=params)
+    url = (
+        f'https://boardgamegeek.com/geeksearch.php'
+        f'?objecttype=boardgame&action=search&q={quote_plus(name)}'
+    )
+    res = bot_request.get(url, headers={})
     search_url = res.url
 
     soup = BeautifulSoup(res.content, 'html.parser')
