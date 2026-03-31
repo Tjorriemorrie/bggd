@@ -337,6 +337,7 @@ def _get_bgg_scraper():
     return _bgg_scraper
 
 
+@retry((TooManyRequestsError, RequestsError), delay=3, max_delay=60, tries=42)
 def _search_bgg_web(name: str) -> dict | None:
     """Search BGG by scraping the web search page via cloudscraper."""
     from urllib.parse import quote_plus
@@ -347,6 +348,12 @@ def _search_bgg_web(name: str) -> dict | None:
         f'?objecttype=boardgame&action=search&q={quote_plus(name)}'
     )
     res = scraper.get(url, timeout=30)
+    if res.status_code in [429, 430]:
+        logger.error(f'Too many requests ({res.status_code}) for {name}')
+        raise TooManyRequestsError()
+    if res.status_code >= 500:
+        logger.error(f'Server error ({res.status_code}) for {name}')
+        raise TooManyRequestsError()
     if res.status_code != 200:
         logger.warning(f'BGG web search status={res.status_code} for {name}')
         return None
