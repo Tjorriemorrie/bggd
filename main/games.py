@@ -16,6 +16,8 @@ from django.utils.text import slugify
 from retry import retry
 from unidecode import unidecode
 
+from django.conf import settings as django_settings
+
 import main.constants as c
 from main.errors import (
     BggGameNotFoundError,
@@ -91,6 +93,9 @@ def get(
 
     if res.status_code in [requests.codes.too_many, 430]:
         logger.error(f'Too many requests for {url} {params}')
+        raise TooManyRequestsError()
+    elif res.status_code in [401, 403]:
+        logger.error(f'{res.status_code} blocked for {url} {params}')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
         logger.error(f'Server error! {url}')
@@ -243,55 +248,93 @@ def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
     return game
 
 
-def _not_found(name: str) -> dict:
+def _not_found(name: str, search_url: str = '') -> dict:
     """Return a not-found result dict."""
     return {
         'name': 'not_found',
         'bgg_id': None,
         'image': None,
-        'search': f'https://boardgamegeek.com/xmlapi2/search?type=boardgame&query={name}',
+        'search': search_url,
     }
 
 
-def search_bgg(name: str) -> dict:
-    """Search BGG for game by name using the XML API2."""
-    name = re.sub(r'board game', '', str(name), flags=re.IGNORECASE).strip()
-    if not name:
-        return _not_found(name)
-
+def _search_bgg_api(name: str) -> dict | None:
+    """Search BGG using the XML API2 (requires BGG_API_TOKEN)."""
     host = 'https://boardgamegeek.com/xmlapi2/search'
-    params = {
-        'type': 'boardgame',
-        'query': name,
-        'exact': 1,
-    }
-    res = get(host, params)
+    headers = {'Authorization': f'Bearer {django_settings.BGG_API_TOKEN}'}
+    params = {'type': 'boardgame', 'query': name, 'exact': 1}
+
+    res = get(host, params, headers=headers)
     soup = BeautifulSoup(res.content, 'xml')
     items = soup.find_all('item')
 
-    # If exact match fails, try non-exact search
     if not items:
         params.pop('exact')
-        res = get(host, params)
+        res = get(host, params, headers=headers)
         soup = BeautifulSoup(res.content, 'xml')
         items = soup.find_all('item')
 
     if not items:
-        # Retry with fewer words (trim first and last word)
-        name_cut = ' '.join(name.split()[1:-1]).strip()
-        if name_cut:
-            return search_bgg(name_cut)
-        return _not_found(name)
+        return None
 
     item = items[0]
-    bgg_id = item['id']
-    game_name = item.find('name')['value']
     return {
-        'name': game_name,
-        'bgg_id': bgg_id,
+        'name': item.find('name')['value'],
+        'bgg_id': item['id'],
         'image': None,
         'search': res.request.url,
     }
+
+
+def _search_bgg_web(name: str) -> dict | None:
+    """Search BGG by scraping the web search page via botasaurus."""
+    from botasaurus_requests import request as bot_request
+
+    host = 'https://boardgamegeek.com/geeksearch.php'
+    params = {'objecttype': 'boardgame', 'action': 'search', 'q': name}
+    res = bot_request.get(host, params=params)
+    search_url = res.url
+
+    soup = BeautifulSoup(res.content, 'html.parser')
+    if 'No Items Found' in soup.text:
+        return None
+
+    table = soup.find('table', id='collectionitems')
+    if not table:
+        return None
+
+    first_row = table.find_all('tr')[1]
+    tds = first_row.find_all('td')
+    try:
+        image_url = tds[1].find('img')['src']
+    except (TypeError, IndexError):
+        return None
+
+    anchor = tds[2].find('a')
+    return {
+        'name': anchor.text.strip(),
+        'bgg_id': anchor['href'].split('/')[2],
+        'image': image_url,
+        'search': search_url,
+    }
+
+
+def search_bgg(name: str) -> dict:
+    """Search BGG for game by name."""
+    name = re.sub(r'board game', '', str(name), flags=re.IGNORECASE).strip()
+    if not name:
+        return _not_found(name)
+
+    searcher = _search_bgg_api if django_settings.BGG_API_TOKEN else _search_bgg_web
+    result = searcher(name)
+    if result:
+        return result
+
+    # Retry with fewer words (trim first and last word)
+    name_cut = ' '.join(name.split()[1:-1]).strip()
+    if name_cut:
+        return search_bgg(name_cut)
+    return _not_found(name)
 
 
 # def scrape_game_reviews(game: Game):
