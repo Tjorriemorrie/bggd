@@ -55,9 +55,11 @@ def fetch_all_pages(driver: Driver, _data):
         driver.get(url)
         try:
             raw = driver.page_text
+            logger.info(f'Page text (first 500 chars): {raw[:500]}')
             data = json.loads(raw)
-        except (json.JSONDecodeError, Exception):
-            logger.warning('Failed to parse JSON response')
+        except (json.JSONDecodeError, ValueError) as exc:
+            logger.warning(f'Failed to parse JSON: {exc}')
+            logger.info(f'Full page HTML: {driver.page_html[:1000]}')
             break
 
         products = data.get('sections', {}).get('products', {})
