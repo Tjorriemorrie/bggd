@@ -326,7 +326,14 @@ def _get_bgg_scraper():
     if _bgg_scraper is None:
         import cloudscraper
 
-        _bgg_scraper = cloudscraper.create_scraper()
+        _bgg_scraper = cloudscraper.create_scraper(
+            browser={'browser': 'chrome', 'platform': 'linux', 'desktop': True},
+            delay=10,
+        )
+        # Warm up session by visiting homepage first to solve CF challenge
+        logger.info('Warming up BGG cloudscraper session...')
+        res = _bgg_scraper.get('https://boardgamegeek.com/', timeout=30)
+        logger.info(f'BGG warmup status={res.status_code}')
     return _bgg_scraper
 
 
