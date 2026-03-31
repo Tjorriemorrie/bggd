@@ -286,39 +286,8 @@ def _search_bgg_api(name: str) -> dict | None:
     }
 
 
-_bgg_driver = None
-
-
-def _get_bgg_driver():
-    """Get or create a persistent headless browser for BGG searches."""
-    global _bgg_driver  # noqa: PLW0603
-    if _bgg_driver is None:
-        from botasaurus.browser import Driver
-
-        logger.info('Starting BGG headless browser...')
-        _bgg_driver = Driver(headless=True)
-        _bgg_driver.get('https://boardgamegeek.com/geeksearch.php')
-        if _bgg_driver.is_bot_detected_by_cloudflare():
-            logger.info('Cloudflare detected, bypassing...')
-            _bgg_driver.detect_and_bypass_cloudflare()
-        logger.info('BGG browser ready')
-    return _bgg_driver
-
-
-def _search_bgg_web(name: str) -> dict | None:
-    """Search BGG by scraping the web search page via botasaurus."""
-    from urllib.parse import quote_plus
-
-    driver = _get_bgg_driver()
-    url = (
-        f'https://boardgamegeek.com/geeksearch.php'
-        f'?objecttype=boardgame&action=search&q={quote_plus(name)}'
-    )
-    driver.get(url)
-    if driver.is_bot_detected_by_cloudflare():
-        driver.detect_and_bypass_cloudflare()
-
-    html = driver.page_html
+def _parse_bgg_search_html(html: str, name: str, url: str) -> dict | None:
+    """Parse BGG geeksearch HTML and extract the first result."""
     soup = BeautifulSoup(html, 'html.parser')
     if 'No Items Found' in soup.text:
         return None
@@ -346,6 +315,70 @@ def _search_bgg_web(name: str) -> dict | None:
         'image': image_url,
         'search': url,
     }
+
+
+def _search_bgg_web(name: str) -> dict | None:
+    """Search BGG by scraping the web search page via botasaurus browser."""
+    from urllib.parse import quote_plus
+
+    from botasaurus.browser import Driver, browser
+
+    url = (
+        f'https://boardgamegeek.com/geeksearch.php'
+        f'?objecttype=boardgame&action=search&q={quote_plus(name)}'
+    )
+
+    @browser(headless=True)
+    def _fetch(driver: Driver, search_url):
+        """Fetch a BGG search page, bypassing Cloudflare."""
+        driver.get(search_url)
+        if driver.is_bot_detected_by_cloudflare():
+            driver.detect_and_bypass_cloudflare()
+        return driver.page_html
+
+    html = _fetch(url)
+    return _parse_bgg_search_html(html, name, url)
+
+
+def _search_bgg_web_batch(names: list[str]) -> dict[str, dict | None]:
+    """Search BGG for multiple names in a single browser session."""
+    from urllib.parse import quote_plus
+
+    from botasaurus.browser import Driver, browser
+
+    @browser(headless=True, data=[names])
+    def _fetch_all(driver: Driver, name_list):
+        """Search BGG for each name in one browser session."""
+        results = {}
+        for name in name_list:
+            url = (
+                f'https://boardgamegeek.com/geeksearch.php'
+                f'?objecttype=boardgame&action=search'
+                f'&q={quote_plus(name)}'
+            )
+            driver.get(url)
+            if driver.is_bot_detected_by_cloudflare():
+                driver.detect_and_bypass_cloudflare()
+            results[name] = _parse_bgg_search_html(driver.page_html, name, url)
+            # If not found, try trimming words recursively
+            if results[name] is None:
+                trimmed = name
+                while results.get(name) is None:
+                    trimmed = ' '.join(trimmed.split()[1:-1]).strip()
+                    if not trimmed:
+                        break
+                    trim_url = (
+                        f'https://boardgamegeek.com/geeksearch.php'
+                        f'?objecttype=boardgame&action=search'
+                        f'&q={quote_plus(trimmed)}'
+                    )
+                    driver.get(trim_url)
+                    if driver.is_bot_detected_by_cloudflare():
+                        driver.detect_and_bypass_cloudflare()
+                    results[name] = _parse_bgg_search_html(driver.page_html, trimmed, trim_url)
+        return results
+
+    return _fetch_all()
 
 
 def search_bgg(name: str) -> dict:
@@ -715,6 +748,14 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
     game.save()
 
 
+def _clean_listing_name(name: str) -> str:
+    """Clean a listing name for BGG search."""
+    name = name.replace('(Pre-loved)', '')
+    name = name.replace('(Pre-Loved)', '')
+    name = name.replace('Bundle', '')
+    return re.sub(r'board game', '', name, flags=re.IGNORECASE).strip()
+
+
 def auto_assign_games():
     """Auto assign games from search."""
     logger.info('Auto assign games from search...')
@@ -729,22 +770,42 @@ def auto_assign_games():
         return
 
     random.shuffle(listings)
-    for ix, listing in enumerate(listings):
-        name = listing.name
-        name = name.replace('(Pre-loved)', '')
-        name = name.replace('(Pre-Loved)', '')
-        name = name.replace('Bundle', '')
-        bgg = search_bgg(name.strip())
-        if not bgg['bgg_id']:
-            logger.warning(f'{ix}/{total} No bgg game found for {listing}')
-            listing.bgg_missing = True
-            listing.save()
-            continue
 
-        listing.bgg_id = bgg['bgg_id']
-        listing.bgg_missing = False
-        listing.save()
-        logger.info(f'{ix}/{total} Successfully assigned {bgg["name"]} to {listing}')
+    if django_settings.BGG_API_TOKEN:
+        # API path: search one at a time
+        for ix, listing in enumerate(listings):
+            name = _clean_listing_name(listing.name)
+            bgg = search_bgg(name)
+            if not bgg['bgg_id']:
+                logger.warning(f'{ix}/{total} No bgg game found for {listing}')
+                listing.bgg_missing = True
+                listing.save()
+                continue
+            listing.bgg_id = bgg['bgg_id']
+            listing.bgg_missing = False
+            listing.save()
+            logger.info(f'{ix}/{total} Assigned {bgg["name"]} to {listing}')
+    else:
+        # Web path: batch all searches in a single browser session
+        name_map = {}
+        for listing in listings:
+            name_map[listing] = _clean_listing_name(listing.name)
+
+        clean_names = [n for n in name_map.values() if n]
+        logger.info(f'Batch searching {len(clean_names)} names via browser...')
+        results = _search_bgg_web_batch(clean_names)
+
+        for ix, (listing, name) in enumerate(name_map.items()):
+            bgg = results.get(name) or _not_found(name)
+            if not bgg['bgg_id']:
+                logger.warning(f'{ix}/{total} No bgg game found for {listing}')
+                listing.bgg_missing = True
+                listing.save()
+                continue
+            listing.bgg_id = bgg['bgg_id']
+            listing.bgg_missing = False
+            listing.save()
+            logger.info(f'{ix}/{total} Assigned {bgg["name"]} to {listing}')
 
 
 def clean_games():
