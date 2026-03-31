@@ -1,5 +1,6 @@
 import logging
 import re
+import time
 
 from botasaurus_requests import request as bot_request
 from bs4 import BeautifulSoup
@@ -13,6 +14,20 @@ enabled = True
 shop_name = 'Amazon'
 shop_host = 'https://www.amazon.co.za'
 # https://www.amazon.co.za/s?i=toys&rh=n:28002628031,p_72:28056829031,p_6:A34KVLZUJN6MA,p_n_availability:28056815031&dc=&page=1
+
+
+def _request_with_backoff(url, max_retries=5, base_delay=3):
+    """GET with exponential backoff on 503 responses."""
+    service_unavailable = 503
+    for attempt in range(max_retries):
+        res = bot_request.get(url, headers={})
+        logger.info(f'Scraped {url} (status {res.status_code})...')
+        if res.status_code != service_unavailable:
+            return res
+        delay = base_delay * (2**attempt)
+        logger.warning(f'Got 503, retrying in {delay}s (attempt {attempt + 1}/{max_retries})')
+        time.sleep(delay)
+    return res
 
 
 def worker(page: int) -> bool:
@@ -29,8 +44,7 @@ def worker(page: int) -> bool:
     query = '&'.join(f'{k}={v}' for k, v in params.items())
     full_url = f'{url}?{query}'
 
-    res = bot_request.get(full_url, headers={})
-    logger.info(f'Scraped {full_url} (status {res.status_code})...')
+    res = _request_with_backoff(full_url)
     ok = 200
     if res.status_code != ok:
         logger.warning(f'Got status {res.status_code}')

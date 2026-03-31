@@ -181,7 +181,7 @@ LOGGING = {
     },
     'handlers': {
         'file': {
-            'level': 'DEBUG',
+            'level': 'INFO',
             'class': 'logging.handlers.TimedRotatingFileHandler',
             'filename': str(LOG_DIR / 'app.log'),
             'when': 'midnight',
@@ -198,18 +198,18 @@ LOGGING = {
     },
     'root': {
         'handlers': ['file', 'console'],
-        'level': 'DEBUG',
+        'level': 'INFO',
         'propagate': False,
     },
     'loggers': {
         'django': {
             'handlers': ['file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False,
         },
         'django.server': {
             'handlers': ['file'],
-            'level': 'DEBUG',
+            'level': 'INFO',
             'propagate': False,
         },
     },
