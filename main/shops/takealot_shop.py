@@ -30,7 +30,7 @@ def fetch_page(after=None):
     max_retries = 3
     for attempt in range(max_retries):
         time.sleep(_request_delay)
-        res = bot_request.get(url)
+        res = bot_request.get(url, headers={})
         ok = 200
         if res.status_code == ok:
             return res.json()
