@@ -286,25 +286,50 @@ def _search_bgg_api(name: str) -> dict | None:
     }
 
 
+_bgg_driver = None
+
+
+def _get_bgg_driver():
+    """Get or create a persistent headless browser for BGG searches."""
+    global _bgg_driver  # noqa: PLW0603
+    if _bgg_driver is None:
+        from botasaurus.browser import Driver
+
+        logger.info('Starting BGG headless browser...')
+        _bgg_driver = Driver(headless=True)
+        _bgg_driver.get('https://boardgamegeek.com/geeksearch.php')
+        if _bgg_driver.is_bot_detected_by_cloudflare():
+            logger.info('Cloudflare detected, bypassing...')
+            _bgg_driver.detect_and_bypass_cloudflare()
+        logger.info('BGG browser ready')
+    return _bgg_driver
+
+
 def _search_bgg_web(name: str) -> dict | None:
     """Search BGG by scraping the web search page via botasaurus."""
     from urllib.parse import quote_plus
 
-    from botasaurus_requests import request as bot_request
-
+    driver = _get_bgg_driver()
     url = (
         f'https://boardgamegeek.com/geeksearch.php'
         f'?objecttype=boardgame&action=search&q={quote_plus(name)}'
     )
-    res = bot_request.get(url, headers={})
-    search_url = res.url
+    driver.get(url)
+    if driver.is_bot_detected_by_cloudflare():
+        driver.detect_and_bypass_cloudflare()
 
-    soup = BeautifulSoup(res.content, 'html.parser')
+    html = driver.page_html
+    soup = BeautifulSoup(html, 'html.parser')
     if 'No Items Found' in soup.text:
         return None
 
     table = soup.find('table', id='collectionitems')
     if not table:
+        title = soup.find('title')
+        logger.warning(
+            f'BGG web search: no results table for {name}'
+            f' (title={title.text.strip() if title else "none"})'
+        )
         return None
 
     first_row = table.find_all('tr')[1]
@@ -319,7 +344,7 @@ def _search_bgg_web(name: str) -> dict | None:
         'name': anchor.text.strip(),
         'bgg_id': anchor['href'].split('/')[2],
         'image': image_url,
-        'search': search_url,
+        'search': url,
     }
 
 
