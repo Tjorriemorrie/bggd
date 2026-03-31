@@ -17,14 +17,12 @@ api_base = (
 )
 IMG_SIZE = 'fb'
 
-
 _chrome_flags = [
     '--no-sandbox',
     '--disable-dev-shm-usage',
     '--disable-gpu',
     '--disable-extensions',
     '--single-process',
-    '--js-flags=--max-old-space-size=128',
 ]
 
 
@@ -36,7 +34,11 @@ _chrome_flags = [
     add_arguments=_chrome_flags,
 )
 def fetch_all_pages(driver: Driver, _data):
-    """Fetch all pages using the browser to bypass bot detection."""
+    """Fetch all pages using the browser to bypass Cloudflare."""
+    # Visit site first to obtain Cloudflare cookies
+    driver.get(f'{shop_host}/toys/board-games-25346')
+    logger.info(f'Opened site: {driver.title}')
+
     shop = upsert_shop(shop_name)
     after = None
     max_pages = 100
@@ -54,12 +56,9 @@ def fetch_all_pages(driver: Driver, _data):
 
         driver.get(url)
         try:
-            raw = driver.page_text
-            logger.info(f'Page text (first 500 chars): {raw[:500]}')
-            data = json.loads(raw)
-        except (json.JSONDecodeError, ValueError) as exc:
-            logger.warning(f'Failed to parse JSON: {exc}')
-            logger.info(f'Full page HTML: {driver.page_html[:1000]}')
+            data = json.loads(driver.page_text)
+        except (json.JSONDecodeError, ValueError):
+            logger.warning('Failed to parse JSON, possibly blocked.')
             break
 
         products = data.get('sections', {}).get('products', {})
