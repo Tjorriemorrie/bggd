@@ -337,10 +337,16 @@ def _get_bgg_scraper():
     return _bgg_scraper
 
 
+_bgg_web_sleep = 0
+
+
 @retry((TooManyRequestsError, RequestsError), delay=3, max_delay=60, tries=42)
 def _search_bgg_web(name: str) -> dict | None:
     """Search BGG by scraping the web search page via cloudscraper."""
+    global _bgg_web_sleep  # noqa: PLW0603
     from urllib.parse import quote_plus
+
+    sleep(_bgg_web_sleep)
 
     scraper = _get_bgg_scraper()
     url = (
@@ -349,14 +355,21 @@ def _search_bgg_web(name: str) -> dict | None:
     )
     res = scraper.get(url, timeout=30)
     if res.status_code in [429, 430]:
-        logger.error(f'Too many requests ({res.status_code}) for {name}')
+        _bgg_web_sleep = round(_bgg_web_sleep + 5, 3)
+        logger.error(
+            f'Too many requests ({res.status_code}) for {name}, ' f'sleep now {_bgg_web_sleep}s'
+        )
         raise TooManyRequestsError()
     if res.status_code >= 500:
+        _bgg_web_sleep = round(_bgg_web_sleep + 5, 3)
         logger.error(f'Server error ({res.status_code}) for {name}')
         raise TooManyRequestsError()
     if res.status_code != 200:
         logger.warning(f'BGG web search status={res.status_code} for {name}')
         return None
+    # Slowly decrease sleep on success
+    if _bgg_web_sleep:
+        _bgg_web_sleep = round(max(0, _bgg_web_sleep - 0.005), 3)
     return _parse_bgg_search_html(res.text, name, url)
 
 
