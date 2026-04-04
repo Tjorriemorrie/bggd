@@ -31,10 +31,13 @@ jobs:
       - name: Add DigitalOcean host to known_hosts
         run: |
           mkdir -p ~/.ssh
-          ssh-keyscan -H ${{ secrets.SERVER_HOST }} > ~/.ssh/known_hosts
+          echo "Scanning host: [${{ secrets.SERVER_HOST }}]"
+          ssh-keyscan -T 10 -H ${{ secrets.SERVER_HOST }} >> ~/.ssh/known_hosts 2>&1
+          if [ ! -s ~/.ssh/known_hosts ]; then
+            echo "ERROR: known_hosts is empty — check SERVER_HOST secret"
+            exit 1
+          fi
           chmod 600 ~/.ssh/known_hosts
-          echo "Known hosts file contents:"
-          cat ~/.ssh/known_hosts
 
       - name: Debug SSH connection (optional)
         run: |
