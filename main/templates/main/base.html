@@ -59,20 +59,14 @@
     </footer>
 </div>
 {% if not DEVELOPER %}
-<!-- Matomo -->
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-3ZPKJ1TKK1"></script>
 <script>
-  var _paq = window._paq = window._paq || [];
-  _paq.push(['trackPageView']);
-  _paq.push(['enableLinkTracking']);
-  (function() {
-    var u="https://quillkeeper.matomo.cloud/";
-    _paq.push(['setTrackerUrl', u+'matomo.php']);
-    _paq.push(['setSiteId', '3']);
-    var d=document, g=d.createElement('script'), s=d.getElementsByTagName('script')[0];
-    g.async=true; g.src='https://cdn.matomo.cloud/quillkeeper.matomo.cloud/matomo.js'; s.parentNode.insertBefore(g,s);
-  })();
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'G-3ZPKJ1TKK1');
 </script>
-<!-- End Matomo Code -->
 {% endif %}
 </body>
 </html>
