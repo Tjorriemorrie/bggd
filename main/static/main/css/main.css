@@ -60,7 +60,7 @@ a:hover {
     transform: rotate(20deg);
 }
 .sn-brand-txt {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-weight: 700;
     font-size: 1.15rem;
     color: #faf8f5;
@@ -91,7 +91,7 @@ a:hover {
     gap: 0.35rem;
     padding: 0.55rem 0.75rem;
     font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: rgba(250, 248, 245, 0.6);
     text-decoration: none;
@@ -118,7 +118,7 @@ a:hover {
 
 /* sub-category links: slightly muted */
 .sn-link-sub {
-    font-size: 0.78rem;
+    font-size: 0.88rem;
     font-weight: 400;
     color: rgba(250, 248, 245, 0.4);
     padding: 0.45rem 0.6rem;
@@ -261,7 +261,7 @@ a:hover {
 
 /* breadcrumb */
 .ld-breadcrumb {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     color: var(--ld-muted);
     margin-bottom: 1.5rem;
 }
@@ -312,7 +312,7 @@ a:hover {
     left: -6px;
     background: var(--ld-red);
     color: #fff;
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.08em;
@@ -335,7 +335,7 @@ a:hover {
     right: 14px;
     background: var(--ld-muted);
     color: #fff;
-    font-size: 0.68rem;
+    font-size: 0.88rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -352,7 +352,7 @@ a:hover {
 
 .ld-category {
     display: inline-block;
-    font-size: 0.7rem;
+    font-size: 0.88rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.12em;
@@ -365,7 +365,7 @@ a:hover {
 }
 
 .ld-title {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-weight: 700;
     font-size: 1.65rem;
     line-height: 1.25;
@@ -380,7 +380,7 @@ a:hover {
     margin-bottom: 0.8rem;
 }
 .ld-shop-label {
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--ld-muted);
 }
 .ld-shop-name {
@@ -404,22 +404,24 @@ a:hover {
     margin-bottom: 0.3rem;
 }
 .ld-price {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-size: 2rem;
     font-weight: 700;
     color: var(--ld-text);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.01em;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum", "lnum";
 }
 .ld-price-oos {
     color: var(--ld-red);
     font-size: 1.4rem;
 }
 .ld-last-price {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     color: var(--ld-muted);
 }
 .ld-price-vs {
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--ld-green);
     display: flex;
@@ -433,7 +435,7 @@ a:hover {
     display: flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--ld-muted);
     margin-bottom: 1rem;
 }
@@ -475,7 +477,7 @@ a:hover {
 }
 
 .ld-meta-note {
-    font-size: 0.78rem;
+    font-size: 0.88rem;
     color: var(--ld-muted);
     margin: 0;
 }
@@ -486,7 +488,7 @@ a:hover {
     margin-top: 2.2rem;
 }
 .ld-section-title {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-size: 1.15rem;
     font-weight: 500;
     color: var(--ld-text);
@@ -533,7 +535,7 @@ a:hover {
     gap: 0.4rem;
 }
 .ld-game-name {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-size: 1.15rem;
     font-weight: 700;
     margin: 0;
@@ -569,14 +571,16 @@ a:hover {
     min-width: 52px;
 }
 .ld-stat-val {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-size: 1.2rem;
     font-weight: 700;
     color: var(--ld-accent);
     line-height: 1.2;
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum", "lnum";
 }
 .ld-stat-lbl {
-    font-size: 0.68rem;
+    font-size: 0.88rem;
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--ld-muted);
@@ -586,7 +590,7 @@ a:hover {
     display: inline-flex;
     align-items: center;
     gap: 0.4rem;
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--ld-accent);
     text-decoration: none;
@@ -633,25 +637,27 @@ a:hover {
     flex-direction: column;
 }
 .ld-sib-shop {
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.06em;
     color: var(--ld-gold);
 }
 .ld-sib-name {
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     color: var(--ld-muted);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
 }
 .ld-sib-price {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-weight: 700;
     font-size: 1.05rem;
     white-space: nowrap;
     color: var(--ld-accent);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum", "lnum";
 }
 
 /* footer meta */
@@ -661,7 +667,7 @@ a:hover {
     border-top: 1px solid var(--ld-border);
     display: flex;
     gap: 2rem;
-    font-size: 0.75rem;
+    font-size: 0.88rem;
     color: var(--ld-muted);
 }
 
@@ -734,7 +740,7 @@ a:hover {
     text-decoration: none;
     flex-shrink: 0;
     transition: background 0.15s, transform 0.15s;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
 }
 .gd-go-btn:hover {
     background: var(--ld-accent);
@@ -818,7 +824,7 @@ a:hover {
     border-bottom: 2px solid var(--hp-border);
 }
 .hp-section-title {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-size: 1.35rem;
     font-weight: 700;
     color: var(--hp-text);
@@ -832,7 +838,7 @@ a:hover {
     font-size: 1.1rem;
 }
 .hp-section-sub {
-    font-size: 0.82rem;
+    font-size: 0.88rem;
     color: var(--hp-muted);
     margin: 0.25rem 0 0;
 }
@@ -890,7 +896,7 @@ a:hover {
     position: absolute;
     top: 10px;
     right: 10px;
-    font-size: 0.68rem;
+    font-size: 0.88rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
@@ -917,7 +923,7 @@ a:hover {
 }
 .hp-card-title {
     font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
-    font-size: 0.85rem;
+    font-size: 0.88rem;
     font-weight: 600;
     line-height: 1.3;
     margin: 0;
@@ -934,14 +940,16 @@ a:hover {
     margin-top: auto;
 }
 .hp-card-price {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Fraunces', Georgia, serif;
     font-size: 1.15rem;
     font-weight: 700;
     color: var(--hp-accent);
+    font-variant-numeric: tabular-nums lining-nums;
+    font-feature-settings: "tnum", "lnum";
 }
 .hp-card-price .out-of-stock {
     font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
-    font-size: 0.78rem;
+    font-size: 0.88rem;
     font-weight: 600;
     color: var(--hp-red);
 }
@@ -956,7 +964,7 @@ a:hover {
     align-items: center;
     padding: 0.5rem 1rem;
     border-top: 1px solid var(--hp-border);
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     color: var(--hp-muted);
 }
 .hp-card-shop {
@@ -1000,7 +1008,7 @@ a:hover {
 }
 .site-footer-label {
     font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
-    font-size: 0.72rem;
+    font-size: 0.88rem;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.1em;
@@ -1011,14 +1019,14 @@ a:hover {
     align-items: center;
     gap: 0.3rem;
     color: #8a7e76;
-    font-size: 0.8rem;
+    font-size: 0.88rem;
 }
 .site-footer-btc i {
     color: #c8a45c;
     font-size: 1rem;
 }
 .site-footer-btc code {
-    font-size: 0.75rem;
+    font-size: 0.88rem;
     color: #6b4226;
     background: #faf8f5;
     padding: 2px 8px;
