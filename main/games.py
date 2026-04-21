@@ -344,6 +344,7 @@ _bgg_web_sleep = 0
 def _search_bgg_web(name: str) -> dict | None:
     """Search BGG by scraping the web search page via cloudscraper."""
     global _bgg_web_sleep  # noqa: PLW0603
+    global _bgg_scraper  # noqa: PLW0603
     from urllib.parse import quote_plus
 
     sleep(_bgg_web_sleep)
@@ -354,11 +355,10 @@ def _search_bgg_web(name: str) -> dict | None:
         f'?objecttype=boardgame&action=search&q={quote_plus(name)}'
     )
     res = scraper.get(url, timeout=30)
-    if res.status_code in [429, 430]:
+    if res.status_code in [401, 403, 429, 430]:
         _bgg_web_sleep = round(_bgg_web_sleep + 5, 3)
-        logger.error(
-            f'Too many requests ({res.status_code}) for {name}, ' f'sleep now {_bgg_web_sleep}s'
-        )
+        logger.error(f'Blocked ({res.status_code}) for {name}, sleep now {_bgg_web_sleep}s')
+        _bgg_scraper = None
         raise TooManyRequestsError()
     if res.status_code >= 500:
         _bgg_web_sleep = round(_bgg_web_sleep + 5, 3)
