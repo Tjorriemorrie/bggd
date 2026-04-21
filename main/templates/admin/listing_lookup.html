@@ -29,9 +29,7 @@
 
     <div>
         <h5 class="mt-3">BGG search:</h5>
-        {% if bgg.search %}
-            <p><a href="{{ bgg.search }}" target="_blank">search bgg</a></p>
-        {% endif %}
+        <p><a href="{{ bgg.search|default:"https://boardgamegeek.com/geeksearch.php?objecttype=boardgame&action=search&q=" }}{% if not bgg.search %}{{ listing.bgg_id|default:listing.name|urlencode }}{% endif %}" target="_blank">search bgg</a></p>
 
         <p>BGG ID assigned:
             {% if listing.bgg_id %}

@@ -4,7 +4,13 @@
       "Bash(pre-commit run *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(python -c \"import ast; ast.parse\\(open\\('main/games.py'\\).read\\(\\)\\); print\\('syntax ok'\\)\")"
+      "Bash(python -c \"import ast; ast.parse\\(open\\('main/games.py'\\).read\\(\\)\\); print\\('syntax ok'\\)\")",
+      "WebFetch(domain:boardgamegeek.com)",
+      "WebSearch",
+      "Bash(python -c ' *)",
+      "Bash(python _test_bgg.py)",
+      "Bash(.venv/Scripts/python.exe _test_bgg.py)",
+      "Bash(git reset *)"
     ]
   }
 }
