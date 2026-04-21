@@ -62,8 +62,6 @@ def get(
     """Helper function to do back off fetches with requests."""
     global sleep_time  # noqa PLW0603
 
-    if sleep_time:
-        logger.info(f'Throttled {sleep_time}s before {url}')
     sleep(sleep_time)
 
     headers_default = {
@@ -83,16 +81,25 @@ def get(
         raise RequestsError() from exc
 
     if res.status_code in [requests.codes.too_many, 430]:
+        prev = sleep_time
         sleep_time = round(sleep_time + 0.05, 4)
-        logger.error(f'Too many requests for {url} {params}; sleep now {sleep_time}s')
+        logger.error(
+            f'Too many requests for {url} {params}; sleep {prev}s -> {sleep_time}s (+0.05)'
+        )
         raise TooManyRequestsError()
     elif res.status_code in [401, 403]:
+        prev = sleep_time
         sleep_time = round(sleep_time + 0.05, 4)
-        logger.error(f'{res.status_code} blocked for {url} {params}; sleep now {sleep_time}s')
+        logger.error(
+            f'{res.status_code} blocked for {url} {params}; sleep {prev}s -> {sleep_time}s (+0.05)'
+        )
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
+        prev = sleep_time
         sleep_time = round(sleep_time + 0.05, 4)
-        logger.error(f'Server error ({res.status_code}) for {url}; sleep now {sleep_time}s')
+        logger.error(
+            f'Server error ({res.status_code}) for {url}; sleep {prev}s -> {sleep_time}s (+0.05)'
+        )
         raise TooManyRequestsError()
     elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
