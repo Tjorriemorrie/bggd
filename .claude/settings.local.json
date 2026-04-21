@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(pre-commit run *)"
+      "Bash(pre-commit run *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }
