@@ -105,10 +105,10 @@ def get(
         logger.error(f'Redirect required: {url}')
         raise RedirectError()
 
-    # success: slowly decay the throttle (10x slower than bump so it accumulates
-    # under sustained rate-limiting, but still returns to 0 when BGG is happy)
+    # success: very slowly decay the throttle (100x slower than bump) so a
+    # built-up buffer survives bursts of successes between rate-limits
     if sleep_time:
-        sleep_time = round(max(0, sleep_time - 0.005), 4)
+        sleep_time = round(max(0, sleep_time - 0.0005), 4)
 
     try:
         res.raise_for_status()
