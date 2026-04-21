@@ -62,6 +62,8 @@ def get(
     """Helper function to do back off fetches with requests."""
     global sleep_time  # noqa PLW0603
 
+    if sleep_time:
+        logger.info(f'Throttled {sleep_time}s before {url}')
     sleep(sleep_time)
 
     headers_default = {
