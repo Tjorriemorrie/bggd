@@ -16,8 +16,6 @@ from django.utils.text import slugify
 from retry import retry
 from unidecode import unidecode
 
-from django.conf import settings as django_settings
-
 import main.constants as c
 from main.errors import (
     BggGameNotFoundError,
@@ -259,18 +257,17 @@ def _not_found(name: str, search_url: str = '') -> dict:
 
 
 def _search_bgg_api(name: str) -> dict | None:
-    """Search BGG using the XML API2 (requires BGG_API_TOKEN)."""
+    """Search BGG using the public XML API2."""
     host = 'https://boardgamegeek.com/xmlapi2/search'
-    headers = {'Authorization': f'Bearer {django_settings.BGG_API_TOKEN}'}
     params = {'type': 'boardgame', 'query': name, 'exact': 1}
 
-    res = get(host, params, headers=headers)
+    res = get(host, params)
     soup = BeautifulSoup(res.content, 'xml')
     items = soup.find_all('item')
 
     if not items:
         params.pop('exact')
-        res = get(host, params, headers=headers)
+        res = get(host, params)
         soup = BeautifulSoup(res.content, 'xml')
         items = soup.find_all('item')
 
@@ -286,101 +283,13 @@ def _search_bgg_api(name: str) -> dict | None:
     }
 
 
-def _parse_bgg_search_html(html: str, name: str, url: str) -> dict | None:
-    """Parse BGG geeksearch HTML and extract the first result."""
-    soup = BeautifulSoup(html, 'html.parser')
-    if 'No Items Found' in soup.text:
-        return None
-
-    table = soup.find('table', id='collectionitems')
-    if not table:
-        title = soup.find('title')
-        logger.warning(
-            f'BGG web search: no results table for {name}'
-            f' (title={title.text.strip() if title else "none"})'
-        )
-        return None
-
-    first_row = table.find_all('tr')[1]
-    tds = first_row.find_all('td')
-    try:
-        image_url = tds[1].find('img')['src']
-    except (TypeError, IndexError):
-        return None
-
-    anchor = tds[2].find('a')
-    return {
-        'name': anchor.text.strip(),
-        'bgg_id': anchor['href'].split('/')[2],
-        'image': image_url,
-        'search': url,
-    }
-
-
-_bgg_scraper = None
-
-
-def _get_bgg_scraper():
-    """Get or create a cloudscraper session for BGG requests."""
-    global _bgg_scraper  # noqa: PLW0603
-    if _bgg_scraper is None:
-        import cloudscraper
-
-        _bgg_scraper = cloudscraper.create_scraper(
-            browser={'browser': 'chrome', 'platform': 'linux', 'desktop': True},
-            delay=10,
-        )
-        # Warm up session by visiting homepage first to solve CF challenge
-        logger.info('Warming up BGG cloudscraper session...')
-        res = _bgg_scraper.get('https://boardgamegeek.com/', timeout=30)
-        logger.info(f'BGG warmup status={res.status_code}')
-    return _bgg_scraper
-
-
-_bgg_web_sleep = 0
-
-
-@retry((TooManyRequestsError, RequestsError), delay=3, max_delay=60, tries=42)
-def _search_bgg_web(name: str) -> dict | None:
-    """Search BGG by scraping the web search page via cloudscraper."""
-    global _bgg_web_sleep  # noqa: PLW0603
-    global _bgg_scraper  # noqa: PLW0603
-    from urllib.parse import quote_plus
-
-    sleep(_bgg_web_sleep)
-
-    scraper = _get_bgg_scraper()
-    url = (
-        f'https://boardgamegeek.com/geeksearch.php'
-        f'?objecttype=boardgame&action=search&q={quote_plus(name)}'
-    )
-    res = scraper.get(url, timeout=30)
-    if res.status_code in [401, 403, 429, 430]:
-        _bgg_web_sleep = round(_bgg_web_sleep + 5, 3)
-        logger.error(f'Blocked ({res.status_code}) for {name}, sleep now {_bgg_web_sleep}s')
-        _bgg_scraper = None
-        raise TooManyRequestsError()
-    if res.status_code >= 500:
-        _bgg_web_sleep = round(_bgg_web_sleep + 5, 3)
-        logger.error(f'Server error ({res.status_code}) for {name}')
-        raise TooManyRequestsError()
-    if res.status_code != 200:
-        logger.warning(f'BGG web search status={res.status_code} for {name}')
-        return None
-    # Slowly decrease sleep on success
-    if _bgg_web_sleep:
-        _bgg_web_sleep = round(max(0, _bgg_web_sleep - 0.005), 3)
-    return _parse_bgg_search_html(res.text, name, url)
-
-
 def search_bgg(name: str) -> dict:
     """Search BGG for game by name."""
     name = re.sub(r'board game', '', str(name), flags=re.IGNORECASE).strip()
     if not name:
         return _not_found(name)
 
-    searcher = _search_bgg_api if django_settings.BGG_API_TOKEN else _search_bgg_web
-    result = searcher(name)
+    result = _search_bgg_api(name)
     if result:
         return result
 
