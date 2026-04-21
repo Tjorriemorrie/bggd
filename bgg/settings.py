@@ -233,6 +233,7 @@ HEALTH_CHECK = {
 
 BGBSA_BEARER = env.str('BGBSA_BEARER')
 BGG_API_TOKEN = env.str('BGG_API_TOKEN', '')
+BGG_PROXY = env.str('BGG_PROXY', '')
 
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = 'bootstrap5'

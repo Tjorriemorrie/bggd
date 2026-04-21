@@ -16,6 +16,8 @@ from django.utils.text import slugify
 from retry import retry
 from unidecode import unidecode
 
+from django.conf import settings as django_settings
+
 import main.constants as c
 from main.errors import (
     BggGameNotFoundError,
@@ -79,9 +81,18 @@ def get(
     if headers:
         headers_default.update(headers)
 
+    proxies = None
+    if django_settings.BGG_PROXY and 'boardgamegeek.com' in url:
+        proxies = {'http': django_settings.BGG_PROXY, 'https': django_settings.BGG_PROXY}
+
     try:
         res = requests.get(
-            url, params=params, headers=headers_default, timeout=30, allow_redirects=redirect
+            url,
+            params=params,
+            headers=headers_default,
+            timeout=30,
+            allow_redirects=redirect,
+            proxies=proxies,
         )
     except requests.RequestException as exc:
         logger.error(f'Connection error! url={url}')
