@@ -81,24 +81,25 @@ def get(
         raise RequestsError() from exc
 
     if res.status_code in [requests.codes.too_many, 430]:
-        sleep_time = round(sleep_time + 0.5, 3)
+        sleep_time = round(sleep_time + 0.05, 4)
         logger.error(f'Too many requests for {url} {params}; sleep now {sleep_time}s')
         raise TooManyRequestsError()
     elif res.status_code in [401, 403]:
-        sleep_time = round(sleep_time + 0.5, 3)
+        sleep_time = round(sleep_time + 0.05, 4)
         logger.error(f'{res.status_code} blocked for {url} {params}; sleep now {sleep_time}s')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
-        sleep_time = round(sleep_time + 0.5, 3)
+        sleep_time = round(sleep_time + 0.05, 4)
         logger.error(f'Server error ({res.status_code}) for {url}; sleep now {sleep_time}s')
         raise TooManyRequestsError()
     elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
         raise RedirectError()
 
-    # success: slowly decay the throttle
+    # success: slowly decay the throttle (10x slower than bump so it accumulates
+    # under sustained rate-limiting, but still returns to 0 when BGG is happy)
     if sleep_time:
-        sleep_time = round(max(0, sleep_time - 0.05), 3)
+        sleep_time = round(max(0, sleep_time - 0.005), 4)
 
     try:
         res.raise_for_status()
