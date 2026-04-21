@@ -53,8 +53,6 @@ USER_AGENTS = [
 ]
 
 sleep_time = 0
-last_url = ''
-last_params = dict()
 
 
 @retry((TooManyRequestsError, RequestsError), delay=3, max_delay=60, tries=42)
@@ -63,17 +61,7 @@ def get(
 ) -> requests.Response:
     """Helper function to do back off fetches with requests."""
     global sleep_time  # noqa PLW0603
-    global last_url  # noqa PLW0603
-    global last_params  # noqa PLW0603
 
-    is_search = 'xmlapi2/search' in url
-    if not is_search and url == last_url and params == last_params:
-        sleep_time = round(sleep_time + 0.5, 3)
-        logger.info(f'Same url: increased sleep time to {sleep_time} for {url} with {params}')
-    elif sleep_time:
-        sleep_time = round(sleep_time - 0.005, 3)
-    last_url = url
-    last_params = params
     sleep(sleep_time)
 
     headers_default = {
@@ -93,17 +81,24 @@ def get(
         raise RequestsError() from exc
 
     if res.status_code in [requests.codes.too_many, 430]:
-        logger.error(f'Too many requests for {url} {params}')
+        sleep_time = round(sleep_time + 0.5, 3)
+        logger.error(f'Too many requests for {url} {params}; sleep now {sleep_time}s')
         raise TooManyRequestsError()
     elif res.status_code in [401, 403]:
-        logger.error(f'{res.status_code} blocked for {url} {params}')
+        sleep_time = round(sleep_time + 0.5, 3)
+        logger.error(f'{res.status_code} blocked for {url} {params}; sleep now {sleep_time}s')
         raise TooManyRequestsError()
     elif res.status_code >= requests.codes.server_error:
-        logger.error(f'Server error! {url}')
+        sleep_time = round(sleep_time + 0.5, 3)
+        logger.error(f'Server error ({res.status_code}) for {url}; sleep now {sleep_time}s')
         raise TooManyRequestsError()
     elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
         raise RedirectError()
+
+    # success: slowly decay the throttle
+    if sleep_time:
+        sleep_time = round(max(0, sleep_time - 0.05), 3)
 
     try:
         res.raise_for_status()
