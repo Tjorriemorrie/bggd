@@ -66,7 +66,8 @@ def get(
     global last_url  # noqa PLW0603
     global last_params  # noqa PLW0603
 
-    if url == last_url and params == last_params:
+    is_search = 'xmlapi2/search' in url
+    if not is_search and url == last_url and params == last_params:
         sleep_time = round(sleep_time + 0.5, 3)
         logger.info(f'Same url: increased sleep time to {sleep_time} for {url} with {params}')
     elif sleep_time:
