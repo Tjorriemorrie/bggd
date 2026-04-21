@@ -81,18 +81,9 @@ def get(
     if headers:
         headers_default.update(headers)
 
-    proxies = None
-    if django_settings.BGG_PROXY and 'boardgamegeek.com' in url:
-        proxies = {'http': django_settings.BGG_PROXY, 'https': django_settings.BGG_PROXY}
-
     try:
         res = requests.get(
-            url,
-            params=params,
-            headers=headers_default,
-            timeout=30,
-            allow_redirects=redirect,
-            proxies=proxies,
+            url, params=params, headers=headers_default, timeout=30, allow_redirects=redirect
         )
     except requests.RequestException as exc:
         logger.error(f'Connection error! url={url}')
@@ -268,17 +259,18 @@ def _not_found(name: str, search_url: str = '') -> dict:
 
 
 def _search_bgg_api(name: str) -> dict | None:
-    """Search BGG using the public XML API2."""
+    """Search BGG using the XML API2 (requires BGG_AUTH)."""
     host = 'https://boardgamegeek.com/xmlapi2/search'
+    headers = {'Authorization': f'Bearer {django_settings.BGG_AUTH}'}
     params = {'type': 'boardgame', 'query': name, 'exact': 1}
 
-    res = get(host, params)
+    res = get(host, params, headers=headers)
     soup = BeautifulSoup(res.content, 'xml')
     items = soup.find_all('item')
 
     if not items:
         params.pop('exact')
-        res = get(host, params)
+        res = get(host, params, headers=headers)
         soup = BeautifulSoup(res.content, 'xml')
         items = soup.find_all('item')
 
