@@ -1,14 +1,12 @@
 import logging
 
 from django.contrib import admin
-from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from main.errors import BggGameNotFoundError, ScrapeError
 from main.forms import LookupForm
-from main.games import scrape_game, search_bgg, update_game_shop_prices
+from main.games import fetch_bgg_thing, search_bgg, update_game_shop_prices
 from main.graphs import (
     get_daily_unique_ips_chart,
     get_ip_request_chart,
@@ -110,32 +108,8 @@ class ListingAdmin(admin.ModelAdmin):
         urls = super().get_urls()
         custom_urls = [
             path(r'lookup/', self.admin_site.admin_view(self.lookup_view), name='listing-lookup'),
-            path(
-                r'lookup/bgg-image/',
-                self.admin_site.admin_view(self.lookup_bgg_image_view),
-                name='listing-lookup-bgg-image',
-            ),
         ]
         return custom_urls + urls
-
-    def lookup_bgg_image_view(self, request):
-        """Return JSON with image and name for a given bgg_id."""
-        try:
-            bgg_id = int(request.GET.get('bgg_id', ''))
-        except (TypeError, ValueError):
-            return JsonResponse({'image': None, 'name': None})
-
-        game = Game.objects.filter(id=bgg_id).first()
-        if game:
-            return JsonResponse({'image': game.img, 'name': game.name})
-
-        try:
-            game = scrape_game(bgg_id)
-        except BggGameNotFoundError:
-            return JsonResponse({'image': None, 'name': 'not found'})
-        except ScrapeError:
-            return JsonResponse({'image': None, 'name': None})
-        return JsonResponse({'image': game.img, 'name': game.name})
 
     def lookup_view(self, request):
         """Lookup view."""
@@ -150,9 +124,7 @@ class ListingAdmin(admin.ModelAdmin):
                 return redirect('admin:listing-lookup')
         else:
             listing = list_listings_without_games().first()
-            if not listing.game:
-                bgg = search_bgg(listing.bgg_id or listing.name)
-            else:
+            if listing.game:
                 bgg = {
                     'name': listing.game.name,
                     'bgg_id': listing.bgg_id,
@@ -161,6 +133,15 @@ class ListingAdmin(admin.ModelAdmin):
                     'search': f'https://boardgamegeek.com/geeksearch.php?'
                     f'objecttype=boardgame&action=search&q={listing.bgg_id}',
                 }
+            elif listing.bgg_id:
+                bgg = fetch_bgg_thing(listing.bgg_id) or {
+                    'name': None,
+                    'bgg_id': listing.bgg_id,
+                    'image': None,
+                    'search': f'https://boardgamegeek.com/boardgame/{listing.bgg_id}',
+                }
+            else:
+                bgg = search_bgg(listing.name)
             initial = {
                 'listing_id': listing.id,
                 'bgg_id': bgg.get('bgg_id'),

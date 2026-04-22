@@ -264,6 +264,40 @@ def _not_found(name: str, search_url: str = '') -> dict:
     }
 
 
+def fetch_bgg_thing(bgg_id: int) -> dict | None:
+    """Fetch game name and image from BGG XML API2 by bgg_id (requires BGG_AUTH)."""
+    host = 'https://boardgamegeek.com/xmlapi2/thing'
+    headers = {'Authorization': f'Bearer {django_settings.BGG_AUTH}'}
+    params = {'id': bgg_id}
+
+    try:
+        res = get(host, params, headers=headers)
+    except (TooManyRequestsError, RequestsError):
+        return None
+
+    soup = BeautifulSoup(res.content, 'xml')
+    item = soup.find('item')
+    if not item:
+        return None
+
+    name_elem = soup.find('name', attrs={'type': 'primary'}) or soup.find('name')
+    image_elem = item.find('image')
+    thumbnail_elem = item.find('thumbnail')
+
+    image_url = None
+    if image_elem and image_elem.text:
+        image_url = image_elem.text
+    elif thumbnail_elem and thumbnail_elem.text:
+        image_url = thumbnail_elem.text
+
+    return {
+        'name': name_elem['value'] if name_elem else None,
+        'bgg_id': bgg_id,
+        'image': image_url,
+        'search': f'https://boardgamegeek.com/boardgame/{bgg_id}',
+    }
+
+
 def _search_bgg_api(name: str) -> dict | None:
     """Search BGG using the XML API2 (requires BGG_AUTH)."""
     host = 'https://boardgamegeek.com/xmlapi2/search'
