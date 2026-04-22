@@ -56,7 +56,60 @@
         <form method="post">
             {% csrf_token %}
             {{ form|crispy }}
+            <p id="bgg-id-preview" style="display:none;">
+                <img id="bgg-id-preview-img" src="" style="width: 10em; height: auto;"/>
+                <span id="bgg-id-preview-name"></span>
+            </p>
             <button type="submit">Submit</button>
         </form>
     </div>
+
+    <script>
+    (function () {
+        var input = document.getElementById('id_bgg_id');
+        if (!input) return;
+
+        var preview = document.getElementById('bgg-id-preview');
+        var previewImg = document.getElementById('bgg-id-preview-img');
+        var previewName = document.getElementById('bgg-id-preview-name');
+        var url = "{% url 'admin:listing-lookup-bgg-image' %}";
+        var timer = null;
+        var lastFetched = null;
+
+        function fetchImage() {
+            var bggId = input.value.trim();
+            if (!bggId || bggId === lastFetched) return;
+            lastFetched = bggId;
+            previewName.textContent = 'loading...';
+            preview.style.display = '';
+            previewImg.src = '';
+            fetch(url + '?bgg_id=' + encodeURIComponent(bggId))
+                .then(function (r) { return r.json(); })
+                .then(function (data) {
+                    if (lastFetched !== bggId) return;
+                    if (data.image) {
+                        previewImg.src = data.image;
+                        previewName.textContent = data.name || '';
+                    } else {
+                        previewImg.src = '';
+                        previewName.textContent = data.name || 'no image';
+                    }
+                })
+                .catch(function () {
+                    if (lastFetched !== bggId) return;
+                    previewName.textContent = 'error';
+                });
+        }
+
+        function schedule() {
+            clearTimeout(timer);
+            timer = setTimeout(fetchImage, 400);
+        }
+
+        input.addEventListener('input', schedule);
+        input.addEventListener('change', fetchImage);
+
+        if (input.value.trim()) fetchImage();
+    })();
+    </script>
 {% endblock %}

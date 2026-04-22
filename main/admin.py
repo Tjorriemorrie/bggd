@@ -1,12 +1,14 @@
 import logging
 
 from django.contrib import admin
+from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 
+from main.errors import BggGameNotFoundError, ScrapeError
 from main.forms import LookupForm
-from main.games import search_bgg, update_game_shop_prices
+from main.games import scrape_game, search_bgg, update_game_shop_prices
 from main.graphs import (
     get_daily_unique_ips_chart,
     get_ip_request_chart,
@@ -107,9 +109,33 @@ class ListingAdmin(admin.ModelAdmin):
         """Get urls."""
         urls = super().get_urls()
         custom_urls = [
-            path(r'lookup/', self.admin_site.admin_view(self.lookup_view), name='listing-lookup')
+            path(r'lookup/', self.admin_site.admin_view(self.lookup_view), name='listing-lookup'),
+            path(
+                r'lookup/bgg-image/',
+                self.admin_site.admin_view(self.lookup_bgg_image_view),
+                name='listing-lookup-bgg-image',
+            ),
         ]
         return custom_urls + urls
+
+    def lookup_bgg_image_view(self, request):
+        """Return JSON with image and name for a given bgg_id."""
+        try:
+            bgg_id = int(request.GET.get('bgg_id', ''))
+        except (TypeError, ValueError):
+            return JsonResponse({'image': None, 'name': None})
+
+        game = Game.objects.filter(id=bgg_id).first()
+        if game:
+            return JsonResponse({'image': game.img, 'name': game.name})
+
+        try:
+            game = scrape_game(bgg_id)
+        except BggGameNotFoundError:
+            return JsonResponse({'image': None, 'name': 'not found'})
+        except ScrapeError:
+            return JsonResponse({'image': None, 'name': None})
+        return JsonResponse({'image': game.img, 'name': game.name})
 
     def lookup_view(self, request):
         """Lookup view."""
