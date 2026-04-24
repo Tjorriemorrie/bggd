@@ -50,11 +50,20 @@
     document.addEventListener('DOMContentLoaded', function() {
         var toggle = document.getElementById('sn-toggle');
         var links = document.getElementById('sn-links');
-        if (toggle && links) {
-            toggle.addEventListener('click', function() {
-                toggle.classList.toggle('sn-toggle-open');
-                links.classList.toggle('sn-links-open');
-            });
-        }
+        if (!toggle || !links) return;
+        var close = function() {
+            toggle.classList.remove('sn-toggle-open');
+            links.classList.remove('sn-links-open');
+        };
+        toggle.addEventListener('click', function() {
+            toggle.classList.toggle('sn-toggle-open');
+            links.classList.toggle('sn-links-open');
+        });
+        links.querySelectorAll('a.sn-link').forEach(function(a) {
+            a.addEventListener('click', close);
+        });
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 991.98) close();
+        });
     });
 </script>
