@@ -119,6 +119,7 @@ def get_game_prices_graph(game: Game):
         title='Prices from Shops',
         xaxis_title='Date',
         yaxis_title='Price',
+        yaxis=dict(side='right'),
         legend_title='Shop Name',
         height=700,
         legend=dict(orientation='h', yanchor='top', y=-0.2, xanchor='center', x=0.5),
