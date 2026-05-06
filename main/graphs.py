@@ -121,6 +121,7 @@ def get_game_prices_graph(game: Game):
         yaxis_title='Price',
         legend_title='Shop Name',
         height=700,
+        legend=dict(orientation='h', yanchor='top', y=-0.2, xanchor='center', x=0.5),
     )
 
     cache.set(cache_key, fig, timeout=43200)
