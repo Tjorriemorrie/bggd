@@ -1,8 +1,8 @@
 import logging
-import os
 import time
 
 import requests
+from django.conf import settings
 
 from main.selectors import upsert_shop
 from main.shops.helpers import handle_item_data, missed_listings
@@ -18,15 +18,14 @@ api_base = (
 )
 IMG_SIZE = 'fb'
 
-_proxy = os.environ.get('TAKEALOT_PROXY')
 _request_delay = 1.0
 
 
 def _get_session():
     """Create a requests session with proxy and browser-like headers."""
     session = requests.Session()
-    if _proxy:
-        session.proxies = {'http': _proxy, 'https': _proxy}
+    if settings.TAKEALOT_PROXY:
+        session.proxies = {'http': settings.TAKEALOT_PROXY, 'https': settings.TAKEALOT_PROXY}
     session.headers.update(
         {
             'User-Agent': (
@@ -89,7 +88,7 @@ def process_results(shop, results):
 
 def scrape_site():
     """Scrape all pages via cursor-based pagination."""
-    if not _proxy:
+    if not settings.TAKEALOT_PROXY:
         logger.warning(
             'TAKEALOT_PROXY not set — Takealot blocks datacenter IPs. '
             'Set TAKEALOT_PROXY=socks5://user:pass@host:port'
