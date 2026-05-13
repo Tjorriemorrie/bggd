@@ -1,4 +1,3 @@
-import json
 import logging
 import random
 import re
@@ -37,6 +36,14 @@ logger = logging.getLogger(__name__)
 # URL_HOTNESS = r'https://boardgamegeek.com/xmlapi2/hot?boardgame'
 # URL_THING = r'https://boardgamegeek.com/xmlapi2/thing?id={bgg_id}'
 URL_GAME = r'https://www.boardgamegeek.com/boardgame/{bgg_id}'
+URL_THING = r'https://boardgamegeek.com/xmlapi2/thing'
+
+# BGG XML <item type=...> -> internal label string
+BGG_TYPE_LABELS = {
+    'boardgame': 'Board Game',
+    'boardgameexpansion': 'Board Game',
+    'rpgitem': 'RPG Item',
+}
 # URL_GAME_DETAILS = r'https://api.geekdo.com/api/geekitems?nosession=1&objectid={bgg_id}&objecttype=thing&subtype=boardgame'  # noqa: E501
 # URL_GAME_RATINGS = r'https://api.geekdo.com/api/collections?ajax=1&objectid={bgg_id}&objecttype=thing&oneperuser=1&rated=1&require_review=true&sort=review_tstamp&showcount=50&pageid={p}'  # noqa: E501
 # URL_GAME_NUMPLAYERS = r'https://www.boardgamegeek.com/geekitempoll.php?action=view&itempolltype=numplayers&objectid={bgg_id}&objecttype=thing'  # noqa: E501
@@ -47,9 +54,10 @@ URL_GAME = r'https://www.boardgamegeek.com/boardgame/{bgg_id}'
 
 # ruff: noqa
 USER_AGENTS = [
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:91.0) Gecko/20100101 Firefox/91.0',
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.1 Safari/605.1.15',
-    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.1 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
 ]
 
 sleep_time = 0
@@ -158,19 +166,20 @@ def scrape_new_games():
 
 @retry((OperationalError, ScrapeError), tries=99, delay=1, jitter=1, max_delay=30)
 def scrape_game(bgg_id: int) -> Game:
-    """Scrape the game from boardgamegeek."""
+    """Scrape the game from boardgamegeek via XML API2."""
     logger.info(f'Scraping {bgg_id}...')
-    url = URL_GAME.format(bgg_id=bgg_id)
-    res = get(url, redirect=True)
+    headers = {'Authorization': f'Bearer {django_settings.BGG_AUTH}'}
+    params = {'id': bgg_id, 'stats': 1}
+    res = get(URL_THING, params, headers=headers)
 
-    if 'Item not found' in res.text:
+    soup = BeautifulSoup(res.content, 'xml')
+    item = soup.find('item')
+    if not item:
         raise BggGameNotFoundError()
 
-    matches = re.search(r'GEEK\.geekitemPreload\s=\s(.*)GEEK\.geekitemSettings', res.text, re.S)
-    json_match = matches.groups()[0]
-    preload = json.loads(json_match.strip().rstrip(';'))
-    if 'item' not in preload:
-        raise ScrapeError('no preload script found')
+    xml_type = item.get('type')
+    if xml_type not in BGG_TYPE_LABELS:
+        raise NotImplementedError(f'Unknown XML item type: {xml_type}')
 
     # get instance
     try:
@@ -179,26 +188,25 @@ def scrape_game(bgg_id: int) -> Game:
         game = Game()
 
     # info
-    game.name = preload['item']['name']
+    name_elem = item.find('name', attrs={'type': 'primary'}) or item.find('name')
+    game.name = name_elem['value']
     game.slug = slugify(unidecode(game.name))
-    game.label = preload['item']['label']
-    game.year = int(preload['item']['yearpublished'])
-    game.url = res.request.url
-    try:
-        game.rank = int(preload['item']['rankinfo'][0]['rank']) or None
-    except KeyError:
-        logger.info(f'No rankinfo for {game.name} [{bgg_id}]')
-    game.img = preload['item']['imageurl'].replace('\\', '')
-    description_html = preload['item']['description'].replace('\\', '').replace('\n', ' ')
+    game.label = BGG_TYPE_LABELS[xml_type]
+    game.year = int(item.find('yearpublished')['value'])
+    game.url = URL_GAME.format(bgg_id=bgg_id)
+    rank_elem = item.find('rank', attrs={'type': 'subtype', 'id': '1'})
+    if rank_elem is not None:
+        with suppress(TypeError, ValueError):
+            game.rank = int(rank_elem.get('value')) or None
+    image_elem = item.find('image')
+    if image_elem and image_elem.text:
+        game.img = image_elem.text
+    description_html = (item.find('description').text or '').replace('\n', ' ')
     description = BeautifulSoup(description_html, 'html.parser').text
     game.description = description.replace('  ', ' ').strip()
 
-    if game.label == 'Board Game':
-        game = scrape_boardgame_details(bgg_id, game, preload)
-    elif game.label in ['RPG Item']:
-        pass
-    else:
-        raise NotImplementedError(f'Unknown label: {game.label}')
+    if xml_type in ('boardgame', 'boardgameexpansion'):
+        game = scrape_boardgame_details(bgg_id, game, item)
 
     game.scraped_at = timezone.now()
     game.save()
@@ -206,31 +214,66 @@ def scrape_game(bgg_id: int) -> Game:
     return game
 
 
-def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
-    """Get specific boardgame details."""
-    # basic details
-    try:
-        game.rating = float(preload['item']['stats']['average'])
-    except KeyError:
-        logger.info(f'No stats average for {game.name} [{bgg_id}]')
-    game.min_players = preload['item']['minplayers']
-    game.max_players = preload['item']['maxplayers']
-    game.min_play_time = preload['item']['minplaytime']
-    game.max_play_time = preload['item']['maxplaytime']
-    game.min_age = preload['item']['minage']
-    game.pitch = preload['item']['short_description']
+def _parse_player_range(value: str | None) -> tuple[int, int] | None:
+    """Parse poll-summary text like 'Best with 3-4 players' / 'with 2+ players'."""
+    if not value:
+        return None
+    match = re.search(r'(\d+)(?:\s*[-–]\s*(\d+)|\s*(\+))?', value)
+    if not match:
+        return None
+    lo = int(match.group(1))
+    if match.group(2):
+        return lo, int(match.group(2))
+    if match.group(3):
+        return lo, 8
+    return lo, lo
 
-    # polls
-    polls = preload['item']['polls']
-    game.weight_avg = float(polls['boardgameweight']['averageweight'])
-    if polls['userplayers']['recommended']:
-        game.rec_min_players = polls['userplayers']['recommended'][0]['min']
-        game.rec_max_players = polls['userplayers']['recommended'][0]['max'] or 8
-    if polls['userplayers']['best']:
-        game.best_min_players = polls['userplayers']['best'][0]['min']
-        game.best_max_players = polls['userplayers']['best'][0]['max'] or 8
-    with suppress(ValueError):
-        game.rec_min_age = int(polls['playerage'].rstrip('+').partition('–')[0])
+
+def scrape_boardgame_details(bgg_id: int, game: Game, item) -> Game:
+    """Get specific boardgame details from BGG XML <item>."""
+    ratings = item.find('ratings')
+    if ratings:
+        avg_elem = ratings.find('average')
+        if avg_elem is not None:
+            with suppress(TypeError, ValueError):
+                game.rating = float(avg_elem.get('value'))
+        weight_elem = ratings.find('averageweight')
+        if weight_elem is not None:
+            with suppress(TypeError, ValueError):
+                game.weight_avg = float(weight_elem.get('value'))
+
+    game.min_players = int(item.find('minplayers')['value'])
+    game.max_players = int(item.find('maxplayers')['value'])
+    game.min_play_time = int(item.find('minplaytime')['value'])
+    game.max_play_time = int(item.find('maxplaytime')['value'])
+    game.min_age = int(item.find('minage')['value'])
+
+    # suggested numplayers poll-summary -> recommended / best ranges
+    poll_summary = item.find('poll-summary', attrs={'name': 'suggested_numplayers'})
+    if poll_summary:
+        rec_elem = poll_summary.find('result', attrs={'name': 'recommmendedwith'})
+        best_elem = poll_summary.find('result', attrs={'name': 'bestwith'})
+        rec_range = _parse_player_range(rec_elem.get('value') if rec_elem else None)
+        best_range = _parse_player_range(best_elem.get('value') if best_elem else None)
+        if rec_range:
+            game.rec_min_players, game.rec_max_players = rec_range
+        if best_range:
+            game.best_min_players, game.best_max_players = best_range
+
+    # suggested_playerage poll -> rec_min_age (highest-voted age bucket)
+    age_poll = item.find('poll', attrs={'name': 'suggested_playerage'})
+    if age_poll:
+        results = age_poll.find('results')
+        if results:
+            best_result = max(
+                results.find_all('result'),
+                key=lambda r: int(r.get('numvotes', '0') or 0),
+                default=None,
+            )
+            if best_result is not None and int(best_result.get('numvotes', '0') or 0) > 0:
+                age_str = best_result.get('value', '').strip()
+                with suppress(ValueError):
+                    game.rec_min_age = int(age_str.split()[0].rstrip('+'))
 
     # labels (require game to be saved)
     if not game.pk:
@@ -242,14 +285,15 @@ def scrape_boardgame_details(bgg_id: int, game: Game, preload: dict) -> Game:
         'boardgamefamily': ('families', c.LABEL_FAMILY),
         'boardgamesubdomain': ('subdomains', c.LABEL_SUBDOMAIN),
     }
-    for key, val in game_links_labels.items():
+    for link_type, (attr, label_type) in game_links_labels.items():
         data = []
-        for link_item in preload['item']['links'][key]:
+        for link in item.find_all('link', attrs={'type': link_type}):
             label, _ = Label.objects.get_or_create(
-                id=link_item['objectid'], defaults={'type': val[1], 'name': link_item['name']}
+                id=int(link['id']),
+                defaults={'type': label_type, 'name': link['value']},
             )
             data.append(label)
-        getattr(game, val[0]).set(data)
+        getattr(game, attr).set(data)
 
     return game
 
