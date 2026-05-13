@@ -78,12 +78,11 @@ def process_results(shop, results):
         if not img_src:
             continue
 
-        # stock & price
-        stock = views.get('stock_availability_summary', {})
-        in_stock = stock.get('is_in_stock', False)
+        # stock & price — buybox prices indicate the item is purchasable
         buybox = views.get('buybox_summary', {})
         prices = buybox.get('prices', [])
         price_value = float(prices[0]) if prices else None
+        in_stock = price_value is not None
 
         handle_item_data(shop, title, href, img_src, in_stock, price_value)
 
