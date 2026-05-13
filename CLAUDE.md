@@ -18,3 +18,15 @@
 - Templates are in `main/templates/main/`.
 - Static files are in `main/static/main/`.
 - Custom template filters are in `main/templatetags/fmt.py`.
+
+## Environment variables
+
+- Loaded via `environs` from `.env` (see `bgg/settings.py`).
+- Declare every var in `bgg/settings.py` (e.g. `FOO = env.str('FOO')`) and document it in `.env.dist`.
+- Access via `django.conf.settings.FOO` — never `os.environ.get('FOO')`.
+
+## Mandatory rules
+1. Don’t assume. Don’t hide confusion. Surface tradeoffs.
+2. Minimum code that solves the problem. Nothing speculative.
+3. Touch only what you must. Clean up only your own mess.
+4. Define success criteria. Loop until verified.
