@@ -30,3 +30,4 @@
 2. Minimum code that solves the problem. Nothing speculative.
 3. Touch only what you must. Clean up only your own mess.
 4. Define success criteria. Loop until verified.
+5. Always delete `bash.exe.stackdump` from the repo root when finishing a task. Never commit it.
