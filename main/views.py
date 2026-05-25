@@ -1,6 +1,7 @@
 import logging
 
 from django.core.handlers.wsgi import WSGIRequest
+from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils import timezone
 from django.views.generic import DetailView
@@ -182,15 +183,32 @@ class GameDetailView(DetailView):
         """Get context."""
         ctx = super().get_context_data(**kwargs)
         ctx['listings'] = ctx['game'].listings.order_by('-in_stock', 'price').all()
-        # graph for prices
-        if prices_fig := get_game_prices_graph(self.object):
+        # graph for prices (default to the last 6 months)
+        period = 'recent'
+        if prices_fig := get_game_prices_graph(self.object, period=period):
             ctx['prices_graph'] = prices_fig.to_html(full_html=False)
         else:
             ctx['prices_graph'] = None
+        ctx['prices_period'] = period
         ctx['nav'] = 'games'
         # Add current timestamp to context to ensure cache busting
         ctx['current_timestamp'] = timezone.now().timestamp()
         return ctx
+
+
+def game_prices_graph_view(request: WSGIRequest, pk: int):
+    """Return the game prices graph fragment for the requested period."""
+    period = request.GET.get('period', 'recent')
+    if period not in ('recent', 'max'):
+        period = 'recent'
+    game = get_object_or_404(Game, pk=pk)
+    prices_fig = get_game_prices_graph(game, period=period)
+    ctx = {
+        'game': game,
+        'prices_graph': prices_fig.to_html(full_html=False) if prices_fig else None,
+        'prices_period': period,
+    }
+    return TemplateResponse(request, 'main/snippet_game_prices_graph.html', ctx)
 
 
 class CardListView(SingleTableView, FilterMixin):

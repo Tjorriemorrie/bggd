@@ -109,17 +109,7 @@
         </div>
 
         {# ── PRICE HISTORY ── #}
-        {% if prices_graph %}
-            <div class="ld-section">
-                <h2 class="ld-section-title">
-                    <i class="bi bi-graph-up"></i>
-                    Price History
-                </h2>
-                <div class="ld-chart-wrap">
-                    {{ prices_graph|safe }}
-                </div>
-            </div>
-        {% endif %}
+        {% include 'main/snippet_game_prices_graph.html' %}
 
         {# ── LISTINGS ── #}
         <div class="ld-section">

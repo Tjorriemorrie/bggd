@@ -528,6 +528,44 @@ a:hover {
     box-shadow: 0 1px 8px rgba(42, 31, 26, 0.04);
 }
 
+.ld-prices-header {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.55rem;
+    border-bottom: 2px solid var(--ld-border);
+}
+.ld-prices-header .ld-section-title-flush {
+    margin-bottom: 0;
+    padding-bottom: 0;
+    border-bottom: none;
+}
+.ld-prices-toggle {
+    background: var(--ld-card);
+    border: 1px solid var(--ld-border);
+    border-radius: 999px;
+    color: var(--ld-text);
+    cursor: pointer;
+    font-family: 'Source Sans 3', system-ui, sans-serif;
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    padding: 0.3rem 0.85rem;
+    text-transform: uppercase;
+    transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
+}
+.ld-prices-toggle:hover {
+    background: var(--ld-gold);
+    border-color: var(--ld-gold);
+    color: #fff;
+}
+.ld-prices-toggle.htmx-request {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
 /* game card */
 .ld-game-card {
     display: grid;

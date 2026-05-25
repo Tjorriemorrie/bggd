@@ -46,6 +46,11 @@ urlpatterns = [
         name='game-detail-slug',
     ),
     path(
+        'game/<int:pk>/prices-graph/',
+        views.game_prices_graph_view,
+        name='game-prices-graph',
+    ),
+    path(
         'card/',
         cache_page(settings.VIEW_CACHE)(views.CardListView.as_view()),
         name='card-list',

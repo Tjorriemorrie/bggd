@@ -19,10 +19,13 @@ from main.selectors import get_today
 logger = logging.getLogger(__name__)
 
 
-def get_game_prices_graph(game: Game):
-    """Get game prices graph for every shop."""
-    logger.info(f'Getting price graph for {game}')
-    cache_key = f'get_game_prices_graph_{game.id}'
+def get_game_prices_graph(game: Game, period: str = 'recent'):
+    """Get game prices graph for every shop.
+
+    period: 'recent' for the last 6 months, 'max' for the full history.
+    """
+    logger.info(f'Getting price graph for {game} ({period})')
+    cache_key = f'get_game_prices_graph_{game.id}_{period}'
     if fig := cache.get(cache_key):
         return fig
 
@@ -57,9 +60,8 @@ def get_game_prices_graph(game: Game):
 
     # Create a date range for the graph
     today = get_today()
-    date_range = pd.date_range(
-        df.index[0], datetime(today.day.year, today.day.month, today.day.day)
-    )
+    today_date = datetime(today.day.year, today.day.month, today.day.day)
+    date_range = pd.date_range(df.index[0], today_date)
     df = df.reindex(date_range)
 
     # Set prices to NaN where out of stock and drop stock columns
@@ -83,6 +85,12 @@ def get_game_prices_graph(game: Game):
 
     # Re-align WITHOUT filling gaps
     df['average_lowest_price'] = avg_df['average_lowest_price']
+
+    # Trim to the requested period — ffill is already applied above, so slicing
+    # the tail keeps each shop's most recent known price visible.
+    if period == 'recent':
+        cutoff = pd.Timestamp(today_date - timedelta(days=180))
+        df = df[df.index >= cutoff]
 
     # Create the graph
     fig = Figure()

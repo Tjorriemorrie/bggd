@@ -1,0 +1,21 @@
+{% if prices_graph %}
+    <div id="game-prices-graph" class="ld-section">
+        <div class="ld-prices-header">
+            <h2 class="ld-section-title ld-section-title-flush">
+                <i class="bi bi-graph-up"></i>
+                Price History
+            </h2>
+            <button type="button"
+                    class="ld-prices-toggle"
+                    hx-get="{% url 'game-prices-graph' game.pk %}?period={% if prices_period == 'recent' %}max{% else %}recent{% endif %}"
+                    hx-target="#game-prices-graph"
+                    hx-swap="outerHTML"
+                    hx-indicator="#game-prices-graph">
+                {% if prices_period == 'recent' %}Max{% else %}Recent{% endif %}
+            </button>
+        </div>
+        <div class="ld-chart-wrap">
+            {{ prices_graph|safe }}
+        </div>
+    </div>
+{% endif %}
