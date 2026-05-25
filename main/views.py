@@ -183,13 +183,7 @@ class GameDetailView(DetailView):
         """Get context."""
         ctx = super().get_context_data(**kwargs)
         ctx['listings'] = ctx['game'].listings.order_by('-in_stock', 'price').all()
-        # graph for prices (default to the last 6 months)
-        period = 'recent'
-        if prices_fig := get_game_prices_graph(self.object, period=period):
-            ctx['prices_graph'] = prices_fig.to_html(full_html=False)
-        else:
-            ctx['prices_graph'] = None
-        ctx['prices_period'] = period
+        # Prices graph is loaded lazily via htmx — see game-prices-graph URL.
         ctx['nav'] = 'games'
         # Add current timestamp to context to ensure cache busting
         ctx['current_timestamp'] = timezone.now().timestamp()

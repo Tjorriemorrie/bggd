@@ -36,6 +36,11 @@ urlpatterns = [
     ),
     path('games/', cache_page(settings.VIEW_CACHE)(views.GameListView.as_view()), name='game-list'),
     path(
+        'game/<int:pk>/prices-graph/',
+        views.game_prices_graph_view,
+        name='game-prices-graph',
+    ),
+    path(
         'game/<int:pk>/',
         cache_page(settings.VIEW_CACHE)(views.GameDetailView.as_view()),
         name='game-detail',
@@ -44,11 +49,6 @@ urlpatterns = [
         'game/<int:pk>/<slug:slug>/',
         cache_page(settings.VIEW_CACHE)(views.GameDetailView.as_view()),
         name='game-detail-slug',
-    ),
-    path(
-        'game/<int:pk>/prices-graph/',
-        views.game_prices_graph_view,
-        name='game-prices-graph',
     ),
     path(
         'card/',

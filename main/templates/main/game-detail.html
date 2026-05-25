@@ -108,8 +108,11 @@
             </div>
         </div>
 
-        {# ── PRICE HISTORY ── #}
-        {% include 'main/snippet_game_prices_graph.html' %}
+        {# ── PRICE HISTORY (loaded lazily via htmx) ── #}
+        <div id="game-prices-graph"
+             hx-get="{% url 'game-prices-graph' game.pk %}?period=recent"
+             hx-trigger="load"
+             hx-swap="outerHTML"></div>
 
         {# ── LISTINGS ── #}
         <div class="ld-section">
