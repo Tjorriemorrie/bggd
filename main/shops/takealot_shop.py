@@ -17,6 +17,7 @@ api_base = (
     'searches/products?department_slug=toys&category_slug=board-games-25346'
 )
 IMG_SIZE = 'fb'
+MIN_PRICE = 250
 
 _request_delay = 1.0
 
@@ -81,6 +82,8 @@ def process_results(shop, results):
         buybox = views.get('buybox_summary', {})
         prices = buybox.get('prices', [])
         price_value = float(prices[0]) if prices else None
+        if price_value is not None and price_value < MIN_PRICE:
+            continue
         in_stock = price_value is not None
 
         handle_item_data(shop, title, href, img_src, in_stock, price_value)
