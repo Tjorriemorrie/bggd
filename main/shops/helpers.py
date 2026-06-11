@@ -149,8 +149,14 @@ def parse_price(price_txt) -> float:
 
 
 @retry((OperationalError,), tries=99, delay=1, logger=logger)
-def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> Listing:
-    """Update/create and store the listing in the db."""
+def upsert_listing(
+    shop: Shop, name: str, href: str, img_src: str, create_defaults=None, **params
+) -> Listing:
+    """Update/create and store the listing in the db.
+
+    `create_defaults` are only applied when the listing is first created, so they
+    do not overwrite values edited later (e.g. a manually changed category).
+    """
     href = strip_query_params(href)
     img_src = strip_query_params(img_src)
 
@@ -174,7 +180,7 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
                 slug=slugify(unidecode(name)),
                 img=img_src,
                 scraped_at=timezone.now(),
-                **params,
+                **{**(create_defaults or {}), **params},
             )
             logger.info(f'Created: {listing}')
             return listing
@@ -204,10 +210,14 @@ def upsert_listing(shop: Shop, name: str, href: str, img_src: str, **params) -> 
         # return upsert_listing(shop, name, href, img_src, **params)
 
 
-def handle_item_data(shop, name, href, img_src, in_stock, price_value, **params):
+def handle_item_data(
+    shop, name, href, img_src, in_stock, price_value, create_defaults=None, **params
+):
     """Handle exceptions on upserts."""
     try:
-        listing = upsert_listing(shop, name, href, img_src, **params)
+        listing = upsert_listing(
+            shop, name, href, img_src, create_defaults=create_defaults, **params
+        )
     except (ListingUrlError, ListingImageError):
         logger.error('Could not handle item data')
         return

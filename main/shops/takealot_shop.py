@@ -4,6 +4,7 @@ import time
 import requests
 from django.conf import settings
 
+from main.constants import CATEGORY_OTHER
 from main.selectors import upsert_shop
 from main.shops.helpers import handle_item_data, missed_listings
 
@@ -86,7 +87,17 @@ def process_results(shop, results):
             continue
         in_stock = price_value is not None
 
-        handle_item_data(shop, title, href, img_src, in_stock, price_value)
+        # Takealot's board-games feed is broad, so default new listings to Other
+        # (manual recategorisation via the form is preserved on later scrapes).
+        handle_item_data(
+            shop,
+            title,
+            href,
+            img_src,
+            in_stock,
+            price_value,
+            create_defaults={'category': CATEGORY_OTHER},
+        )
 
 
 def scrape_site():
