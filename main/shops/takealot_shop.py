@@ -18,7 +18,7 @@ api_base = (
     'searches/products?department_slug=toys&category_slug=board-games-25346'
 )
 IMG_SIZE = 'fb'
-MIN_PRICE = 250
+MIN_PRICE = 400
 
 _request_delay = 1.0
 
