@@ -11,7 +11,7 @@ from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
-enabled = True
+enabled = False
 shop_name = 'Amazon'
 shop_host = 'https://www.amazon.co.za'
 # https://www.amazon.co.za/s?i=toys&rh=n:28002628031,p_72:28056829031,p_6:A34KVLZUJN6MA,p_n_availability:28056815031&dc=&page=1
