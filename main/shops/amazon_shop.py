@@ -6,6 +6,7 @@ from botasaurus_requests import request as bot_request
 from bs4 import BeautifulSoup
 
 from main.selectors import upsert_shop
+from main.shops import _botasaurus_patch  # noqa: F401  # relaunches the botasaurus bridge if dead
 from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
