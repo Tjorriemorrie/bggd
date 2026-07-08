@@ -10,7 +10,7 @@ from main.shops.helpers import handle_item_data, missed_listings
 
 logger = logging.getLogger(__name__)
 
-enabled = True
+enabled = False
 shop_name = 'Takealot'
 shop_host = 'https://www.takealot.com'
 api_base = (
