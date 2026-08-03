@@ -50,8 +50,12 @@ def worker(page: int) -> bool:
             price_value = None
         else:
             in_stock = True
-            price_txt = row.find_all('p', class_='w3-medium')[1].find('strong').get_text(strip=True)
-            price_value = parse_price(price_txt)
+            price_p = row.find_all('p', class_='w3-medium')[1]
+            # when discounted, a <strike> holds the old price before the current one
+            old_price = price_p.find('strike')
+            if old_price:
+                old_price.extract()
+            price_value = parse_price(price_p.get_text(strip=True))
         params = {'is_new': is_new}
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
