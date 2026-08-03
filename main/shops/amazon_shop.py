@@ -2,11 +2,9 @@ import logging
 import re
 import time
 
-from botasaurus_requests import request as bot_request
 from bs4 import BeautifulSoup
 
 from main.selectors import upsert_shop
-from main.shops import _botasaurus_patch  # noqa: F401  # relaunches the botasaurus bridge if dead
 from main.shops.helpers import handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
@@ -31,6 +29,12 @@ def _timed_out():
 def _request_with_backoff(url):
     """GET with linear backoff on 503 responses."""
     global _request_delay  # noqa: PLW0603
+    # Imported lazily: botasaurus_requests loads a Go shared library and starts a local
+    # bridge server at import time, which every process importing main.shops would pay for.
+    from botasaurus_requests import request as bot_request
+
+    from main.shops import _botasaurus_patch  # noqa: F401  # relaunches the bridge if dead
+
     service_unavailable = 503
     while True:
         time.sleep(_request_delay)

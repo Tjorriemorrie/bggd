@@ -164,8 +164,10 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 LOG_DIR = BASE_DIR / 'logs'
 LOG_DIR.mkdir(exist_ok=True)
 if sys.stdout.encoding != 'utf-8':
-    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
-    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8')
+    # line_buffering keeps log output visible as it happens; the default TextIOWrapper
+    # is block-buffered, which makes a running command look hung.
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', line_buffering=True)
+    sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding='utf-8', line_buffering=True)
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
