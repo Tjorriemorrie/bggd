@@ -67,9 +67,13 @@ def worker_wrapper(page):
 
 def scrape_site():
     """Scrape pages."""
+    max_pages = 50
     page = 0
     while True:
         page += 1
+        if page > max_pages:
+            logger.info(f'Reached max pages ({max_pages}), stopping.')
+            break
         outcome = worker(page)
         if not outcome:
             break

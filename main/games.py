@@ -63,7 +63,11 @@ USER_AGENTS = [
 sleep_time = 0
 
 
-@retry((TooManyRequestsError, RequestsError), delay=3, max_delay=60, tries=42)
+# 42 flat 3s tries meant a rate limit waited ~2min, but a connection error waited ~27min
+# (each try burns the 30s timeout plus a 5s sleep) -- indistinguishable from a hang.
+# 7 tries with exponential backoff caps the worst case at ~7min while actually waiting
+# longer on a rate limit (153s of backoff, and max_delay is no longer dead code).
+@retry((TooManyRequestsError, RequestsError), delay=3, backoff=2, max_delay=60, tries=7)
 def get(
     url: str, params: dict = None, headers: dict = None, redirect: bool = False
 ) -> requests.Response:
