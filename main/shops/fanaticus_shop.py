@@ -10,7 +10,7 @@ from main.shops.helpers import handle_item_data, missed_listings, parse_price
 logger = logging.getLogger(__name__)
 
 shop_name = 'Fanaticus'
-shop_host = 'https://fanaticus.co.za'
+shop_host = 'https://store.fanaticus.co.za'
 
 
 def worker(page: int) -> bool:
@@ -25,11 +25,13 @@ def worker(page: int) -> bool:
     redirect = page == 1
     res = get(url, params=params, headers=headers, redirect=redirect)
     logger.info(f'Scraped {res.request.url}...')
-    if 'It is pitch black. You are likely to be eaten by a grue.' in res.text:
-        return False
 
     html = BeautifulSoup(res.text, 'html.parser')
-    container = html.find('ul', class_=lambda x: x and 'potter-grid' in x.split())
+    container = html.find('ul', class_=lambda x: x and 'products' in x.split())
+    if not container:
+        # past the last page WooCommerce serves a 404 with no product grid
+        logger.info(f'No product grid on page {page}, stopping.')
+        return False
     rows = container.find_all(
         'li', class_=lambda x: x and 'type-product' in x.split(), recursive=False
     )
@@ -40,7 +42,8 @@ def worker(page: int) -> bool:
         href = anchor['href']
         img_tag = row.find('img')
         img_src = img_tag.get('data-src') or img_tag.get('data-lazy-src') or img_tag.get('src')
-        name = row.find('h3', class_='woocommerce-loop-product__title').get_text(strip=True)
+        # heading level varies by theme, so match on the class alone
+        name = row.find(class_='woocommerce-loop-product__title').get_text(strip=True)
         # Remove newlines and extra whitespace
         name = re.sub(r'\s+', ' ', name).strip()
         if name == 'Sample Product':
