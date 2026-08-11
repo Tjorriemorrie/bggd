@@ -2,7 +2,7 @@
 {% load fmt %}
 
 {% if games %}
-    <div class="hp-grid">
+    <div class="hp-grid"{% if max_rows %} data-max-rows="{{ max_rows }}"{% endif %}>
         {% for game in games %}
             <a href="{{ game.get_absolute_url }}" class="hp-card {% if not game.shop_in_stock %}hp-card-oos{% endif %}">
                 <div class="hp-card-img-wrap">

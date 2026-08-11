@@ -862,6 +862,9 @@ a:hover {
     font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
     color: var(--hp-text);
     padding: 0 0.5rem 2rem;
+    /* caps the grid at 9 columns, so 3 rows always fit the pool the view sends */
+    max-width: 1800px;
+    margin: 0 auto;
 }
 
 .hp-section {
@@ -921,6 +924,8 @@ a:hover {
     color: var(--hp-text);
 }
 .hp-card-oos { opacity: 0.7; }
+/* .hp-card sets display:flex, which would beat the UA rule for [hidden] */
+.hp-card[hidden] { display: none; }
 
 /* card image */
 .hp-card-img-wrap {

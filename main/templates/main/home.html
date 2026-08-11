@@ -13,7 +13,7 @@
                     </h2>
                     <p class="hp-section-sub">Games priced well below the average</p>
                 </div>
-                {% include 'main/snippet_game_group.html' with games=savings footer="discount" %}
+                {% include 'main/snippet_game_group.html' with games=savings footer="discount" max_rows=3 %}
             </section>
         {% endif %}
 
@@ -39,7 +39,7 @@
                     </h2>
                     <p class="hp-section-sub">Recently discovered games</p>
                 </div>
-                {% include 'main/snippet_game_group.html' with games=latest footer="xdays" %}
+                {% include 'main/snippet_game_group.html' with games=latest footer="xdays" max_rows=2 %}
             </section>
         {% endif %}
     </div>
