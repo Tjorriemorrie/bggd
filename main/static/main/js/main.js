@@ -1,16 +1,42 @@
 // Timezone settings
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-document.cookie = "django_timezone=" + timezone + "; path=/; SameSite=Lax";
-console.log('Timezone set ', timezone)
+document.cookie = 'django_timezone=' + timezone + '; path=/; SameSite=Lax';
 
-// Card grids: show only whole rows, up to the data-max-rows the grid asks for.
-// The column count is whatever the viewport gives us, so it is measured here
-// rather than guessed on the server.
-function trimCardGrids() {
-    document.querySelectorAll('.hp-grid[data-max-rows]').forEach(function (grid) {
-        const maxRows = parseInt(grid.dataset.maxRows, 10);
-        const items = grid.children;
-        const cols = getComputedStyle(grid).gridTemplateColumns.split(' ').length;
+// Index rail: collapses behind the toggle below the rail breakpoint.
+function initNavToggle() {
+    const toggle = document.getElementById('nav-toggle');
+    const rail = document.getElementById('nav-rail');
+    if (!toggle || !rail) return;
+
+    const close = function () {
+        toggle.classList.remove('nav-toggle-open');
+        toggle.setAttribute('aria-expanded', 'false');
+        rail.classList.remove('rail-open');
+    };
+
+    toggle.addEventListener('click', function () {
+        const open = rail.classList.toggle('rail-open');
+        toggle.classList.toggle('nav-toggle-open', open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    rail.querySelectorAll('a').forEach(function (a) {
+        a.addEventListener('click', close);
+    });
+
+    window.addEventListener('resize', function () {
+        if (window.innerWidth > 999.98) close();
+    });
+}
+
+// Counter trays: show only whole rows, up to the data-max-rows the tray asks
+// for. The column count is whatever the viewport gives us, so it is measured
+// here rather than guessed on the server.
+function trimTrays() {
+    document.querySelectorAll('.tray[data-max-rows]').forEach(function (tray) {
+        const maxRows = parseInt(tray.dataset.maxRows, 10);
+        const items = tray.children;
+        const cols = getComputedStyle(tray).gridTemplateColumns.split(' ').length;
         const visible = items.length < cols
             ? items.length
             : Math.min(maxRows * cols, Math.floor(items.length / cols) * cols);
@@ -20,9 +46,61 @@ function trimCardGrids() {
     });
 }
 
-let trimCardGridsTimer;
+// Stock tabs on the game sheet: in stock / out of stock rosters.
+function initTabs() {
+    const tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+    if (!tabs.length) return;
+
+    const select = function (tab) {
+        tabs.forEach(function (t) {
+            const panel = document.getElementById(t.getAttribute('aria-controls'));
+            const on = t === tab;
+            t.setAttribute('aria-selected', on ? 'true' : 'false');
+            t.setAttribute('tabindex', on ? '0' : '-1');
+            if (panel) panel.hidden = !on;
+        });
+    };
+
+    tabs.forEach(function (tab, i) {
+        tab.addEventListener('click', function (e) {
+            e.preventDefault();
+            select(tab);
+        });
+        tab.addEventListener('keydown', function (e) {
+            if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+            e.preventDefault();
+            const next = tabs[(i + (e.key === 'ArrowRight' ? 1 : tabs.length - 1)) % tabs.length];
+            next.focus();
+            select(next);
+        });
+    });
+}
+
+// Cover art is served from the shops and from BGG, so a URL can rot. A dead
+// image becomes the same printed blank a missing one gets, never an empty box.
+const ART_WRAPS = '.counter-art, .crt-art, .roster-art, .detail-counter, .linked-art';
+
+document.addEventListener(
+    'error',
+    function (e) {
+        const img = e.target;
+        if (!img || img.tagName !== 'IMG') return;
+        const wrap = img.closest(ART_WRAPS);
+        if (!wrap) return;
+        img.hidden = true;
+        wrap.classList.add('art-missing');
+    },
+    true // 'error' does not bubble, so listen on the capture phase
+);
+
+let trimTraysTimer;
 window.addEventListener('resize', function () {
-    clearTimeout(trimCardGridsTimer);
-    trimCardGridsTimer = setTimeout(trimCardGrids, 150);
+    clearTimeout(trimTraysTimer);
+    trimTraysTimer = setTimeout(trimTrays, 150);
 });
-document.addEventListener('DOMContentLoaded', trimCardGrids);
+
+document.addEventListener('DOMContentLoaded', function () {
+    initNavToggle();
+    initTabs();
+    trimTrays();
+});

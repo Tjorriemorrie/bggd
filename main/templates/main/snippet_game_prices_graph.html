@@ -1,21 +1,22 @@
 {% if prices_graph %}
-    <div id="game-prices-graph" class="ld-section">
-        <div class="ld-prices-header">
-            <h2 class="ld-section-title ld-section-title-flush">
-                <i class="bi bi-graph-up"></i>
-                Price History
-            </h2>
-            <button type="button"
-                    class="ld-prices-toggle"
-                    hx-get="{% url 'game-prices-graph' game.pk %}?period={% if prices_period == 'recent' %}max{% else %}recent{% endif %}"
-                    hx-target="#game-prices-graph"
-                    hx-swap="outerHTML"
-                    hx-indicator="#game-prices-graph">
-                {% if prices_period == 'recent' %}Max{% else %}Recent{% endif %}
-            </button>
+    <section id="game-prices-graph" class="section">
+        <div class="track-head">
+            <h2 class="section-title">Price history</h2>
+                <button type="button"
+                        class="ghost"
+                        aria-pressed="{% if prices_period == 'recent' %}false{% else %}true{% endif %}"
+                        hx-get="{% url 'game-prices-graph' game.pk %}?period={% if prices_period == 'recent' %}max{% else %}recent{% endif %}"
+                        hx-target="#game-prices-graph"
+                        hx-swap="outerHTML"
+                        hx-indicator="#game-prices-graph">
+                    {% if prices_period == 'recent' %}Show all time{% else %}Show last 6 months{% endif %}
+                </button>
         </div>
-        <div class="ld-chart-wrap">
-            {{ prices_graph|safe }}
-        </div>
-    </div>
+        {% if track_heights %}
+            <div class="track track-series"
+                 style="--track-wide: {{ track_heights.wide }}px; --track-mid: {{ track_heights.mid }}px; --track-narrow: {{ track_heights.narrow }}px">{{ prices_graph|safe }}</div>
+        {% else %}
+            <div class="track">{{ prices_graph|safe }}</div>
+        {% endif %}
+    </section>
 {% endif %}

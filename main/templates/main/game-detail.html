@@ -5,148 +5,198 @@
 {% block title %}{{ game.name }} - BGG Data{% endblock %}
 
 {% block content %}
-    <div class="listing-detail">
-        {# ── BREADCRUMB ── #}
-        <nav class="ld-breadcrumb" aria-label="breadcrumb">
+    <div class="page">
+        <nav class="crumb" aria-label="Breadcrumb">
             <a href="{% url 'game-list' %}">Games</a>
-            <span class="ld-sep">/</span>
-            <span>{{ game.name|truncatechars:60 }}</span>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-here">{{ game.name|truncatechars:60 }}</span>
         </nav>
 
-        {# ── HERO SECTION ── #}
-        <div class="ld-hero">
-            <div class="ld-hero-img-wrap">
-                {% if game.is_expansion %}
-                    <span class="ld-badge-preowned">Expansion</span>
-                {% endif %}
-                {% if game.img %}
-                    <img class="ld-hero-img"
-                         src="{{ game.img }}"
-                         alt="{{ game.name }}"/>
-                {% endif %}
-            </div>
+        <div class="sheet-head">
+            <h1 class="sheet-head-title">{{ game.name }}</h1>
+            <span class="sheet-head-scope">
+                {% if game.label %}{{ game.label }}{% else %}Game{% endif %}{% if game.year %} &middot; {{ game.year }}{% endif %}
+            </span>
+        </div>
 
-            <div class="ld-hero-body">
-                {% if game.label %}
-                    <span class="ld-category">{{ game.label }}</span>
-                {% endif %}
+        {% with best=listings|first %}
+            <div class="detail-hero">
+                <div class="detail-counter {% if not game.shop_in_stock %}detail-counter-out{% endif %}">
+                    {% if game.is_expansion %}
+                        <span class="detail-flag detail-flag-alt">Expansion</span>
+                    {% endif %}
+                    {% if game.img %}
+                        <img src="{{ game.img }}" alt="{{ game.name }}"/>
+                    {% else %}
+                        <span class="art-blank">No cover yet</span>
+                    {% endif %}
+                </div>
 
-                <h1 class="ld-title">{{ game.name }}</h1>
+                <div class="detail-body">
+                    {# The verdict: is this price good? It leads everything else. #}
+                    <div class="verdict {% if game.shop_saving > 0 %}verdict-under{% elif game.shop_saving < 0 %}verdict-over{% endif %}{% if not game.shop_in_stock and not game.shop_mean %} verdict-solo{% endif %}">
+                        {% if game.shop_in_stock and game.shop_price %}
+                            <div class="verdict-price">
+                                <span class="verdict-price-label">Cheapest today</span>
+                                <span class="verdict-figure">{{ game|price }}</span>
+                            </div>
 
-                {% if game.pitch %}
-                    <p class="ld-game-pitch" style="margin-bottom: 0.6rem;">{{ game.pitch }}</p>
-                {% endif %}
+                            {% if game.shop_mean %}
+                                <div class="verdict-delta">
+                                    <span class="verdict-delta-figure">
+                                        {% if game.shop_saving > 0 %}
+                                            <i class="bi bi-arrow-down" aria-hidden="true"></i>{{ game|saving_pct }}
+                                        {% elif game.shop_saving < 0 %}
+                                            <i class="bi bi-arrow-up" aria-hidden="true"></i>{{ game|saving_pct }}
+                                        {% else %}
+                                            &mdash;
+                                        {% endif %}
+                                    </span>
+                                    <span class="verdict-delta-label">
+                                        {% if game.shop_saving > 0 %}
+                                            Below the R{{ game.shop_mean }} average
+                                        {% elif game.shop_saving < 0 %}
+                                            Above the R{{ game.shop_mean }} average
+                                        {% else %}
+                                            At the R{{ game.shop_mean }} average
+                                        {% endif %}
+                                    </span>
+                                </div>
+                            {% endif %}
 
-                {% if game.year %}
-                    <div class="ld-shop-row">
-                        <span class="ld-shop-label">Published</span>
-                        <span class="ld-shop-name" style="border: none; cursor: default;">{{ game.year }}</span>
-                    </div>
-                {% endif %}
-
-                {# ── PRICE BLOCK ── #}
-                {% if game.shop_mean %}
-                    <div class="ld-price-block">
-                        <span class="ld-price">R{{ game.shop_mean }}</span>
-                        <span class="ld-last-price">average across shops</span>
-                    </div>
-                {% endif %}
-
-                {# ── STOCK INDICATOR ── #}
-                {% if game.shop_in_stock is not None %}
-                    <div class="ld-stock-indicator">
-                        {% if game.shop_in_stock %}
-                            <span class="ld-dot ld-dot-green"></span>
-                            <span>In stock</span>
+                            {% if best %}
+                                <div class="verdict-act">
+                                    <span class="verdict-act-where">
+                                        At <strong>{{ best.shop.name }}</strong>
+                                    </span>
+                                    <a href="{{ best.url }}" target="_blank" rel="noopener"
+                                       class="commit">
+                                        Go to shop
+                                        <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                                    </a>
+                                </div>
+                            {% endif %}
                         {% else %}
-                            <span class="ld-dot ld-dot-red"></span>
-                            <span>Currently unavailable</span>
+                            <div class="verdict-price">
+                                <span class="verdict-price-label">Availability</span>
+                                <span class="verdict-out">
+                                    <span class="flag flag-out"></span>
+                                    No shop has this in stock
+                                </span>
+                            </div>
+                            {% if game.shop_mean %}
+                                <div class="verdict-delta">
+                                    <span class="verdict-delta-figure">R{{ game.shop_mean }}</span>
+                                    <span class="verdict-delta-label">90-day market average</span>
+                                </div>
+                            {% endif %}
                         {% endif %}
                     </div>
-                {% endif %}
 
-                {% if game.url %}
-                    <a href="{{ game.url }}" target="_blank" rel="noopener" class="ld-cta">
-                        <img src="{% static 'main/img/bgg.png' %}" alt="BGG" class="ld-bgg-icon"/>
-                        View on BoardGameGeek
-                    </a>
-                {% endif %}
+                    {% if game.pitch %}
+                        <p class="detail-pitch">{{ game.pitch }}</p>
+                    {% endif %}
 
-                {# ── GAME STATS ── #}
-                <div class="ld-game-stats" style="margin-top: 0.6rem;">
-                    {% if game.rating %}
-                        <div class="ld-stat">
-                            <span class="ld-stat-val">{{ game.rating|floatformat:1 }}</span>
-                            <span class="ld-stat-lbl">Rating</span>
-                        </div>
-                    {% endif %}
-                    {% if game.rank %}
-                        <div class="ld-stat">
-                            <span class="ld-stat-val">#{{ game.rank }}</span>
-                            <span class="ld-stat-lbl">BGG Rank</span>
-                        </div>
-                    {% endif %}
-                    {% if game.weight_avg %}
-                        <div class="ld-stat">
-                            <span class="ld-stat-val">{{ game.weight_avg|floatformat:1 }}</span>
-                            <span class="ld-stat-lbl">Weight</span>
-                        </div>
-                    {% endif %}
-                    {% if game.min_players and game.max_players %}
-                        <div class="ld-stat">
-                            <span class="ld-stat-val">{{ game.min_players }}-{{ game.max_players }}</span>
-                            <span class="ld-stat-lbl">Players</span>
-                        </div>
-                    {% endif %}
-                    {% if game.min_play_time and game.max_play_time %}
-                        <div class="ld-stat">
-                            <span class="ld-stat-val">{{ game.min_play_time }}-{{ game.max_play_time }}</span>
-                            <span class="ld-stat-lbl">Minutes</span>
-                        </div>
+                    {# The unit's printed factors. #}
+                    <div class="factors">
+                        {% if game.rating %}
+                            <div class="factor">
+                                <span class="factor-val">{{ game.rating|floatformat:1 }}</span>
+                                <span class="factor-lbl">Rating</span>
+                            </div>
+                        {% endif %}
+                        {% if game.rank %}
+                            <div class="factor">
+                                <span class="factor-val">#{{ game.rank }}</span>
+                                <span class="factor-lbl">BGG rank</span>
+                            </div>
+                        {% endif %}
+                        {% if game.weight_avg %}
+                            <div class="factor">
+                                <span class="factor-val">{{ game.weight_avg|floatformat:1 }}</span>
+                                <span class="factor-lbl">Weight</span>
+                            </div>
+                        {% endif %}
+                        {% if game.min_players and game.max_players %}
+                            <div class="factor">
+                                <span class="factor-val">{{ game.min_players }}&ndash;{{ game.max_players }}</span>
+                                <span class="factor-lbl">Players</span>
+                            </div>
+                        {% endif %}
+                        {% if game.min_play_time and game.max_play_time %}
+                            <div class="factor">
+                                <span class="factor-val">{{ game.min_play_time }}&ndash;{{ game.max_play_time }}</span>
+                                <span class="factor-lbl">Minutes</span>
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    {% if game.url %}
+                        <a href="{{ game.url }}" target="_blank" rel="noopener" class="bgg-link">
+                            <img src="{% static 'main/img/bgg.png' %}" alt=""/>
+                            View on BoardGameGeek
+                        </a>
                     {% endif %}
                 </div>
             </div>
-        </div>
+        {% endwith %}
 
-        {# ── PRICE HISTORY (loaded lazily via htmx) ── #}
+        {# Turn record track — the price series, loaded lazily via htmx. #}
         <div id="game-prices-graph"
              hx-get="{% url 'game-prices-graph' game.pk %}?period=recent"
              hx-trigger="load"
              hx-swap="outerHTML"></div>
 
-        {# ── LISTINGS ── #}
-        <div class="ld-section">
-            <h2 class="ld-section-title">
-                <i class="bi bi-shop"></i>
-                Where to Buy
-            </h2>
-
-            <div class="gd-tabs">
-                <a href="#" class="gd-tab gd-tab-active" data-tab="gd-in-stock">
-                    <span class="ld-dot ld-dot-green"></span>
-                    In Stock
-                </a>
-                <a href="#" class="gd-tab" data-tab="gd-out-of-stock">
-                    <span class="ld-dot ld-dot-red"></span>
-                    Out of Stock
-                </a>
+        {# Cross-reference: every shop against the market. #}
+        <section class="section">
+            <div class="section-head">
+                <h2 class="section-title">Where to buy</h2>
+                <span class="section-scope">{{ listings|length }} listing{{ listings|length|pluralize }}</span>
             </div>
 
-            <div class="gd-tab-panel gd-tab-panel-active" id="gd-in-stock">
-                <div class="ld-siblings">
+            {# Nothing in stock anywhere: open on the roster that has rows. #}
+            {% with stocked=listings.0.in_stock %}
+            <div class="tabs" role="tablist" aria-label="Stock state">
+                <button type="button" class="tab" role="tab" id="tab-in"
+                        aria-controls="panel-in"
+                        aria-selected="{% if stocked %}true{% else %}false{% endif %}"
+                        {% if not stocked %}tabindex="-1"{% endif %}>
+                    <span class="flag flag-in"></span>In stock
+                </button>
+                <button type="button" class="tab" role="tab" id="tab-out"
+                        aria-controls="panel-out"
+                        aria-selected="{% if stocked %}false{% else %}true{% endif %}"
+                        {% if stocked %}tabindex="-1"{% endif %}>
+                    <span class="flag flag-out"></span>Out of stock
+                </button>
+            </div>
+
+            <div class="tab-panel" id="panel-in" role="tabpanel" aria-labelledby="tab-in"
+                 {% if not stocked %}hidden{% endif %}>
+                <div class="crt">
+                    {% if not listings.0.in_stock %}
+                        <p class="crt-empty">No shop currently lists this game in stock.</p>
+                    {% endif %}
                     {% for listing in listings %}
                         {% if listing.in_stock %}
-                            <div class="ld-sib-row gd-listing-row">
-                                <img class="ld-sib-img" src="{{ listing.img }}" alt="{{ listing.name }}"/>
-                                <div class="ld-sib-info">
-                                    <span class="ld-sib-shop">{{ listing.shop.name }}</span>
-                                    <a href="{{ listing.get_absolute_url }}" class="ld-sib-name gd-listing-link">
-                                        {{ listing.name|truncatechars:55 }}
+                            <div class="crt-row {% if forloop.first %}crt-row-best{% endif %}">
+                                <span class="crt-art">
+                                    {% if listing.img %}
+                                        <img src="{{ listing.img }}" alt="" loading="lazy"/>
+                                    {% else %}
+                                        <span class="art-blank">No art</span>
+                                    {% endif %}
+                                </span>
+                                <span class="crt-info">
+                                    <span class="crt-shop">{{ listing.shop.name }}</span>
+                                    <a href="{{ listing.get_absolute_url }}" class="crt-name">
+                                        {{ listing.name|truncatechars:60 }}
                                     </a>
-                                </div>
-                                <span class="ld-sib-price">{{ listing|price }}</span>
-                                <a href="{{ listing.url }}" target="_blank" rel="noopener" class="gd-go-btn">
-                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </span>
+                                <span class="crt-price">{{ listing|price }}</span>
+                                <a href="{{ listing.url }}" target="_blank" rel="noopener"
+                                   class="crt-go" aria-label="Open at {{ listing.shop.name }}">
+                                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                                 </a>
                             </div>
                         {% endif %}
@@ -154,65 +204,59 @@
                 </div>
             </div>
 
-            <div class="gd-tab-panel" id="gd-out-of-stock">
-                <div class="ld-siblings">
+            <div class="tab-panel" id="panel-out" role="tabpanel" aria-labelledby="tab-out"
+                 {% if stocked %}hidden{% endif %}>
+                <div class="crt">
+                    {% with tail=listings|last %}
+                        {% if tail.in_stock %}
+                            <p class="crt-empty">Every shop carrying this game has it in stock.</p>
+                        {% endif %}
+                    {% endwith %}
                     {% for listing in listings %}
                         {% if not listing.in_stock %}
-                            <div class="ld-sib-row gd-listing-row">
-                                <img class="ld-sib-img ld-img-oos" src="{{ listing.img }}" alt="{{ listing.name }}"/>
-                                <div class="ld-sib-info">
-                                    <span class="ld-sib-shop">{{ listing.shop.name }}</span>
-                                    <a href="{{ listing.get_absolute_url }}" class="ld-sib-name gd-listing-link">
-                                        {{ listing.name|truncatechars:55 }}
+                            <div class="crt-row">
+                                <span class="crt-art">
+                                    {% if listing.img %}
+                                        <img src="{{ listing.img }}" alt="" loading="lazy"
+                                             class="out-of-stock-img"/>
+                                    {% else %}
+                                        <span class="art-blank">No art</span>
+                                    {% endif %}
+                                </span>
+                                <span class="crt-info">
+                                    <span class="crt-shop">{{ listing.shop.name }}</span>
+                                    <a href="{{ listing.get_absolute_url }}" class="crt-name">
+                                        {{ listing.name|truncatechars:60 }}
                                     </a>
-                                </div>
-                                <span class="ld-sib-price" style="color: var(--ld-muted);">{{ listing|last_price }}</span>
-                                <a href="{{ listing.url }}" target="_blank" rel="noopener" class="gd-go-btn">
-                                    <i class="bi bi-box-arrow-up-right"></i>
+                                </span>
+                                <span class="crt-price crt-price-out">{{ listing|last_price }}</span>
+                                <a href="{{ listing.url }}" target="_blank" rel="noopener"
+                                   class="crt-go" aria-label="Open at {{ listing.shop.name }}">
+                                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
                                 </a>
                             </div>
                         {% endif %}
                     {% endfor %}
                 </div>
             </div>
-        </div>
+            {% endwith %}
+        </section>
 
-        {# ── DESCRIPTION ── #}
         {% if game.description %}
-            <div class="ld-section">
-                <h2 class="ld-section-title">
-                    <i class="bi bi-book"></i>
-                    About This Game
-                </h2>
-                <div class="gd-description">
-                    {{ game.description }}
+            <section class="section">
+                <div class="section-head">
+                    <h2 class="section-title">About this game</h2>
+                    <span class="section-scope">From BoardGameGeek</span>
                 </div>
-            </div>
+                <div class="prose"><p>{{ game.description }}</p></div>
+            </section>
         {% endif %}
 
-        {# ── FOOTER META ── #}
-        <div class="ld-footer-meta">
+        <div class="colophon">
             <span>Added {{ game.created_at|days_ago|default:game.created_at }}</span>
             {% if game.scraped_at %}
                 <span>Last scraped {{ game.scraped_at|days_ago|default:game.scraped_at }}</span>
             {% endif %}
         </div>
     </div>
-
-    <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            var tabs = document.querySelectorAll('.gd-tab');
-            var panels = document.querySelectorAll('.gd-tab-panel');
-            tabs.forEach(function(btn) {
-                btn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    tabs.forEach(function(t) { t.classList.remove('gd-tab-active'); });
-                    panels.forEach(function(p) { p.classList.remove('gd-tab-panel-active'); });
-                    btn.classList.add('gd-tab-active');
-                    var target = document.getElementById(btn.getAttribute('data-tab'));
-                    if (target) { target.classList.add('gd-tab-panel-active'); }
-                });
-            });
-        });
-    </script>
 {% endblock %}

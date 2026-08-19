@@ -1,29 +1,29 @@
-{% load humanize %}
 {% load fmt %}
 
 {% if listings %}
-    <div class="hp-grid">
+    <div class="tray"{% if max_rows %} data-max-rows="{{ max_rows }}"{% endif %}>
         {% for listing in listings %}
-            <a href="{{ listing.get_absolute_url }}" class="hp-card {% if not listing.in_stock %}hp-card-oos{% endif %}">
-                <div class="hp-card-img-wrap">
-                    <img src="{{ listing.img }}"
-                         class="hp-card-img {% if not listing.in_stock %}hp-card-img-oos{% endif %}"
-                         alt="{{ listing.name }}"/>
+            <a href="{{ listing.get_absolute_url }}"
+               class="counter {% if not listing.in_stock %}counter-out{% endif %}">
+                <div class="counter-art">
+                    {% if listing.img %}
+                        <img src="{{ listing.img }}" alt="{{ listing.name }}" loading="lazy"/>
+                    {% else %}
+                        <span class="art-blank">No cover yet</span>
+                    {% endif %}
                     {% if not listing.in_stock %}
-                        <span class="hp-card-badge hp-card-badge-oos">Out of stock</span>
+                        <span class="chip chip-out">Out</span>
                     {% endif %}
                 </div>
-                <div class="hp-card-body">
-                    <h3 class="hp-card-title">{{ listing.name }}</h3>
-                    <div class="hp-card-price-row">
-                        <span class="hp-card-price">{{ listing|price }}</span>
-                    </div>
+                <div class="counter-body">
+                    <h3 class="counter-name">{{ listing.name }}</h3>
+                    <span class="counter-price">{{ listing|price }}</span>
                 </div>
                 {% if footer != "none" %}
-                    <div class="hp-card-foot">
-                        <span class="hp-card-shop">{{ listing.shop.name }}</span>
+                    <div class="counter-foot">
+                        <span class="counter-shop">{{ listing.shop.name }}</span>
                         {% if footer == "xdays" %}
-                            <span class="hp-card-meta">{{ listing.created_at|days_ago }}</span>
+                            <span class="counter-meta">{{ listing.created_at|days_ago }}</span>
                         {% endif %}
                     </div>
                 {% endif %}

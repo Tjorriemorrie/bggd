@@ -1,17 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
-  <!-- background: rounded dark walnut square -->
-  <rect width="32" height="32" rx="7" fill="#2a1f1a"/>
-  <!-- gold border inset -->
-  <rect x="2" y="2" width="28" height="28" rx="5.5" fill="none" stroke="#c8a45c" stroke-width="1.2"/>
-  <!-- die face: 5-pip arrangement -->
-  <!-- top-left -->
-  <circle cx="10" cy="10" r="2.4" fill="#c8a45c"/>
-  <!-- top-right -->
-  <circle cx="22" cy="10" r="2.4" fill="#c8a45c"/>
-  <!-- center -->
-  <circle cx="16" cy="16" r="2.4" fill="#faf8f5"/>
-  <!-- bottom-left -->
-  <circle cx="10" cy="22" r="2.4" fill="#c8a45c"/>
-  <!-- bottom-right -->
-  <circle cx="22" cy="22" r="2.4" fill="#c8a45c"/>
+  <!-- A die-cut counter: sand chip, crimson die-cut edge, printed factors. -->
+  <rect width="32" height="32" rx="2" fill="#dece9c"/>
+  <rect x="1" y="1" width="30" height="30" rx="2" fill="none" stroke="#a21232" stroke-width="2"/>
+  <!-- unit box: the pip row -->
+  <rect x="4.5" y="4.5" width="23" height="11" fill="#1a1831"/>
+  <circle cx="9" cy="10" r="1.7" fill="#dece9c"/>
+  <circle cx="16" cy="10" r="1.7" fill="#dece9c"/>
+  <circle cx="23" cy="10" r="1.7" fill="#dece9c"/>
+  <!-- printed factors along the bottom edge -->
+  <rect x="4.5" y="19" width="9" height="3" fill="#20615b"/>
+  <rect x="4.5" y="24" width="14" height="3" fill="#1a1831"/>
+  <rect x="22.5" y="19" width="5" height="8" fill="#a21232"/>
 </svg>

@@ -1,43 +1,58 @@
 {% extends 'main/base.html' %}
 
-{% load humanize %}
-
 {% block content %}
-    <div class="hp">
+    <section class="masthead">
+        <div class="page">
+            <div class="masthead-inner">
+                <div>
+                    <h1 class="masthead-title">What a game <em>actually</em> costs in South Africa</h1>
+                    <p class="masthead-note">
+                        Listings from South African online shops, matched to their BoardGameGeek
+                        records and priced every day. A price here is read against the market and
+                        against its own past, so cheap is a claim rather than a coincidence.
+                    </p>
+                </div>
+                <div class="masthead-key">
+                    <span class="masthead-key-row">
+                        <span class="masthead-key-swatch swatch-under"></span>Below the 90-day average
+                    </span>
+                    <span class="masthead-key-row">
+                        <span class="masthead-key-swatch swatch-over"></span>Above the 90-day average
+                    </span>
+                    <span class="masthead-key-row">
+                        <span class="masthead-key-swatch swatch-out"></span>Out of stock
+                    </span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <div class="page">
         {% if savings %}
-            <section class="hp-section">
-                <div class="hp-section-header">
-                    <h2 class="hp-section-title">
-                        <i class="bi bi-piggy-bank"></i>
-                        Best Savings
-                    </h2>
-                    <p class="hp-section-sub">Games priced well below the average</p>
+            <section class="tray-section">
+                <div class="section-head">
+                    <h2 class="section-title">Best savings</h2>
+                    <span class="section-scope">Furthest below their market average</span>
                 </div>
                 {% include 'main/snippet_game_group.html' with games=savings footer="discount" max_rows=3 %}
             </section>
         {% endif %}
 
         {% if bundles %}
-            <section class="hp-section">
-                <div class="hp-section-header">
-                    <h2 class="hp-section-title">
-                        <i class="bi bi-box-seam"></i>
-                        Bundles
-                    </h2>
-                    <p class="hp-section-sub">Multi-game packs and collections</p>
+            <section class="tray-section">
+                <div class="section-head">
+                    <h2 class="section-title">Bundles</h2>
+                    <span class="section-scope">Multi-game packs and collections</span>
                 </div>
-                {% include 'main/snippet_listing_group.html' with listings=bundles footer="none" %}
+                {% include 'main/snippet_listing_group.html' with listings=bundles footer="none" max_rows=2 %}
             </section>
         {% endif %}
 
         {% if latest %}
-            <section class="hp-section">
-                <div class="hp-section-header">
-                    <h2 class="hp-section-title">
-                        <i class="bi bi-stars"></i>
-                        Just Added
-                    </h2>
-                    <p class="hp-section-sub">Recently discovered games</p>
+            <section class="tray-section">
+                <div class="section-head">
+                    <h2 class="section-title">Just added</h2>
+                    <span class="section-scope">Newest games on the sheet</span>
                 </div>
                 {% include 'main/snippet_game_group.html' with games=latest footer="xdays" max_rows=2 %}
             </section>

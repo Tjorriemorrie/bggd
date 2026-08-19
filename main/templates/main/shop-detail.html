@@ -1,37 +1,63 @@
 {% extends 'main/base.html' %}
+{% load fmt %}
+
+{% block title %}{{ shop.name }} - BGG Data{% endblock %}
 
 {% block content %}
-    <div class="row mt-4 align-items-center">
-        <div class="col">
-            <h1 class="mb-0">{{ shop.name }}</h1>
+    <div class="page">
+        <nav class="crumb" aria-label="Breadcrumb">
+            <a href="{% url 'shop-list' %}">Shops</a>
+            <span class="crumb-sep" aria-hidden="true">/</span>
+            <span class="crumb-here">{{ shop.name }}</span>
+        </nav>
+
+        <div class="sheet-head">
+            <h1 class="sheet-head-title">{{ shop.name }}</h1>
+            <span class="sheet-head-scope">Tracked since {{ shop.created_at|date:"M Y" }}</span>
         </div>
-        <div class="col-auto">
-            <a href="{{ shop.host }}" target="_blank" class="btn btn-primary">
-                Visit Site <i class="bi bi-box-arrow-up-right ms-1"></i>
-            </a>
+
+        <div class="verdict">
+            <div class="verdict-price">
+                <span class="verdict-price-label">Listings tracked</span>
+                <span class="verdict-figure">{{ shop.listings.count }}</span>
+            </div>
+            {% if last_scrape %}
+                <div class="verdict-delta">
+                    <span class="verdict-delta-figure">
+                        {{ last_scrape.scraped_at|days_ago|default:"Unknown" }}
+                    </span>
+                    <span class="verdict-delta-label">Last scraped</span>
+                </div>
+            {% endif %}
+            <div class="verdict-act">
+                <span class="verdict-act-where">Buy directly from the shop</span>
+                <a href="{{ shop.host }}" target="_blank" rel="noopener" class="commit">
+                    Visit {{ shop.name }}
+                    <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                </a>
+            </div>
         </div>
+
+        {% if inflation_graph %}
+            <section class="section">
+                <div class="track-head">
+                    <h2 class="section-title">Cumulative price movement</h2>
+                    <span class="section-scope">
+                        Rand added or cut across this shop&rsquo;s tracked listings
+                    </span>
+                </div>
+                <div class="track">{{ inflation_graph|safe }}</div>
+            </section>
+        {% endif %}
+
+        {% if unique %}
+            <section class="section">
+                <div class="section-head">
+                    <h2 class="section-title">Only here</h2>
+                    <span class="section-scope">No other tracked shop lists these</span>
+                </div>
+                {% include 'main/snippet_game_group.html' with games=unique footer="none" max_rows=2 %}
+            </section>
+        {% endif %}
     </div>
-
-    <hr/>
-
-    <dl class="row mt-3">
-        <dt class="col-sm-2">Listings</dt>
-        <dd class="col-sm-10">{{ shop.listings.count }}</dd>
-    </dl>
-
-    {% if inflation_graph %}
-        <h2>Inflation Over Time</h2>
-        <div>
-            {{ inflation_graph|safe }}
-        </div>
-    {% endif %}
-
-    {% if unique %}
-        <br/>
-        <hr/>
-        <h3 class="">Best unique games to this shop only!</h3>
-        {% include 'main/snippet_game_group.html' with games=unique footer="none" %}
-    {% endif %}
-
-    <p class="text-muted"><small>Created at: {{ shop.created_at }}</small></p>
 {% endblock %}

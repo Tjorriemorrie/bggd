@@ -1,34 +1,36 @@
-{% load humanize %}
 {% load fmt %}
 
 {% if games %}
-    <div class="hp-grid"{% if max_rows %} data-max-rows="{{ max_rows }}"{% endif %}>
+    <div class="tray"{% if max_rows %} data-max-rows="{{ max_rows }}"{% endif %}>
         {% for game in games %}
-            <a href="{{ game.get_absolute_url }}" class="hp-card {% if not game.shop_in_stock %}hp-card-oos{% endif %}">
-                <div class="hp-card-img-wrap">
-                    <img src="{{ game.img }}"
-                         class="hp-card-img {% if not game.shop_in_stock %}hp-card-img-oos{% endif %}"
-                         alt="{{ game.name }}"/>
+            <a href="{{ game.get_absolute_url }}"
+               class="counter {% if not game.shop_in_stock %}counter-out{% endif %}">
+                <div class="counter-art">
+                    {% if game.img %}
+                        <img src="{{ game.img }}" alt="{{ game.name }}" loading="lazy"/>
+                    {% else %}
+                        <span class="art-blank">No cover yet</span>
+                    {% endif %}
                     {% if not game.shop_in_stock %}
-                        <span class="hp-card-badge hp-card-badge-oos">Out of stock</span>
-                    {% elif game.shop_saving and footer == "discount" %}
-                        <span class="hp-card-badge hp-card-badge-save">{{ game|discount }}</span>
+                        <span class="chip chip-out">Out</span>
+                    {% elif game.shop_saving > 0 and footer == "discount" %}
+                        <span class="chip">
+                            <i class="bi bi-arrow-down-short" aria-hidden="true"></i>{{ game|saving_pct }}
+                        </span>
                     {% endif %}
                 </div>
-                <div class="hp-card-body">
-                    <h3 class="hp-card-title">{{ game.name }}</h3>
-                    <div class="hp-card-price-row">
-                        <span class="hp-card-price">{{ game|price }}</span>
-                    </div>
+                <div class="counter-body">
+                    <h3 class="counter-name">{{ game.name }}</h3>
+                    <span class="counter-price">{{ game|price }}</span>
                 </div>
                 {% if footer != "none" %}
-                    <div class="hp-card-foot">
+                    <div class="counter-foot">
                         {% if footer == "pageview" %}
-                            <span>{{ game.pageview_count }} views</span>
+                            <span class="counter-shop">{{ game.pageview_count }} views</span>
                         {% else %}
-                            <span class="hp-card-shop">{{ game.shop_best.name }}</span>
+                            <span class="counter-shop">{{ game.shop_best.name }}</span>
                             {% if footer == "xdays" %}
-                                <span class="hp-card-meta">{{ game.created_at|days_ago }}</span>
+                                <span class="counter-meta">{{ game.created_at|days_ago }}</span>
                             {% endif %}
                         {% endif %}
                     </div>

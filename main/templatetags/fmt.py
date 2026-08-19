@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+from datetime import date, datetime
 
 from django import template
 from django.utils import timezone
@@ -95,30 +95,39 @@ def discount(obj, show_currency: bool = True):
 @register.filter
 def days_ago(value):
     """Calculate how many days ago a given date or datetime was, considering the user's timezone."""
-    if not isinstance(value, datetime | timedelta):
+    # datetime is a subclass of date, so it has to be tested first. Plain dates
+    # (Listing.priced_at) carry no timezone and are compared as they are.
+    if isinstance(value, datetime):
+        value_date = timezone.localtime(value).date()
+    elif isinstance(value, date):
+        value_date = value
+    else:
         return ''
 
-    value = timezone.localtime(value)
-    now = timezone.localtime(timezone.now())
-    # date_str = value.strftime('%H:%M')
+    today = timezone.localtime(timezone.now()).date()
+    delta = (today - value_date).days
 
-    # today
-    if value.date() == now.date():
+    if delta <= 0:
         return 'Today'
-        # return f'Today ({date_str})'
-
-    value_midnight = value.replace(hour=0, minute=0, second=0)
-    now_midnight = now.replace(hour=23, minute=59, second=59)
-    delta = now_midnight - value_midnight
-
-    # yesterday
-    if delta.days <= 1:
+    if delta == 1:
         return 'Yesterday'
-        # return f'Yesterday ({date_str})'
+    return f'{delta} days ago'
 
-    # x days ago
-    # day = value.day  # Get the day without leading zero
-    # month = value.strftime('%b')  # Get the abbreviated month
-    # date_str = f'{day} {month}'  # Combine day and month
-    return f'{delta.days} days ago'
-    # return f'{delta.days} days ago ({date_str})'
+
+@register.filter
+def saving_pct(obj):
+    """Format the saving against the market average as a whole percentage."""
+    try:
+        if isinstance(obj, Game):
+            if obj.shop_price is None or not obj.shop_mean:
+                return ''
+            perc = obj.shop_saving / obj.shop_mean
+        elif isinstance(obj, Listing):
+            if not obj.price or not obj.game or not obj.game.shop_mean:
+                return ''
+            perc = (float(obj.game.shop_mean) - float(obj.price)) / float(obj.game.shop_mean)
+        else:
+            return ''
+    except (ZeroDivisionError, TypeError):
+        return ''
+    return f'{abs(perc) * 100:.0f}%'

@@ -18,6 +18,172 @@ from main.selectors import get_today
 
 logger = logging.getLogger(__name__)
 
+# Chart ink, matched to the Counter Sheet design system in main.css. Charts are
+# printed onto the same buff stock as the rest of the page, so the paper stays
+# transparent and every rule is drawn in ink rather than in plotly's defaults.
+SHEET_INK = '#1a1831'
+SHEET_MUTED = '#55506e'
+SHEET_RULE = 'rgba(26, 24, 49, 0.12)'
+SHEET_CRIMSON = '#a21232'
+SHEET_TEAL = '#20615b'
+SHEET_SAND = '#dece9c'
+
+# One line per shop. Mid-dark saturated hues that all hold against buff paper.
+SHOP_LINES = (
+    '#1a1831',
+    '#a21232',
+    '#20615b',
+    '#8c6a1f',
+    '#5c4b8a',
+    '#c4622d',
+    '#3e7ca6',
+    '#7a2e4a',
+    '#41754a',
+    '#9a5b2e',
+    '#2f4858',
+    '#b08d2b',
+)
+
+
+def _add_shop_traces(fig: Figure, df, dfs: dict, shop_names: dict) -> None:
+    """Draw one line per shop listing, with one key entry per shop."""
+    seen_shops: dict[str, str] = {}
+    for slug in dfs:
+        shop_name = shop_names[slug]
+        if shop_name not in seen_shops:
+            seen_shops[shop_name] = SHOP_LINES[len(seen_shops) % len(SHOP_LINES)]
+        fig.add_scatter(
+            x=df.index,
+            y=df[f'{slug}_price'],
+            mode='lines',
+            name=shop_name,  # Legend will display shop name
+            legendgroup=shop_name,
+            showlegend=shop_name not in [t.name for t in fig.data],
+            line=dict(color=seen_shops[shop_name], width=1.5),
+            hovertemplate=f'{shop_name}  R%{{y:,.0f}}<extra></extra>',
+        )
+
+
+def _no_stock_note(period: str) -> str:
+    """Say why a price track has no series to rule."""
+    if period == 'recent':
+        return 'No shop had this in stock during this period'
+    return 'No in-stock price has ever been recorded for this game'
+
+
+def legend_entries(fig: Figure) -> int:
+    """Count the entries a figure's key actually prints.
+
+    A shop carrying the same game under several listings draws several traces
+    but earns one entry, so traces are not the measure.
+    """
+    return sum(1 for trace in fig.data if trace.showlegend is not False)
+
+
+def series_track_heights(count: int) -> dict[str, int]:
+    """Height a legended price track needs at each sheet width.
+
+    Plotly gives whatever height is left over to the plot, so the binding
+    constraint is the key: it prints one entry per track on a phone and roughly
+    four across a desktop sheet, at 30px a track. Measured, not guessed.
+    """
+    plot_floor = 380
+    row = 30
+    return {
+        'wide': plot_floor + -(-count // 4) * row,
+        'mid': plot_floor + -(-count // 2) * row,
+        'narrow': plot_floor + count * row,
+    }
+
+
+def sheet_layout(fig: Figure, height: int | None = 420, legend: bool = False) -> Figure:
+    """Apply the Counter Sheet chart theme to a figure.
+
+    A height of None hands the box to CSS, which is the only place that knows
+    how wide the sheet actually is.
+    """
+    fig.update_layout(
+        height=height,
+        # Always autosize: the sheet owns the width, and a None height hands it
+        # the box entirely. Turning this off makes plotly fall back to 700px.
+        autosize=True,
+        margin=dict(l=8, r=8, t=8, b=8),
+        paper_bgcolor='rgba(0,0,0,0)',
+        plot_bgcolor='rgba(0,0,0,0)',
+        font=dict(family='Archivo, system-ui, sans-serif', size=12, color=SHEET_MUTED),
+        showlegend=legend,
+        hoverlabel=dict(
+            bgcolor=SHEET_INK,
+            bordercolor=SHEET_INK,
+            font=dict(family='Archivo, system-ui, sans-serif', size=12, color=SHEET_SAND),
+        ),
+        hovermode='x unified',
+        xaxis=dict(
+            title=None,
+            showgrid=False,
+            showline=True,
+            linecolor=SHEET_INK,
+            linewidth=1,
+            ticks='outside',
+            tickcolor=SHEET_RULE,
+            tickfont=dict(size=11),
+        ),
+        yaxis=dict(
+            title=None,
+            side='right',
+            showgrid=True,
+            gridcolor=SHEET_RULE,
+            gridwidth=1,
+            zeroline=False,
+            showline=False,
+            tickprefix='R',
+            separatethousands=True,
+            tickformat=',d',
+            tickfont=dict(size=11),
+        ),
+    )
+    if legend:
+        # Entries are sized in pixels, not in a fraction of the plot, so the key
+        # reflows to two tracks on a phone instead of overprinting itself.
+        fig.update_layout(
+            margin=dict(l=8, r=8, t=8, b=16),
+            legend=dict(
+                orientation='h',
+                yanchor='top',
+                y=-0.14,
+                xanchor='left',
+                x=0,
+                title=None,
+                font=dict(size=11, color=SHEET_MUTED),
+                bgcolor='rgba(0,0,0,0)',
+                entrywidth=150,
+                entrywidthmode='pixels',
+                itemwidth=30,
+            ),
+        )
+    return fig
+
+
+def _sheet_blank(fig: Figure, note: str, height: int = 220) -> Figure:
+    """Print an empty track: a ruled panel that says why it is empty."""
+    sheet_layout(fig, height=height)
+    fig.update_layout(
+        annotations=[
+            dict(
+                text=note,
+                showarrow=False,
+                xref='paper',
+                yref='paper',
+                x=0.5,
+                y=0.5,
+                font=dict(family='Archivo, system-ui, sans-serif', size=13, color=SHEET_MUTED),
+            )
+        ],
+        xaxis=dict(visible=False),
+        yaxis=dict(visible=False),
+    )
+    return fig
+
 
 def get_game_prices_graph(game: Game, period: str = 'recent'):
     """Get game prices graph for every shop.
@@ -95,43 +261,26 @@ def get_game_prices_graph(game: Game, period: str = 'recent'):
     # Create the graph
     fig = Figure()
 
-    # Add shop-specific price lines
-    for slug in dfs:
-        shop_name = shop_names[slug]
-        fig.add_scatter(
-            x=df.index,
-            y=df[f'{slug}_price'],
-            mode='lines',
-            name=shop_name,  # Legend will display shop name
-            hovertemplate=(
-                f'<b>Shop:</b> {shop_name}<br>'
-                '<b>Date:</b> %{x}<br>'
-                '<b>Price:</b> %{y}<extra></extra>'
-            ),
-        )
+    # Add shop-specific price lines. A shop carrying the same game under more
+    # than one listing gets one legend entry, not one per listing.
+    _add_shop_traces(fig, df, dfs, shop_names)
 
-    # Add the average lowest price line
+    # The market average: the reference every other line is read against.
     fig.add_scatter(
         x=df.index,
         y=df['average_lowest_price'],
         mode='lines',
-        name='Average',
-        line=dict(color='blue', dash='dash'),
-        hovertemplate=(
-            '<b>Average</b><br>' '<b>Date:</b> %{x}<br>' '<b>Price:</b> %{y}<extra></extra>'
-        ),
+        name='Market average',
+        line=dict(color=SHEET_CRIMSON, dash='dash', width=2.5),
+        hovertemplate='Market average  R%{y:,.0f}<extra></extra>',
     )
 
-    # Update the layout of the graph
-    fig.update_layout(
-        title='Prices from Shops',
-        xaxis_title='Date',
-        yaxis_title='Price',
-        yaxis=dict(side='right'),
-        legend_title='Shop Name',
-        height=700,
-        legend=dict(orientation='h', yanchor='top', y=-0.2, xanchor='center', x=0.5),
-    )
+    if df[price_columns].notna().to_numpy().any():
+        sheet_layout(fig, height=None, legend=True)
+    else:
+        # Nothing was in stock anywhere in this window, so there is no series to
+        # rule. The track says so and keeps the period toggle reachable.
+        fig = _sheet_blank(Figure(), _no_stock_note(period))
 
     cache.set(cache_key, fig, timeout=43200)
     return fig
@@ -279,25 +428,19 @@ def get_listing_prices_graph(listing: Listing) -> Figure | None:
         y=df['price'],
         mode='lines+markers',
         name='Price',
-        line=dict(color='#6b4226', width=2),
-        marker=dict(size=5, color='#c8a45c'),
-        fill='tozeroy',
-        fillcolor='rgba(200, 164, 92, 0.08)',
-        hovertemplate='<b>Date:</b> %{x}<br><b>Price:</b> R%{y:,.0f}<extra></extra>',
+        line=dict(color=SHEET_TEAL, width=2),
+        marker=dict(size=4, color=SHEET_TEAL),
+        hovertemplate='R%{y:,.0f}<extra></extra>',
     )
 
-    fig.update_layout(
-        margin=dict(l=0, r=0, t=10, b=0),
-        xaxis_title=None,
-        yaxis_title=None,
-        height=280,
-        template='plotly_white',
-        showlegend=False,
-        yaxis=dict(tickprefix='R', separatethousands=True),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-    )
+    sheet_layout(fig, height=320)
 
+    prices = df['price'].dropna()
+    if not prices.empty:
+        low, high = float(prices.min()), float(prices.max())
+        if high - low < high * 0.05:
+            pad = max(high * 0.12, 10)
+            fig.update_yaxes(range=[max(low - pad, 0), high + pad])
     cache.set(cache_key, fig, timeout=43200)
     return fig
 
@@ -369,25 +512,23 @@ def shop_price_index_graph(shop: Shop) -> Figure:
                 x=df['date'],
                 y=df['index'],
                 mode='lines+markers',
-                name='Price Index',
-                line=dict(color='seagreen'),
-                marker=dict(size=6),
+                name='Price index',
+                line=dict(color=SHEET_TEAL, width=2),
+                marker=dict(size=4, color=SHEET_TEAL),
             )
         )
 
-        fig.update_layout(
-            title=f'Price Index for {shop.name}',
-            xaxis_title='Date',
-            yaxis_title='Cumulative Price Movement',
-            template='plotly_white',
-            height=700,
+        sheet_layout(fig, height=440)
+        # A cumulative movement is meaningless without its baseline, and the
+        # sign is the whole point, so both are printed.
+        fig.update_yaxes(
+            zeroline=True,
+            zerolinecolor=SHEET_INK,
+            zerolinewidth=1,
+            tickformat='+,d',
         )
     else:
-        fig.update_layout(
-            title='No price data available',
-            template='plotly_white',
-            height=400,
-        )
+        _sheet_blank(fig, 'No price movement recorded for this shop yet', height=200)
 
     cache.set(cache_key, fig, timeout=43200)
     return fig

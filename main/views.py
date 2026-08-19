@@ -16,10 +16,17 @@ from main.constants import (
     CATEGORY_TABLETOP,
 )
 from main.filters import GameFilter, ListingFilter, ShopFilter
-from main.graphs import get_game_prices_graph, get_listing_prices_graph, shop_price_index_graph
+from main.graphs import (
+    get_game_prices_graph,
+    get_listing_prices_graph,
+    legend_entries,
+    series_track_heights,
+    shop_price_index_graph,
+)
 from main.models import Game, Listing, Shop
 from main.selectors import (
     get_best_savings_games,
+    get_last_scrape,
     list_bundle_listings,
     list_expensive_unique_by_shop,
     list_newest_games,
@@ -28,6 +35,10 @@ from main.shops import shop_enabled
 from main.tables import GameTable, ListingTable, ShopTable
 
 logger = logging.getLogger(__name__)
+
+# Charts are printed into the sheet, so plotly's own chrome stays off and the
+# figure resizes with its ruled container instead of holding a fixed width.
+PLOTLY_CONFIG = {'responsive': True, 'displayModeBar': False}
 
 
 def home_view(request: WSGIRequest):
@@ -88,7 +99,7 @@ class ListingDetailView(DetailView):
         listing = self.object
         # price history graph
         if prices_fig := get_listing_prices_graph(listing):
-            context['prices_graph'] = prices_fig.to_html(full_html=False)
+            context['prices_graph'] = prices_fig.to_html(full_html=False, config=PLOTLY_CONFIG)
         # other listings for the same game
         if listing.game:
             context['sibling_listings'] = (
@@ -135,9 +146,10 @@ class ShopDetailView(DetailView):
         context = super().get_context_data(**kwargs)
         context['nav'] = 'shops'
         context['unique'] = list_expensive_unique_by_shop(self.object)
+        context['last_scrape'] = get_last_scrape(self.object)
 
         inflation_graph = shop_price_index_graph(self.object)
-        context['inflation_graph'] = inflation_graph.to_html(full_html=False)
+        context['inflation_graph'] = inflation_graph.to_html(full_html=False, config=PLOTLY_CONFIG)
         return context
 
 
@@ -182,7 +194,11 @@ class GameDetailView(DetailView):
     def get_context_data(self, **kwargs):
         """Get context."""
         ctx = super().get_context_data(**kwargs)
-        ctx['listings'] = ctx['game'].listings.order_by('-in_stock', 'price').all()
+        # Materialised: the sheet reads the ends of this list to decide whether
+        # the in-stock and out-of-stock rosters are empty.
+        ctx['listings'] = list(
+            ctx['game'].listings.select_related('shop').order_by('-in_stock', 'price')
+        )
         # Prices graph is loaded lazily via htmx — see game-prices-graph URL.
         ctx['nav'] = 'games'
         # Add current timestamp to context to ensure cache busting
@@ -199,8 +215,17 @@ def game_prices_graph_view(request: WSGIRequest, pk: int):
     prices_fig = get_game_prices_graph(game, period=period)
     ctx = {
         'game': game,
-        'prices_graph': prices_fig.to_html(full_html=False) if prices_fig else None,
+        'prices_graph': (
+            prices_fig.to_html(full_html=False, config=PLOTLY_CONFIG) if prices_fig else None
+        ),
         'prices_period': period,
+        # A blank track keeps the height plotly gave it; a real one is sized by
+        # how many shop entries its key has to print.
+        'track_heights': (
+            series_track_heights(legend_entries(prices_fig))
+            if prices_fig and prices_fig.data
+            else None
+        ),
     }
     return TemplateResponse(request, 'main/snippet_game_prices_graph.html', ctx)
 

@@ -14,8 +14,7 @@ from django.db.models import (
 from django.db.models.functions import Concat
 from django.template.defaultfilters import floatformat
 from django.utils.html import format_html
-from django.utils.safestring import mark_safe
-from django_tables2 import BooleanColumn, Column, tables
+from django_tables2 import Column, tables
 
 from main.models import Game, Listing, Scrapelog, Shop
 from main.selectors import get_last_scrape
@@ -24,22 +23,49 @@ from main.templatetags.fmt import discount, price
 logger = logging.getLogger(__name__)
 
 
+def _mark(value: bool, yes: str, no: str):
+    """Render a boolean cell as a drawn mark that also carries its name."""
+    label = yes if value else no
+    return format_html(
+        '<span class="mark mark-{}" title="{}">'
+        '<i class="bi bi-{}" aria-hidden="true"></i>'
+        '<span class="sr-only">{}</span></span>',
+        'yes' if value else 'no',
+        label,
+        'check-lg' if value else 'x-lg',
+        label,
+    )
+
+
 class ListingTable(tables.Table):
-    img = Column(verbose_name='', attrs={'td': {'class': 'text-end'}})
+    img = Column(verbose_name='', attrs={'td': {'class': 'roster-cell-art'}})
     name = Column(
         verbose_name='Name',
         attrs={
-            'td': {
-                'class': lambda record: 'text-decoration-line-through'
-                if not record.in_stock
-                else ''
-            },
+            'td': {'class': lambda record: 'roster-out' if not record.in_stock else ''},
         },
     )
-    price = Column(initial_sort_descending=True)
-    discount = Column(verbose_name='Discount', empty_values=(), initial_sort_descending=True)
-    in_stock = BooleanColumn(verbose_name='Available')
-    is_new = BooleanColumn(verbose_name='New')
+    price = Column(
+        verbose_name='Price (R)',
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-price'}},
+    )
+    discount = Column(
+        verbose_name='Vs average (R)',
+        empty_values=(),
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-num'}},
+    )
+    in_stock = Column(
+        verbose_name='Stock',
+        empty_values=(),
+        attrs={'th': {'class': 'roster-mark'}, 'td': {'class': 'roster-mark'}},
+    )
+    is_new = Column(
+        verbose_name='New',
+        empty_values=(),
+        attrs={'th': {'class': 'roster-mark'}, 'td': {'class': 'roster-mark'}},
+    )
 
     class Meta:
         model = Listing
@@ -53,6 +79,7 @@ class ListingTable(tables.Table):
             'is_new',
         )
         template_name = 'main/table_list.html'
+        attrs = {'class': 'roster roster-listings'}
 
     def __getattr__(self, item):
         """Handle ordering in one function."""
@@ -91,28 +118,43 @@ class ListingTable(tables.Table):
 
     def render_img(self, value: str, record: Listing):
         """Render image."""
+        if not value:
+            return format_html(
+                '<a href="{}" class="roster-art art-blank">No art</a>',
+                record.get_absolute_url(),
+            )
         oos = 'out-of-stock-img' if not record.in_stock else ''
-        return format_html(f'<img src="{value}" class="list-img {oos}" />')
+        return format_html(
+            '<a href="{}" class="roster-art"><img src="{}" class="{}" loading="lazy" alt=""/></a>',
+            record.get_absolute_url(),
+            value,
+            oos,
+        )
 
     def render_name(self, record: Listing):
         """Render name."""
-        name = f'<a href="{record.get_absolute_url()}" class="me-3">{record.name}</a>'
-        game = (
-            f'<a href="{record.game.get_absolute_url()}" class=""><i class="bi bi-puzzle"></i></a>'
-            if record.game
-            else ''
-        )
-        return format_html(name + game)
+        if record.game:
+            return format_html(
+                '<a href="{}">{}</a>'
+                '<a href="{}" class="roster-ext" aria-label="Game sheet">'
+                '<i class="bi bi-puzzle"></i></a>',
+                record.get_absolute_url(),
+                record.name,
+                record.game.get_absolute_url(),
+            )
+        return format_html('<a href="{}">{}</a>', record.get_absolute_url(), record.name)
 
     def render_shop(self, record: Listing):
         """Render shop."""
-        name = f'<a class="me-3">{record.shop.name}</a>'
-        ext = (
-            f'<a href="{record.url}" target="_blank" class="me-3">'
-            f'<i class="bi bi-box-arrow-up-right"></i>'
-            f'</a>'
+        return format_html(
+            '<a href="{}">{}</a>'
+            '<a href="{}" target="_blank" rel="noopener" class="roster-ext" '
+            'aria-label="Open at {}"><i class="bi bi-box-arrow-up-right"></i></a>',
+            record.shop.get_absolute_url(),
+            record.shop.name,
+            record.url,
+            record.shop.name,
         )
-        return format_html(name + ext)
 
     def render_price(self, record: Listing):
         """Render price."""
@@ -122,11 +164,34 @@ class ListingTable(tables.Table):
         """Render price with filter."""
         return discount(record, show_currency=False)
 
+    def render_in_stock(self, record: Listing):
+        """Render stock state as a named mark."""
+        return _mark(record.in_stock, 'In stock', 'Out of stock')
+
+    def render_is_new(self, record: Listing):
+        """Render condition as a named mark."""
+        return _mark(record.is_new, 'New', 'Pre-owned')
+
 
 class ShopTable(tables.Table):
-    new_cnt = Column(verbose_name='New Items', empty_values=(), initial_sort_descending=True)
-    second_cnt = Column(verbose_name='Second Items', empty_values=(), initial_sort_descending=True)
-    scraped = Column(verbose_name='Scraped', empty_values=(), initial_sort_descending=True)
+    new_cnt = Column(
+        verbose_name='New items',
+        empty_values=(),
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-num'}},
+    )
+    second_cnt = Column(
+        verbose_name='Pre-owned',
+        empty_values=(),
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-num'}},
+    )
+    scraped = Column(
+        verbose_name='Last scrape',
+        empty_values=(),
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-num'}},
+    )
 
     class Meta:
         model = Shop
@@ -137,12 +202,11 @@ class ShopTable(tables.Table):
             'scraped',
         )
         template_name = 'main/table_list.html'
+        attrs = {'class': 'roster roster-shops'}
 
     def render_name(self, record: Shop):
         """Render name."""
-        # Use get_absolute_url to link to the detail page
-        name = f'<a href="{record.get_absolute_url()}" class="me-3">{record.name}</a>'
-        return format_html(name)
+        return format_html('<a href="{}">{}</a>', record.get_absolute_url(), record.name)
 
     def order_new_cnt(self, queryset, is_descending):
         """Order listings count."""
@@ -188,12 +252,25 @@ class ShopTable(tables.Table):
 
 
 class GameTable(tables.Table):
-    rating = Column(initial_sort_descending=True)
-    img = Column(verbose_name='', empty_values=(), attrs={'td': {'class': 'text-end'}})
-    year = Column(initial_sort_descending=True)
-    shop_price = Column(verbose_name='Price', initial_sort_descending=True)
-    shop_saving = Column(verbose_name='Discount', initial_sort_descending=True)
-    shop_in_stock = BooleanColumn(verbose_name='Available', initial_sort_descending=True)
+    rank = Column(attrs={'td': {'class': 'roster-num'}})
+    rating = Column(initial_sort_descending=True, attrs={'td': {'class': 'roster-num'}})
+    img = Column(verbose_name='', empty_values=(), attrs={'td': {'class': 'roster-cell-art'}})
+    year = Column(initial_sort_descending=True, attrs={'td': {'class': 'roster-num'}})
+    shop_price = Column(
+        verbose_name='Cheapest (R)',
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-price'}},
+    )
+    shop_saving = Column(
+        verbose_name='Vs average (R)',
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-num'}},
+    )
+    shop_in_stock = Column(
+        verbose_name='Shops',
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-num'}},
+    )
 
     class Meta:
         model = Game
@@ -208,6 +285,7 @@ class GameTable(tables.Table):
             'shop_in_stock',
         )
         template_name = 'main/table_list.html'
+        attrs = {'class': 'roster roster-games'}
 
     def __getattr__(self, item):
         """Handle ordering in one function."""
@@ -259,20 +337,28 @@ class GameTable(tables.Table):
 
     def render_img(self, record: Game):
         """Render img."""
+        if not record.img:
+            return format_html(
+                '<a href="{}" class="roster-art art-blank">No art</a>',
+                record.get_absolute_url(),
+            )
         oos = 'out-of-stock-img' if not record.shop_in_stock else ''
-        img = (
-            f'<a href="{record.get_absolute_url()}">'
-            f'<img src="{record.img}" class="list-img {oos}"/>'
-            f'</a>'
+        return format_html(
+            '<a href="{}" class="roster-art"><img src="{}" class="{}" loading="lazy" alt=""/></a>',
+            record.get_absolute_url(),
+            record.img,
+            oos,
         )
-        return mark_safe(img)
 
     def render_name(self, record: Game):
         """Render name."""
-        # Use get_absolute_url to link to the detail page
-        oos = 'class="out-of-stock-txt"' if not record.shop_in_stock else ''
-        name = f'<a href="{record.get_absolute_url()}" {oos}>{record.name}</a>'
-        return mark_safe(name)
+        oos = 'roster-out' if not record.shop_in_stock else ''
+        return format_html(
+            '<span class="{}"><a href="{}">{}</a></span>',
+            oos,
+            record.get_absolute_url(),
+            record.name,
+        )
 
     # def order_rank(self, queryset, is_descending):
     def order_shop_price(self, queryset, is_descending):

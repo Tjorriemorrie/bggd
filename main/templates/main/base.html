@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#1a1831">
     <meta property="og:title" content="{{ og_title }}">
     <meta property="og:description" content="{{ og_desc }}">
     <meta property="og:image" content="{{ og_img }}">
@@ -18,49 +19,74 @@
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Source+Sans+3:wght@400;600&display=swap"
+    <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700&family=Archivo+Narrow:wght@400;500;600;700&display=swap"
           rel="stylesheet">
 
-    <link href="{% static 'main/bootstrap-5.3.3-dist/css/bootstrap.min.css' %}" rel="stylesheet"/>
     <link href="{% static 'main/bootstrap-icons-1.11.3/font/bootstrap-icons.min.css' %}"
           rel="stylesheet"/>
 
     <link href="{% static 'main/css/main.css' %}" rel="stylesheet"/>
 
-    <script src="{% static 'main/bootstrap-5.3.3-dist/js/bootstrap.min.js' %}"
-            type="text/javascript"></script>
     <script src="https://unpkg.com/htmx.org@1.9.12"
             integrity="sha384-ujb1lZYygJmzgSwoxRggbCHcjc0rB2XoQrxeTUQyRjrOnlCoYta87iKBWq3EsdM2"
             crossorigin="anonymous"></script>
-    <script src="{% static 'main/js/main.js' %}" type="text/javascript"></script>
+    <script src="{% static 'main/js/main.js' %}" type="text/javascript" defer></script>
 </head>
 <body>
-<div class="container-fluid">
-    {% include 'main/snippet_navbar.html' %}
+<!--
+DIRECTION CONTRACT — BGG DATA — seed 2bbfb1f4 (direction / operate)
+THESIS: A price is a factor printed on a counter and "is this cheap" is a table
+lookup. Refuses the price-comparison card grid with a green pill.
+OWN-WORLD: Avalon Hill / SPI hex-and-counter kit. Buff map stock #F3EC D9 over
+sand #DECE9C fields, ink #1A1831 chrome and rules, crimson #A21232 as the one
+commit colour, teal #20615B for below-average and in-stock. Archivo Narrow
+condensed chart headers over Archivo body, tabular figures, 2px die-cut corners,
+ruled structure instead of floating cards, one lift for a chip on the sheet.
+STORY: The visitor sees whether today's price is good before seeing anything
+else, then leaves for the cheapest shop.
+FIRST VIEWPORT: Detail sheets lead with the counter left, an ink verdict band
+right carrying the price at display scale, its delta against the 90-day average
+in teal or crimson, and the crimson commit key. The cross-reference table of
+every shop sits directly under it.
+FORM: Counter Sheet, candidate 7 of 7, assigned by the roll.
+FINISH: unreviewed and undocumented is unfinished; this build ends with the
+finish review, the verdict, DESIGN.md, and every shipping raster carrying its
+provenance.
+-->
 
-    <!-- Flash messages -->
+{% include 'main/snippet_navbar.html' %}
+
+<main class="main">
     {% if messages %}
-        <div class="alert-container">
+        <div class="page">
             {% for message in messages %}
-                <div class="alert alert-{{ message.tags }}">
-                    {{ message }}
-                </div>
+                <div class="notice">{{ message }}</div>
             {% endfor %}
         </div>
     {% endif %}
 
     {% block content %}{% endblock %}
+</main>
 
-    <footer class="site-footer">
-        <div class="site-footer-inner">
-            <span class="site-footer-label">Support this project</span>
-            <div class="site-footer-btc">
-                <i class="bi bi-currency-bitcoin"></i>
-                <code>38W8wv3h3oFUP9TBa4fgvab3zP6WFUAKs6</code>
+<footer class="foot">
+    <div class="page">
+        <div class="foot-inner">
+            <p class="foot-note">
+                <strong>BGG Data</strong> tracks board game prices across South African shops and
+                keeps the history, so a price can be read against the market and against its own
+                past. Unaffiliated with BoardGameGeek.
+            </p>
+            <div class="foot-ask">
+                <span class="foot-label">Support this project</span>
+                <span class="foot-btc">
+                    <i class="bi bi-currency-bitcoin" aria-hidden="true"></i>
+                    <code>38W8wv3h3oFUP9TBa4fgvab3zP6WFUAKs6</code>
+                </span>
             </div>
         </div>
-    </footer>
-</div>
+    </div>
+</footer>
+
 {% if not DEVELOPER %}
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-3ZPKJ1TKK1"></script>

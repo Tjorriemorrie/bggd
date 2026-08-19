@@ -153,3 +153,9 @@ db*.sqlite3*
 *.sqlite3.bck*
 model.pkl.bck
 model.dmp
+
+# impeccable skill (installed locally) and its review artifacts
+.claude/skills/impeccable/
+.github/skills/impeccable/
+.github/agents/impeccable-*.agent.md
+.impeccable/

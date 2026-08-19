@@ -1,69 +1,64 @@
-<nav class="sn">
-    <div class="sn-inner">
-        <a href="{% url 'home' %}" class="sn-brand">
-            <span class="sn-brand-icon"><i class="bi bi-dice-5-fill"></i></span>
-            <span class="sn-brand-txt">BGG<span class="sn-brand-thin">Data</span></span>
-        </a>
-
-        <button class="sn-toggle" id="sn-toggle" aria-label="Toggle navigation">
-            <span class="sn-toggle-bar"></span>
-            <span class="sn-toggle-bar"></span>
-            <span class="sn-toggle-bar"></span>
-        </button>
-
-        <div class="sn-links" id="sn-links">
-            <a href="{% url 'home' %}" class="sn-link {% if nav == 'home' %}sn-link-active{% endif %}">
-                <i class="bi bi-house-door"></i><span>Home</span>
-            </a>
-            <a href="{% url 'shop-list' %}" class="sn-link {% if nav == 'shops' %}sn-link-active{% endif %}">
-                <i class="bi bi-shop-window"></i><span>Shops</span>
-            </a>
-            <a href="{% url 'listing-list' %}" class="sn-link {% if nav == 'listings' %}sn-link-active{% endif %}">
-                <i class="bi bi-tags"></i><span>Listings</span>
-            </a>
-            <a href="{% url 'game-list' %}" class="sn-link {% if nav == 'games' %}sn-link-active{% endif %}">
-                <i class="bi bi-controller"></i><span>Games</span>
+{% load static %}
+<header class="chrome">
+    <div class="page">
+        <div class="chrome-top">
+            <a href="{% url 'home' %}" class="brand">
+                {# The mark is the product: a die-cut counter with its factors printed on it. #}
+                <svg class="brand-mark" viewBox="0 0 34 34" role="img" aria-label="BGG Data">
+                    <rect x="1" y="1" width="32" height="32" rx="2"
+                          fill="#dece9c" stroke="#a21232" stroke-width="2"/>
+                    <rect x="5" y="5" width="24" height="12" fill="#1a1831"/>
+                    <circle cx="9.5" cy="11" r="1.6" fill="#dece9c"/>
+                    <circle cx="17" cy="11" r="1.6" fill="#dece9c"/>
+                    <circle cx="24.5" cy="11" r="1.6" fill="#dece9c"/>
+                    <rect x="5" y="20" width="10" height="3" fill="#20615b"/>
+                    <rect x="5" y="25" width="15" height="3" fill="#1a1831"/>
+                    <rect x="24" y="20" width="5" height="8" fill="#a21232"/>
+                </svg>
+                <span class="brand-txt">BGG<em>Data</em></span>
             </a>
 
-            <span class="sn-divider"></span>
+            <button class="nav-toggle" id="nav-toggle" type="button"
+                    aria-label="Toggle navigation" aria-expanded="false" aria-controls="nav-rail">
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+                <span class="nav-toggle-bar"></span>
+            </button>
 
-            <a href="{% url 'card-list' %}" class="sn-link sn-link-sub {% if nav == 'card' %}sn-link-active{% endif %}">
-                <span>Card Games</span>
-            </a>
-            <a href="{% url 'tabletop-list' %}" class="sn-link sn-link-sub {% if nav == 'tabletop' %}sn-link-active{% endif %}">
-                <span>Tabletop</span>
-            </a>
-            <a href="{% url 'rpg-list' %}" class="sn-link sn-link-sub {% if nav == 'rpg' %}sn-link-active{% endif %}">
-                <span>RPG</span>
-            </a>
-            <a href="{% url 'accessories-list' %}" class="sn-link sn-link-sub {% if nav == 'accessories' %}sn-link-active{% endif %}">
-                <span>Accessories</span>
-            </a>
-            <a href="{% url 'other-list' %}" class="sn-link sn-link-sub {% if nav == 'other' %}sn-link-active{% endif %}">
-                <span>Other</span>
-            </a>
+            <form class="lookup" action="{% url 'game-list' %}" method="get" role="search">
+                <label class="sr-only" for="lookup-input">Search games</label>
+                <input class="lookup-input" id="lookup-input" type="search" name="query"
+                       placeholder="Find a game" value="{% if nav == 'games' %}{{ request.GET.query|default:'' }}{% endif %}">
+                <button class="lookup-btn" type="submit" aria-label="Search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                </button>
+            </form>
         </div>
     </div>
-</nav>
 
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var toggle = document.getElementById('sn-toggle');
-        var links = document.getElementById('sn-links');
-        if (!toggle || !links) return;
-        var close = function() {
-            toggle.classList.remove('sn-toggle-open');
-            links.classList.remove('sn-links-open');
-        };
-        toggle.addEventListener('click', function() {
-            toggle.classList.toggle('sn-toggle-open');
-            links.classList.toggle('sn-links-open');
-        });
-        links.querySelectorAll('a.sn-link').forEach(function(a) {
-            a.addEventListener('click', close);
-        });
-        window.addEventListener('resize', function() {
-            if (window.innerWidth > 991.98) close();
-        });
-    });
-</script>
+    <nav class="rail" id="nav-rail" aria-label="Sections">
+        <div class="page">
+            <div class="rail-inner">
+                <a href="{% url 'game-list' %}" class="rail-link"
+                   {% if nav == 'games' %}aria-current="page"{% endif %}>Games</a>
+                <a href="{% url 'listing-list' %}" class="rail-link"
+                   {% if nav == 'listings' %}aria-current="page"{% endif %}>Listings</a>
+                <a href="{% url 'shop-list' %}" class="rail-link"
+                   {% if nav == 'shops' %}aria-current="page"{% endif %}>Shops</a>
+
+                <span class="rail-sep" aria-hidden="true"></span>
+
+                <a href="{% url 'card-list' %}" class="rail-link rail-link-sub"
+                   {% if nav == 'card' %}aria-current="page"{% endif %}>Card Games</a>
+                <a href="{% url 'tabletop-list' %}" class="rail-link rail-link-sub"
+                   {% if nav == 'tabletop' %}aria-current="page"{% endif %}>Tabletop</a>
+                <a href="{% url 'rpg-list' %}" class="rail-link rail-link-sub"
+                   {% if nav == 'rpg' %}aria-current="page"{% endif %}>RPG</a>
+                <a href="{% url 'accessories-list' %}" class="rail-link rail-link-sub"
+                   {% if nav == 'accessories' %}aria-current="page"{% endif %}>Accessories</a>
+                <a href="{% url 'other-list' %}" class="rail-link rail-link-sub"
+                   {% if nav == 'other' %}aria-current="page"{% endif %}>Other</a>
+            </div>
+        </div>
+    </nav>
+</header>

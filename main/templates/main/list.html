@@ -1,39 +1,39 @@
 {% extends 'main/base.html' %}
 
 {% load django_tables2 %}
-{% load crispy_forms_tags %}
+
+{% block title %}{{ facet|capfirst }} - BGG Data{% endblock %}
 
 {% block content %}
-    <div class="row">
-
-        <div class="col-auto">
-            <h4 class="mt-4">{{ table.paginator.count }} {{ facet }}</h4>
+    <div class="page">
+        <div class="sheet-head">
+            <h1 class="sheet-head-title">{{ facet|capfirst }}</h1>
+            <span class="sheet-head-scope">{{ table.paginator.count }} records</span>
         </div>
 
-        <div class="col-auto ms-auto text-end">
-            <form class="row align-items-center g-3 filtering-form">
-                <div class="col-auto">
-                    {{ filtering.form|crispy }}
-                </div>
-                <div class="col-auto">
-                    <button type="submit" class="btn btn-light">
-                        <i class="bi bi-funnel"></i>
-                    </button>
-                </div>
-                {% if filtering.data.query %}
-                    <div class="col-auto ms-3">
-                        <div class="alert alert-light">
-                            <a href="?{% for key, value in request.GET.items %}{% if key != 'query' %}{{ key }}={{ value }}&{% endif %}{% endfor %}" class="btn-close me-2 close-icon" aria-label="Close"></a>
-                            <span>"{{ filtering.data.query }}"</span>
-                        </div>
-                    </div>
-                {% endif %}
+        <div class="list-toolbar">
+            {% comment %}One field, rendered by hand so the label is real and the
+            control is the sheet's own instrument, not a bootstrap widget.{% endcomment %}
+            <form class="filter" method="get" role="search">
+                <label class="filter-label" for="sheet-query">Find</label>
+                <input class="filter-input" id="sheet-query" type="search" name="query"
+                       value="{{ request.GET.query|default:'' }}"
+                       placeholder="Search {{ facet|lower }}">
+                <button type="submit" class="filter-btn" aria-label="Search {{ facet|lower }}">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                </button>
             </form>
+
+            {% if filtering.data.query %}
+                <span class="filter-active">
+                    <span>&ldquo;{{ filtering.data.query }}&rdquo;</span>
+                    <a class="filter-clear"
+                       href="?{% for key, value in request.GET.items %}{% if key != 'query' %}{{ key }}={{ value }}&amp;{% endif %}{% endfor %}"
+                       aria-label="Clear search">&times;</a>
+                </span>
+            {% endif %}
         </div>
 
+        {% render_table table %}
     </div>
-
-
-    {% render_table table %}
-
 {% endblock %}

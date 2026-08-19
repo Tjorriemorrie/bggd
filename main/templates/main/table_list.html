@@ -2,77 +2,108 @@
 
 {% load django_tables2 %}
 {% load i18n l10n %}
-{% load static %}
 
+{% comment %}The roster: django-tables2 supplies the data and the sorting, the
+sheet supplies the ruling, the ink header and the row rhythm.{% endcomment %}
 
-{% block table.thead %}
-    {% if table.show_header %}
-        <thead {{ table.attrs.thead.as_html }}>
-        <tr>
-            {% for column in table.columns %}
-                <th {{ column.attrs.th.as_html }} scope="col">
-                    {% if column.orderable %}
-                        <a href="{{ table.request.path }}{% querystring table.prefixed_order_by_field=column.order_by_alias.next page=1 %}">
-                            {% if column.is_ordered %}
-                                {% if column.order_by_alias.is_ascending %}
-                                    <i class="bi bi-caret-up-fill"></i>
-                                {% else %}
-                                    <i class="bi bi-caret-down-fill"></i>
-                                {% endif %}
-                            {% endif %}
-                            {{ column.header }}
-                        </a>
-                    {% else %}
-                        {{ column.header }}
+{% block table-wrapper %}
+    {% if not table.rows|length %}
+        {# Nothing matched. The sheet says so, and hands back a way forward. #}
+        <div class="sheet-empty">
+            <p class="sheet-empty-title">Nothing on this sheet</p>
+            {% if request.GET.query %}
+                <p class="sheet-empty-note">
+                    No {{ facet|lower }} match <em>&ldquo;{{ request.GET.query }}&rdquo;</em>.
+                    Shop listings carry the name the shop printed, so a shorter or
+                    differently spelled term often finds it.
+                </p>
+                <div class="sheet-empty-acts">
+                    <a class="commit commit-sm" href="{{ request.path }}">Clear the search</a>
+                    <a class="ghost" href="{% url 'game-list' %}">Browse every game</a>
+                </div>
+            {% else %}
+                <p class="sheet-empty-note">
+                    Nothing is being tracked here yet. The shops are scraped daily, so
+                    this sheet fills as listings are matched.
+                </p>
+                <div class="sheet-empty-acts">
+                    <a class="ghost" href="{% url 'game-list' %}">Browse every game</a>
+                </div>
+            {% endif %}
+        </div>
+    {% else %}
+    <div class="roster-wrap">
+        {% block table %}
+            <table {% render_attrs table.attrs class="roster" %}>
+                {% block table.thead %}
+                    {% if table.show_header %}
+                        <thead {{ table.attrs.thead.as_html }}>
+                        <tr>
+                            {% for column in table.columns %}
+                                <th {{ column.attrs.th.as_html }} scope="col">
+                                    {% if column.orderable %}
+                                        <a href="{{ table.request.path }}{% querystring table.prefixed_order_by_field=column.order_by_alias.next page=1 %}">
+                                            {{ column.header }}
+                                            {% if column.is_ordered %}
+                                                {% if column.order_by_alias.is_ascending %}
+                                                    <i class="bi bi-caret-up-fill" aria-hidden="true"></i>
+                                                {% else %}
+                                                    <i class="bi bi-caret-down-fill" aria-hidden="true"></i>
+                                                {% endif %}
+                                            {% endif %}
+                                        </a>
+                                    {% else %}
+                                        {{ column.header }}
+                                    {% endif %}
+                                </th>
+                            {% endfor %}
+                        </tr>
+                        </thead>
                     {% endif %}
-                </th>
-            {% endfor %}
-        </tr>
-        </thead>
+                {% endblock table.thead %}
+
+                {% block table.tbody %}
+                    <tbody {{ table.attrs.tbody.as_html }}>
+                    {% for row in table.paginated_rows %}
+                        <tr {{ row.attrs.as_html }}>
+                            {% for column, cell in row.items %}
+                                <td {{ column.attrs.td.as_html }}>{% if column.localize == None %}{{ cell }}{% else %}{% if column.localize %}{{ cell|localize }}{% else %}{{ cell|unlocalize }}{% endif %}{% endif %}</td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                {% endblock table.tbody %}
+            </table>
+        {% endblock table %}
+    </div>
     {% endif %}
-{% endblock table.thead %}
 
-
-{#{% block pagination.previous %}#}
-{#    <li class="previous page-item">#}
-{#        <a href="#"#}
-{#           hx-get="{{ table.request.path }}{% querystring table.prefixed_page_field=table.page.previous_page_number %}"#}
-{#           hx-target="#main-container"#}
-{#           hx-swap="innerHTML"#}
-{#           class="page-link">#}
-{#            <span aria-hidden="true">&laquo;</span>#}
-{#            {% trans 'previous' %}#}
-{#        </a>#}
-{#    </li>#}
-{#{% endblock pagination.previous %}#}
-{##}
-{##}
-{#{% block pagination.range %}#}
-{#    {% for p in table.page|table_page_range:table.paginator %}#}
-{#        <li class="page-item{% if table.page.number == p %} active{% endif %}">#}
-{#            <a class="page-link"#}
-{#                {% if p != '...' %}#}
-{#                   href="#"#}
-{#                   hx-get="{{ table.request.path }}{% querystring table.prefixed_page_field=p %}"#}
-{#                   hx-target="#main-container"#}
-{#                   hx-swap="innerHTML"#}
-{#                {% endif %}>#}
-{#                {{ p }}#}
-{#            </a>#}
-{#        </li>#}
-{#    {% endfor %}#}
-{#{% endblock pagination.range %}#}
-{##}
-{##}
-{#{% block pagination.next %}#}
-{#    <li class="next page-item">#}
-{#        <a href="#"#}
-{#           hx-get="{{ table.request.path }}{% querystring table.prefixed_page_field=table.page.next_page_number %}"#}
-{#           hx-target="#main-container"#}
-{#           hx-swap="innerHTML"#}
-{#           class="page-link">#}
-{#            {% trans 'next' %}#}
-{#            <span aria-hidden="true">&raquo;</span>#}
-{#        </a>#}
-{#    </li>#}
-{#{% endblock pagination.next %}#}
+    {% block pagination %}
+        {% if table.page and table.paginator.num_pages > 1 %}
+            <nav aria-label="Table navigation">
+                <ul class="pagination">
+                    {% if table.page.has_previous %}
+                        <li class="previous page-item">
+                            <a href="{% querystring table.prefixed_page_field=table.page.previous_page_number %}"
+                               class="page-link" aria-label="{% trans 'previous' %}">&laquo;</a>
+                        </li>
+                    {% endif %}
+                    {% for p in table.page|table_page_range:table.paginator %}
+                        <li class="page-item{% if table.page.number == p %} active{% endif %}">
+                            <a class="page-link" {% if p != '...' %}href="{% querystring table.prefixed_page_field=p %}"{% endif %}>{{ p }}</a>
+                        </li>
+                    {% endfor %}
+                    {% if table.page.has_next %}
+                        <li class="next page-item">
+                            <a href="{% querystring table.prefixed_page_field=table.page.next_page_number %}"
+                               class="page-link" aria-label="{% trans 'next' %}">&raquo;</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            <p class="cardinality">
+                Page {{ table.page.number }} of {{ table.paginator.num_pages }}
+            </p>
+        {% endif %}
+    {% endblock pagination %}
+{% endblock table-wrapper %}
