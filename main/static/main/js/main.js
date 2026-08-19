@@ -29,12 +29,19 @@ function initNavToggle() {
     });
 }
 
+// The narrow sheet, matching the two-column tray in the stylesheet. A row there
+// carries a third of what a wide row does, so the row allowance is doubled to
+// keep a tray about as deep as it reads on a wide sheet.
+const NARROW = '(max-width: 619.98px)';
+
 // Counter trays: show only whole rows, up to the data-max-rows the tray asks
 // for. The column count is whatever the viewport gives us, so it is measured
-// here rather than guessed on the server.
+// here rather than guessed on the server. A tray without the attribute (the
+// pinned tray) is never trimmed: every pin the visitor placed is shown.
 function trimTrays() {
+    const rows = window.matchMedia(NARROW).matches ? 2 : 1;
     document.querySelectorAll('.tray[data-max-rows]').forEach(function (tray) {
-        const maxRows = parseInt(tray.dataset.maxRows, 10);
+        const maxRows = parseInt(tray.dataset.maxRows, 10) * rows;
         const items = tray.children;
         const cols = getComputedStyle(tray).gridTemplateColumns.split(' ').length;
         const visible = items.length < cols

@@ -18,8 +18,10 @@
                 <span class="sheet-head-scope">
                     {% if game.label %}{{ game.label }}{% else %}Game{% endif %}{% if game.year %} &middot; {{ game.year }}{% endif %}
                 </span>
-                {# Pinning is held in this browser alone; the sheet is served the
-                   same to everyone, so the button paints its state after load. #}
+                {% comment %}
+                    Pinning is held in this browser alone; the sheet is served the
+                    same to everyone, so the button paints its state after load.
+                {% endcomment %}
                 <button type="button" class="ghost pin-btn" id="pin-btn" aria-pressed="false"
                         data-game="{{ game.pk }}"
                         data-price="{% if game.shop_in_stock and game.shop_price %}{{ game.shop_price }}{% endif %}">
