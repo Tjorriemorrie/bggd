@@ -1,0 +1,42 @@
+{% load fmt %}
+
+{% if pinned %}
+    <div class="tray">
+        {% for game in pinned %}
+            <a href="{{ game.get_absolute_url }}"
+               class="counter {% if not game.shop_in_stock %}counter-out{% endif %}">
+                <div class="counter-art">
+                    {% if game.img %}
+                        <img src="{{ game.img }}" alt="{{ game.name }}" loading="lazy"/>
+                    {% else %}
+                        <span class="art-blank">No cover yet</span>
+                    {% endif %}
+                    {% if not game.shop_in_stock %}
+                        <span class="chip chip-out">Out</span>
+                    {% endif %}
+                </div>
+                <div class="counter-body">
+                    <h3 class="counter-name">{{ game.name }}</h3>
+                    <span class="counter-price">{{ game|price }}</span>
+                </div>
+                {# The unit strip reports the move since the pin was placed. #}
+                <div class="counter-foot">
+                    <span class="counter-shop">{{ game.shop_best.name }}</span>
+                    {% if game.pinned_move < 0 %}
+                        <span class="counter-meta pin-move-down">
+                            <i class="bi bi-arrow-down-short" aria-hidden="true"></i>{{ game.pinned_move|price_move }}
+                        </span>
+                    {% elif game.pinned_move > 0 %}
+                        <span class="counter-meta pin-move-up">
+                            <i class="bi bi-arrow-up-short" aria-hidden="true"></i>{{ game.pinned_move|price_move }}
+                        </span>
+                    {% elif game.pinned_move == 0 %}
+                        <span class="counter-meta">Level</span>
+                    {% elif game.pinned_price %}
+                        <span class="counter-meta">Pinned R{{ game.pinned_price|floatformat:0 }}</span>
+                    {% endif %}
+                </div>
+            </a>
+        {% endfor %}
+    </div>
+{% endif %}

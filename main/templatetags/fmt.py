@@ -115,6 +115,14 @@ def days_ago(value):
 
 
 @register.filter
+def price_move(value):
+    """Format a price move since pinning as an unsigned rand figure."""
+    if value is None:
+        return ''
+    return f'R{abs(value):.0f}'
+
+
+@register.filter
 def saving_pct(obj):
     """Format the saving against the market average as a whole percentage."""
     try:

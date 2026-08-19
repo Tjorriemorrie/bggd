@@ -1,4 +1,5 @@
 import logging
+from decimal import Decimal, InvalidOperation
 
 from django.core.handlers.wsgi import WSGIRequest
 from django.shortcuts import get_object_or_404
@@ -40,6 +41,10 @@ logger = logging.getLogger(__name__)
 # figure resizes with its ruled container instead of holding a fixed width.
 PLOTLY_CONFIG = {'responsive': True, 'displayModeBar': False}
 
+# A browser keeps its own pin list in localStorage. It never sends more than the
+# last few, and anything past that is dropped rather than trusted.
+PIN_MAX = 6
+
 
 def home_view(request: WSGIRequest):
     """Home view."""
@@ -52,6 +57,43 @@ def home_view(request: WSGIRequest):
         'latest': latest,
     }
     return TemplateResponse(request, 'main/home.html', ctx)
+
+
+def _parse_pins(raw: str) -> list[tuple[int, Decimal | None]]:
+    """Read the `pk:price` pin list a browser sends, newest pin first."""
+    pins = []
+    for chunk in raw.split(',')[:PIN_MAX]:
+        pk, _, pinned = chunk.partition(':')
+        if not pk.isdigit():
+            continue
+        try:
+            price = Decimal(pinned) if pinned else None
+        except InvalidOperation:
+            price = None
+        pins.append((int(pk), price))
+    return pins
+
+
+def pinned_games_view(request: WSGIRequest):
+    """Return the tray of games this browser has pinned, with their price moves."""
+    pins = _parse_pins(request.GET.get('pins', ''))
+    games = Game.objects.filter(pk__in=[pk for pk, _ in pins]).select_related('shop_best')
+    by_pk = {game.pk: game for game in games}
+    pinned = []
+    for pk, pinned_price in pins:
+        game = by_pk.get(pk)
+        if not game:
+            continue
+        # Carried for the template only: what the game cost when it was pinned,
+        # and which way it has moved since.
+        game.pinned_price = pinned_price
+        game.pinned_move = (
+            game.shop_price - pinned_price
+            if pinned_price and game.shop_in_stock and game.shop_price is not None
+            else None
+        )
+        pinned.append(game)
+    return TemplateResponse(request, 'main/snippet_pinned_group.html', {'pinned': pinned})
 
 
 class ListingListView(SingleTableView, FilterMixin):

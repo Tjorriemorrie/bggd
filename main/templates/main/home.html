@@ -28,6 +28,16 @@
     </section>
 
     <div class="page">
+        {# The visitor's own pins live in their browser, so this sheet is drawn
+           after load and stays hidden when nothing is pinned. #}
+        <section class="tray-section" id="pinned" data-src="{% url 'pinned-games' %}" hidden>
+            <div class="section-head">
+                <h2 class="section-title">Pinned</h2>
+                <span class="section-scope">Games you are watching</span>
+            </div>
+            <div id="pinned-slot"></div>
+        </section>
+
         {% if savings %}
             <section class="tray-section">
                 <div class="section-head">

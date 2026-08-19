@@ -76,6 +76,88 @@ function initTabs() {
     });
 }
 
+// Pinned games: the visitor's own watch list. There is no account on this site,
+// so the list lives in this browser, oldest pin first, and the cap drops the
+// oldest when a seventh is placed. The price at pinning rides along so the sheet
+// can report which way it has moved since.
+const PIN_KEY = 'bggd.pins';
+const PIN_MAX = 6;
+
+function readPins() {
+    try {
+        const pins = JSON.parse(localStorage.getItem(PIN_KEY));
+        return Array.isArray(pins) ? pins.filter(function (p) { return p && p.id; }) : [];
+    } catch (e) {
+        return [];
+    }
+}
+
+function writePins(pins) {
+    try {
+        localStorage.setItem(PIN_KEY, JSON.stringify(pins));
+    } catch (e) {
+        // Storage denied or full: the pin simply does not persist.
+    }
+}
+
+// The pin toggle on a game sheet.
+function initPin() {
+    const btn = document.getElementById('pin-btn');
+    if (!btn) return;
+    const id = parseInt(btn.dataset.game, 10);
+    if (!id) return;
+
+    const paint = function (on) {
+        btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+        btn.querySelector('i').className = on ? 'bi bi-pin-angle-fill' : 'bi bi-pin-angle';
+        btn.querySelector('.pin-label').textContent = on ? 'Pinned' : 'Pin';
+    };
+
+    const pinned = function () {
+        return readPins().some(function (p) { return p.id === id; });
+    };
+
+    paint(pinned());
+
+    btn.addEventListener('click', function () {
+        const on = pinned();
+        let pins = readPins().filter(function (p) { return p.id !== id; });
+        if (!on) {
+            pins.push({id: id, price: btn.dataset.price || '', at: Date.now()});
+            pins = pins.slice(-PIN_MAX);
+        }
+        writePins(pins);
+        paint(!on);
+    });
+}
+
+// The pinned tray on the home sheet. The page itself is cached and shared, so
+// the tray is fetched for whatever this browser holds.
+function initPinnedTray() {
+    const section = document.getElementById('pinned');
+    if (!section) return;
+    const pins = readPins();
+    if (!pins.length) return;
+
+    // Newest pin leads, each carrying the price it was pinned at.
+    const query = pins
+        .slice()
+        .reverse()
+        .map(function (p) { return p.id + ':' + (p.price || ''); })
+        .join(',');
+
+    fetch(section.dataset.src + '?pins=' + encodeURIComponent(query))
+        .then(function (res) { return res.ok ? res.text() : ''; })
+        .then(function (html) {
+            if (!html.trim()) return;
+            document.getElementById('pinned-slot').innerHTML = html;
+            section.hidden = false;
+        })
+        .catch(function () {
+            // No tray rather than a broken one.
+        });
+}
+
 // Cover art is served from the shops and from BGG, so a URL can rot. A dead
 // image becomes the same printed blank a missing one gets, never an empty box.
 const ART_WRAPS = '.counter-art, .crt-art, .roster-art, .detail-counter, .linked-art';
@@ -102,5 +184,7 @@ window.addEventListener('resize', function () {
 document.addEventListener('DOMContentLoaded', function () {
     initNavToggle();
     initTabs();
+    initPin();
+    initPinnedTray();
     trimTrays();
 });

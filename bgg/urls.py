@@ -8,6 +8,9 @@ from main import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', cache_page(settings.VIEW_CACHE)(views.home_view), name='home'),
+    # Never cached: the pin list is per browser, so every visitor would get
+    # their own entry and evict the sheets everyone shares.
+    path('pinned/', views.pinned_games_view, name='pinned-games'),
     path(
         'listings/',
         cache_page(settings.VIEW_CACHE)(views.ListingListView.as_view()),

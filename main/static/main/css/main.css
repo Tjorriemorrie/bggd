@@ -591,6 +591,19 @@ html {
     white-space: nowrap;
 }
 
+/* The scope note and the pin toggle share the right end of the rule. */
+.sheet-head-side {
+    display: flex;
+    align-items: center;
+    gap: var(--s4);
+    flex-wrap: wrap;
+    padding-bottom: 0.28em;
+}
+
+.sheet-head-side .sheet-head-scope {
+    padding-bottom: 0;
+}
+
 .crumb {
     display: flex;
     align-items: center;
@@ -668,13 +681,19 @@ html {
     }
 
     .section-scope,
-    .sheet-head-scope {
+    .sheet-head-scope,
+    .sheet-head-side {
         flex-basis: 100%;
         white-space: normal;
     }
 
     .sheet-head-scope {
         padding-bottom: 0;
+    }
+
+    /* The scope note keeps its line; the toggle sits beside it, not under it. */
+    .sheet-head-side .sheet-head-scope {
+        flex-basis: auto;
     }
 }
 
@@ -885,6 +904,16 @@ html {
 .counter-meta {
     white-space: nowrap;
     flex-shrink: 0;
+}
+
+/* A pinned counter reports its move since it was pinned: the lit inks, because
+   this strip is printed on ink rather than on stock. */
+.pin-move-down {
+    color: var(--teal-lit);
+}
+
+.pin-move-up {
+    color: var(--crimson-lit);
 }
 
 /* Factor chip, top-right of the art field. */

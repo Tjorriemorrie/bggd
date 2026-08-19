@@ -350,6 +350,15 @@ The factor chip, a saving percentage or an out-of-stock flag, sits top-right on 
 Positions are identical at every size, so the tile is learned once and read everywhere.
 Hover rises 3px onto `--lift-high`.
 
+### Pinned tray
+The visitor's own watch list, at the head of the home sheet and never more than six
+counters. There is no account here, so the pins live in the browser and the tray is drawn
+after load; nothing is pinned, nothing is printed. The counters are the standard tile,
+with the footer strip reporting the move since the pin was placed: `--teal-lit` under a
+down arrow when the price has fallen, `--crimson-lit` under an up arrow when it has
+risen, `Level` when it has not moved. A game sheet carries the ghost pin toggle beside
+its scope note, holding `aria-pressed="true"` once pinned.
+
 ### Verdict band (signature component)
 The answer to "is this price good?", and the loudest thing on any detail sheet. An ink
 band carrying up to three bays: the price at figure scale in sand; the delta against the

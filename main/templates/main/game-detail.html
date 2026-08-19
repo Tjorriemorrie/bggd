@@ -14,9 +14,19 @@
 
         <div class="sheet-head">
             <h1 class="sheet-head-title">{{ game.name }}</h1>
-            <span class="sheet-head-scope">
-                {% if game.label %}{{ game.label }}{% else %}Game{% endif %}{% if game.year %} &middot; {{ game.year }}{% endif %}
-            </span>
+            <div class="sheet-head-side">
+                <span class="sheet-head-scope">
+                    {% if game.label %}{{ game.label }}{% else %}Game{% endif %}{% if game.year %} &middot; {{ game.year }}{% endif %}
+                </span>
+                {# Pinning is held in this browser alone; the sheet is served the
+                   same to everyone, so the button paints its state after load. #}
+                <button type="button" class="ghost pin-btn" id="pin-btn" aria-pressed="false"
+                        data-game="{{ game.pk }}"
+                        data-price="{% if game.shop_in_stock and game.shop_price %}{{ game.shop_price }}{% endif %}">
+                    <i class="bi bi-pin-angle" aria-hidden="true"></i>
+                    <span class="pin-label">Pin</span>
+                </button>
+            </div>
         </div>
 
         {% with best=listings|first %}
