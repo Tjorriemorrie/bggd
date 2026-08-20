@@ -126,6 +126,11 @@ class Listing(Timestamped):
     is_new = models.BooleanField(default=True)
     category = models.CharField(max_length=50, choices=CATEGORY_CHOICES, null=True, blank=True)
 
+    # card sleeves: the card size in mm the shop printed in the name, read by
+    # main.sleeves. Both are set together, and null on everything else.
+    sleeve_width = models.FloatField(null=True, blank=True)
+    sleeve_height = models.FloatField(null=True, blank=True)
+
     # latest price
     in_stock = models.BooleanField(null=True)
     price = models.DecimalField(decimal_places=2, max_digits=9, null=True)

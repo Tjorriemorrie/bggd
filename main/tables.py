@@ -173,6 +173,52 @@ class ListingTable(tables.Table):
         return _mark(record.is_new, 'New', 'Pre-owned')
 
 
+class SleeveTable(ListingTable):
+    """The sleeve roster: the listing columns, plus the card size the sleeve fits."""
+
+    sleeve_width = Column(verbose_name='Width (mm)', attrs={'td': {'class': 'roster-num'}})
+    sleeve_height = Column(verbose_name='Height (mm)', attrs={'td': {'class': 'roster-num'}})
+
+    class Meta(ListingTable.Meta):
+        fields = (
+            'img',
+            'name',
+            'shop',
+            'sleeve_width',
+            'sleeve_height',
+            'price',
+            'in_stock',
+        )
+        # Both are printed against a game's market average, and a sleeve has no
+        # game, so they would rule an empty column down the whole sheet.
+        exclude = ('discount', 'is_new')
+        attrs = {'class': 'roster roster-sleeves'}
+        # The card size rides on the row itself so the fit instrument can rank
+        # the sheet in the browser without asking the server again.
+        row_attrs = {
+            'data-width': lambda record: record.sleeve_width,
+            'data-height': lambda record: record.sleeve_height,
+        }
+
+    def __getattr__(self, item):
+        """Order on the columns themselves.
+
+        The listing roster routes every column through one ordering function
+        that rewrites the whole clause, so of three sized columns only the last
+        one would be left standing. These are plain model fields, and the
+        default path applies them together, in order.
+        """
+        raise AttributeError(f"'{self.__class__.__name__}' object has no attribute '{item}'")
+
+    def render_sleeve_width(self, value: float):
+        """Render a millimetre figure without a trailing zero."""
+        return floatformat(value, -1)
+
+    def render_sleeve_height(self, value: float):
+        """Render a millimetre figure without a trailing zero."""
+        return floatformat(value, -1)
+
+
 class ShopTable(tables.Table):
     new_cnt = Column(
         verbose_name='New items',

@@ -10,23 +10,27 @@ from main.shops.helpers import (
     missed_listings,
     parse_price,
 )
+from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
 shop_name = 'Table Top Guru'
 shop_host = 'https://tabletopguru.co.za'
 
+# The shelves, then whatever the site search turns up for sleeves. That search
+# hits everything with the word in it, so only sized sleeves are kept.
 urls = [
-    f'{shop_host}/collections/board-games',
-    f'{shop_host}/collections/pre-loved-games',
-    f'{shop_host}/collections/card-collecting-games',
-    f'{shop_host}/collections/role-playing-games',
-    f'{shop_host}/collections/exit-games',
-    f'{shop_host}/collections/board-game-accessories',
+    (f'{shop_host}/collections/board-games', False),
+    (f'{shop_host}/collections/pre-loved-games', False),
+    (f'{shop_host}/collections/card-collecting-games', False),
+    (f'{shop_host}/collections/role-playing-games', False),
+    (f'{shop_host}/collections/exit-games', False),
+    (f'{shop_host}/collections/board-game-accessories', False),
+    (f'{shop_host}/search?q=sleeves', True),
 ]
 
 
-def worker(url: str, page: int) -> bool:
+def worker(url: str, page: int, sleeves: bool = False) -> bool:
     """Scrape page."""
     logger.info(f' Scraping {url} page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -56,6 +60,8 @@ def worker(url: str, page: int) -> bool:
         img_src_raw = 'https:' + img_tag['data-src']
         img_src = img_src_raw.replace('{width}', str(img_widths[-1]))
         name = row.find('p').get_text(separator=' ', strip=True)
+        if sleeves and not parse_sleeve_size(name):
+            continue
         is_new = 'Pre-Loved' not in name
         anchor = row.find('a')
         href = shop_host + anchor['href']
@@ -84,11 +90,11 @@ def worker_wrapper(*args, **kwargs):
 
 def scrape_site():
     """Scrape pages."""
-    for url in urls:
+    for url, sleeves in urls:
         page = 0
         while True:
             page += 1
-            outcome = worker(url, page)
+            outcome = worker(url, page, sleeves=sleeves)
             if not outcome:
                 break
 

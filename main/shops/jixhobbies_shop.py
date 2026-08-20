@@ -5,14 +5,22 @@ from bs4 import BeautifulSoup
 from main.games import get
 from main.selectors import upsert_shop
 from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
 shop_name = 'Jix Hobbies'
 shop_host = 'https://jixhobbies.co.za'
 
+# The board game shelf, then whatever the site search turns up for sleeves. That
+# search hits everything with the word in it, so only sized sleeves are kept.
+urls = [
+    (f'{shop_host}/collections/board-games-card-games', False),
+    (f'{shop_host}/search?q=sleeves', True),
+]
 
-def worker(page: int) -> bool:
+
+def worker(url: str, page: int, sleeves: bool = False) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -22,21 +30,30 @@ def worker(page: int) -> bool:
     params = {
         'page': page,
     }
-    url = f'{shop_host}/collections/board-games-card-games'
     res = get(url, params=params, headers=headers, redirect=True)
     logger.info(f'Scraped {res.request.url}...')
     if 'There are no products in this collection.' in res.text:
         return False
 
     html = BeautifulSoup(res.text, 'html.parser')
-    container = html.select_one('div.collection-grid.view-grid')
-    rows = container.find_all('div', recursive=False)
+    # the search prints its hits into its own wrapper, same card markup
+    container = html.select_one('div.collection-grid.view-grid') or html.select_one(
+        'div.search-infinite-wrapper'
+    )
+    rows = container.find_all('div', recursive=False) if container else []
     if not rows:
         return False
     for row in rows:
-        img_src = 'https:' + row.find('img')['src']
+        # the search cards carry a <noscript> copy first, which has no src
+        img_tag = row.find('img', src=True)
+        if not img_tag:
+            logger.info(f'{row.get_text(separator=" ", strip=True)} HAS NO IMAGE '.center(99, '!'))
+            continue
+        img_src = 'https:' + img_tag['src']
         anchor = row.find('div', class_='desc').find('a')
         name = anchor.get_text(separator=' ', strip=True)
+        if sleeves and not parse_sleeve_size(name):
+            continue
         href = shop_host + anchor['href']
         # price details
         in_stock = True
@@ -59,12 +76,13 @@ def worker_wrapper(*args, **kwargs):
 
 def scrape_site():
     """Scrape pages."""
-    page = 0
-    while True:
-        page += 1
-        outcome = worker(page)
-        if not outcome:
-            break
+    for url, sleeves in urls:
+        page = 0
+        while True:
+            page += 1
+            outcome = worker(url, page, sleeves=sleeves)
+            if not outcome:
+                break
 
 
 def scrape():

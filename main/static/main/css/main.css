@@ -2018,7 +2018,9 @@ a.crt-name:hover {
     .roster-listings th:nth-child(6),
     .roster-listings td:nth-child(6),
     .roster-listings th:nth-child(7),
-    .roster-listings td:nth-child(7) {
+    .roster-listings td:nth-child(7),
+    .roster-sleeves th:nth-child(7),
+    .roster-sleeves td:nth-child(7) {
         display: none;
     }
 }
@@ -2033,7 +2035,9 @@ a.crt-name:hover {
     .roster-listings th:nth-child(5),
     .roster-listings td:nth-child(5),
     .roster-shops th:nth-child(3),
-    .roster-shops td:nth-child(3) {
+    .roster-shops td:nth-child(3),
+    .roster-sleeves th:nth-child(3),
+    .roster-sleeves td:nth-child(3) {
         display: none;
     }
 }
@@ -2154,6 +2158,67 @@ a.crt-name:hover {
     gap: var(--s3) var(--s4);
     flex-wrap: wrap;
     margin-bottom: var(--s5);
+}
+
+/* ------------------------------------------------------------------- FIT -- */
+
+/* The sleeve sheet asks for a card, not a name: two figures on one instrument,
+   read in millimetres, with the ruled multiplication sign between them. */
+.fit {
+    flex: 0 0 auto;
+    max-width: none;
+}
+
+.fit-input {
+    width: 5.5rem;
+    flex: 0 0 auto;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.fit-input::-webkit-outer-spin-button,
+.fit-input::-webkit-inner-spin-button {
+    appearance: none;
+    margin: 0;
+}
+
+.fit-by {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--s2);
+    color: var(--ink-2);
+    font-size: 0.875rem;
+}
+
+.fit-unit {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--s3);
+    background: var(--sand);
+    border-left: var(--rule-ink);
+    font-family: var(--font-display);
+    font-size: 0.625rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink);
+}
+
+/* The tally and the reset only exist once a card has been entered, and both
+   carry a display of their own that would otherwise outrank `hidden`. */
+#fit-report[hidden],
+#fit-clear[hidden] {
+    display: none;
+}
+
+/* A sleeve that fits carries a crimson edge; one that is short on either side
+   is struck out of the ranking rather than removed from the sheet. */
+.roster-sleeves .sleeve-fits td:first-child {
+    box-shadow: inset 3px 0 0 var(--crimson);
+}
+
+.roster-sleeves .sleeve-nofit {
+    opacity: 0.45;
 }
 
 /* --------------------------------------------------------------- EMPTY -- */

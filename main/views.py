@@ -31,9 +31,10 @@ from main.selectors import (
     list_bundle_listings,
     list_expensive_unique_by_shop,
     list_newest_games,
+    list_sleeve_listings,
 )
 from main.shops import shop_enabled
-from main.tables import GameTable, ListingTable, ShopTable
+from main.tables import GameTable, ListingTable, ShopTable, SleeveTable
 
 logger = logging.getLogger(__name__)
 
@@ -365,6 +366,31 @@ class AccessoriesListView(SingleTableView, FilterMixin):
         context['filtering'] = self.filterset
         context['facet'] = 'accessories'
         context['nav'] = 'accessories'
+        return context
+
+
+class SleeveListView(SingleTableView):
+    """Every sleeve whose card size is known, on one sheet.
+
+    There is no search field here: the visitor has a card to fit, not a name to
+    look up, and the fit instrument ranks the whole sheet in the browser. That
+    only works if the whole sheet is present, so this roster is not paginated.
+    """
+
+    model = Listing
+    table_class = SleeveTable
+    template_name = 'main/sleeves.html'
+    table_pagination = False
+
+    def get_queryset(self):
+        """Get query."""
+        return list_sleeve_listings()
+
+    def get_context_data(self, **kwargs):
+        """Get context."""
+        context = super().get_context_data(**kwargs)
+        context['facet'] = 'sleeves'
+        context['nav'] = 'sleeves'
         return context
 
 

@@ -16,6 +16,7 @@ from main.errors import ListingImageError, ListingUrlError
 from main.games import get
 from main.models import Listing, Price, Shop
 from main.selectors import get_today
+from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
@@ -159,6 +160,9 @@ def upsert_listing(
     """
     href = strip_query_params(href)
     img_src = strip_query_params(img_src)
+    # A sleeve carries the card size it fits in the name the shop printed, so it
+    # is read here rather than at each shop: every listing gets a size or nulls.
+    sleeve_width, sleeve_height = parse_sleeve_size(name) or (None, None)
 
     with transaction.atomic():
         try:
@@ -167,6 +171,8 @@ def upsert_listing(
                 setattr(listing, key, value)
             listing.img = img_src
             listing.scraped_at = timezone.now()
+            listing.sleeve_width = sleeve_width
+            listing.sleeve_height = sleeve_height
             listing.save()
             return listing
         except Listing.DoesNotExist:
@@ -180,6 +186,8 @@ def upsert_listing(
                 slug=slugify(unidecode(name)),
                 img=img_src,
                 scraped_at=timezone.now(),
+                sleeve_width=sleeve_width,
+                sleeve_height=sleeve_height,
                 **{**(create_defaults or {}), **params},
             )
             logger.info(f'Created: {listing}')

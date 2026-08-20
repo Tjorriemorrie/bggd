@@ -5,14 +5,25 @@ from bs4 import BeautifulSoup
 from main.games import get
 from main.selectors import upsert_shop
 from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
 shop_name = 'Timeless'
 shop_host = 'https://www.timelessboardgames.co.za'
 
+# The shop's own categories: 1 is the board game shelf, 120 the card sleeves.
+# The site search does not filter, so the sleeve category stands in for it, and
+# only sized sleeves are kept off it.
+CATEGORY_BOARD_GAMES = 1
+CATEGORY_SLEEVES = 120
+categories = [
+    (CATEGORY_BOARD_GAMES, False),
+    (CATEGORY_SLEEVES, True),
+]
 
-def worker(page: int) -> bool:
+
+def worker(page: int, category: int = CATEGORY_BOARD_GAMES, sleeves: bool = False) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -22,7 +33,7 @@ def worker(page: int) -> bool:
     url = f'{shop_host}/online-shop/'
     params = {
         'page': page,
-        'category': 1,
+        'category': category,
     }
     res = get(url, params=params, headers=headers)
     logger.info(f'Scraped {res.request.url}...')
@@ -30,12 +41,18 @@ def worker(page: int) -> bool:
         return False
 
     html = BeautifulSoup(res.text, 'html.parser')
-    rows = html.find_all('div', class_='w3-card')
+    # every card on the sheet is a w3-card, chrome and brand tiles included;
+    # a product is the one carrying a name and a price.
+    rows = [
+        row for row in html.find_all('div', class_='w3-card') if row.find('p', class_='w3-medium')
+    ]
     if not rows:
         return False
-    for row in rows[2:-2]:
+    for row in rows:
         img_src = row.find_all('img', class_='w3-image')[0]['src']
         name = row.find_all('p', class_='w3-medium')[0].get_text(separator=' ', strip=True)
+        if sleeves and not parse_sleeve_size(name):
+            continue
         for anchor in row.find_all('a'):
             if 'boardgames/' in anchor['href']:
                 href = shop_host + '/' + anchor['href']
@@ -74,12 +91,13 @@ def worker_wrapper(*args, **kwargs):
 
 def scrape_site():
     """Scrape pages."""
-    page = 0
-    while True:
-        page += 1
-        outcome = worker(page)
-        if not outcome:
-            break
+    for category, sleeves in categories:
+        page = 0
+        while True:
+            page += 1
+            outcome = worker(page, category=category, sleeves=sleeves)
+            if not outcome:
+                break
 
 
 def scrape():

@@ -6,21 +6,28 @@ from bs4 import BeautifulSoup
 from main.games import get
 from main.selectors import upsert_shop
 from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
 shop_name = 'Maximus Games'
 shop_host = 'https://maximusgames.co.za'
 
+# The whole shelf, then whatever the site search turns up for sleeves. That
+# search hits everything with the word in it, so only sized sleeves are kept.
+urls = [
+    (f'{shop_host}/collections/all', False),
+    (f'{shop_host}/search?q=sleeves', True),
+]
 
-def worker(page: int) -> bool:
+
+def worker(url: str, page: int, sleeves: bool = False) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:102.0) Gecko/20100101 Firefox/102.0',  # noqa E501
     }
-    url = f'{shop_host}/collections/all'
     params = {
         'page': page,
     }
@@ -30,8 +37,8 @@ def worker(page: int) -> bool:
         return False
 
     html = BeautifulSoup(res.text, 'html.parser')
-    container = html.find('ul', id='product-grid')
-    rows = container.find_all('li', recursive=False)
+    # on the search sheet the id sits on the section, not on the grid itself
+    rows = html.select('ul#product-grid > li, #product-grid ul.product-grid > li')
     if not rows:
         return False
     for row in rows:
@@ -45,6 +52,8 @@ def worker(page: int) -> bool:
         # Remove newlines and extra whitespace
         name = re.sub(r'\s+', ' ', name).strip()
         if 'Preorder' in name:
+            continue
+        if sleeves and not parse_sleeve_size(name):
             continue
         # price details
         sold_out_wrapper = row.find('div', class_='card__badge bottom left')
@@ -65,10 +74,10 @@ def worker(page: int) -> bool:
     return True
 
 
-def worker_wrapper(page):
+def worker_wrapper(*args, **kwargs):
     """Wrapper for worker."""
     try:
-        return worker(page)
+        return worker(*args, **kwargs)
     except Exception:
         logger.exception('Error during worker')
         raise
@@ -76,12 +85,13 @@ def worker_wrapper(page):
 
 def scrape_site():
     """Scrape pages."""
-    page = 0
-    while True:
-        page += 1
-        outcome = worker(page)
-        if not outcome:
-            break
+    for url, sleeves in urls:
+        page = 0
+        while True:
+            page += 1
+            outcome = worker(url, page, sleeves=sleeves)
+            if not outcome:
+                break
 
 
 def scrape():

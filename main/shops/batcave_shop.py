@@ -6,14 +6,22 @@ from bs4 import BeautifulSoup
 from main.games import get
 from main.selectors import upsert_shop
 from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
 shop_name = 'Batcave'
 shop_host = 'https://www.batcave.co.za'
 
+# The board game shelf, then whatever the site search turns up for sleeves. That
+# search hits everything with the word in it, so only sized sleeves are kept.
+urls = [
+    (f'{shop_host}/collections/board-games', False),
+    (f'{shop_host}/search?q=sleeves', True),
+]
 
-def worker(url: str, page: int) -> bool:
+
+def worker(url: str, page: int, sleeves: bool = False) -> bool:
     """Scrape page."""
     logger.info(f' Scraping page {page} '.center(99, '='))
     shop = upsert_shop(shop_name)
@@ -29,7 +37,11 @@ def worker(url: str, page: int) -> bool:
 
     html = BeautifulSoup(res.text, 'html.parser')
     container = html.find('div', id='Collection')
-    rows = container.find_all('ul')[0].find_all('li', recursive=False)
+    if container:
+        rows = container.find_all('ul')[0].find_all('li', recursive=False)
+    else:
+        # the search prints its hits as a list view rather than the shelf grid
+        rows = html.select('ul.list-view-items > li.list-view-item')
     if not rows:
         return False
     for row in rows:
@@ -37,10 +49,17 @@ def worker(url: str, page: int) -> bool:
         if not img_tag:
             logger.info(f'{row.get_text(separator=" ", strip=True)} HAS NO IMAGE '.center(99, '!'))
             continue  # skip bad shitty products
-        img_widths = ast.literal_eval(img_tag['data-widths'])
-        img_src_raw = 'https:' + img_tag['data-src']
-        img_src = img_src_raw.replace('{width}', str(img_widths[-1]))
-        name = row.select_one('div.h4').get_text(separator=' ', strip=True)
+        if img_tag.get('data-widths'):
+            img_widths = ast.literal_eval(img_tag['data-widths'])
+            img_src_raw = 'https:' + img_tag['data-src']
+            img_src = img_src_raw.replace('{width}', str(img_widths[-1]))
+        else:
+            # the list view prints one already-sized image
+            img_src = 'https:' + img_tag['src']
+        title = row.select_one('div.h4') or row.select_one('span.product-card__title')
+        name = title.get_text(separator=' ', strip=True)
+        if sleeves and not parse_sleeve_size(name):
+            continue
         anchor = row.find('a')
         href = shop_host + anchor['href']
         # price details
@@ -68,15 +87,12 @@ def worker_wrapper(*args, **kwargs):
 
 def scrape_site():
     """Scrape pages."""
-    urls = [
-        f'{shop_host}/collections/board-games',
-    ]
-    for url in urls:
+    for url, sleeves in urls:
         logger.info(f' Scraping {url} '.center(99, '='))
         page = 0
         while True:
             page += 1
-            outcome = worker(url, page)
+            outcome = worker(url, page, sleeves=sleeves)
             if not outcome:
                 break
 

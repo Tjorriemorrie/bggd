@@ -1,0 +1,36 @@
+{% extends 'main/base.html' %}
+
+{% load django_tables2 %}
+
+{% block title %}Sleeves - BGG Data{% endblock %}
+
+{% block content %}
+    <div class="page">
+        <div class="sheet-head">
+            <h1 class="sheet-head-title">Sleeves</h1>
+            <span class="sheet-head-scope">{{ table.rows|length }} records</span>
+        </div>
+
+        {% comment %}No search field here. A visitor arrives holding a card, not
+        a name, so the instrument takes the card's two figures in millimetres and
+        the sheet re-ranks itself around them as they are typed.{% endcomment %}
+        <div class="list-toolbar">
+            <form class="filter fit" id="sleeve-fit" onsubmit="return false;">
+                <label class="filter-label" for="fit-width">Card</label>
+                <input class="filter-input fit-input" id="fit-width" type="number"
+                       inputmode="decimal" min="0" step="0.5" placeholder="63"
+                       aria-label="Card width in millimetres">
+                <span class="fit-by" aria-hidden="true">&times;</span>
+                <input class="filter-input fit-input" id="fit-height" type="number"
+                       inputmode="decimal" min="0" step="0.5" placeholder="88"
+                       aria-label="Card height in millimetres">
+                <span class="fit-unit">mm</span>
+            </form>
+
+            <span class="filter-active" id="fit-report" role="status" hidden></span>
+            <button type="button" class="ghost" id="fit-clear" hidden>Clear</button>
+        </div>
+
+        {% render_table table %}
+    </div>
+{% endblock %}

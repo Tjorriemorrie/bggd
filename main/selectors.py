@@ -210,6 +210,15 @@ def list_bundle_listings():
     return bundles
 
 
+def list_sleeve_listings() -> QuerySet[Listing]:
+    """List every sleeve whose card size the shop printed in its name."""
+    return (
+        Listing.objects.filter(sleeve_width__isnull=False, sleeve_height__isnull=False)
+        .select_related('shop', 'game')
+        .order_by('sleeve_width', 'sleeve_height', 'price')
+    )
+
+
 def list_expensive_unique_by_shop(shop: Shop) -> QuerySet[Game]:
     """Return list of most expensive unique games."""
     top_12_expensive_exclusive_games = (

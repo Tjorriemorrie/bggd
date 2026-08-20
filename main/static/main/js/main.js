@@ -165,6 +165,72 @@ function initPinnedTray() {
         });
 }
 
+// The fit instrument on the sleeve sheet. A visitor arrives holding a card, so
+// the sheet ranks itself around that card rather than around a name: the sleeves
+// that can actually hold it rise to the top, the closest fitting one first. A
+// sleeve shorter than the card on either side cannot hold it however close the
+// two areas happen to be, so it is ruled out of the ranking and marked as such.
+function initSleeveFit() {
+    const form = document.getElementById('sleeve-fit');
+    const table = document.querySelector('.roster-sleeves');
+    if (!form || !table || !table.tBodies.length) return;
+
+    const body = table.tBodies[0];
+    const widthInput = document.getElementById('fit-width');
+    const heightInput = document.getElementById('fit-height');
+    const report = document.getElementById('fit-report');
+    const clear = document.getElementById('fit-clear');
+    // The order the sheet was printed in, to fall back on when nothing is asked.
+    const rows = Array.prototype.slice.call(body.rows);
+
+    const rank = function () {
+        const width = parseFloat(widthInput.value);
+        const height = parseFloat(heightInput.value);
+
+        rows.forEach(function (row) {
+            row.classList.remove('sleeve-fits', 'sleeve-nofit');
+        });
+
+        if (!(width > 0) || !(height > 0)) {
+            rows.forEach(function (row) { body.appendChild(row); });
+            report.hidden = true;
+            clear.hidden = true;
+            return;
+        }
+
+        const area = width * height;
+        const fits = [];
+        const rest = [];
+        rows.forEach(function (row) {
+            const sleeveWidth = parseFloat(row.dataset.width);
+            const sleeveHeight = parseFloat(row.dataset.height);
+            if (sleeveWidth >= width && sleeveHeight >= height) {
+                row.classList.add('sleeve-fits');
+                fits.push([sleeveWidth * sleeveHeight - area, row]);
+            } else {
+                row.classList.add('sleeve-nofit');
+                rest.push(row);
+            }
+        });
+        fits.sort(function (a, b) { return a[0] - b[0]; });
+        fits.forEach(function (fit) { body.appendChild(fit[1]); });
+        rest.forEach(function (row) { body.appendChild(row); });
+
+        report.textContent = fits.length + ' fit ' + width + ' × ' + height + ' mm';
+        report.hidden = false;
+        clear.hidden = false;
+    };
+
+    widthInput.addEventListener('input', rank);
+    heightInput.addEventListener('input', rank);
+    clear.addEventListener('click', function () {
+        widthInput.value = '';
+        heightInput.value = '';
+        rank();
+        widthInput.focus();
+    });
+}
+
 // Cover art is served from the shops and from BGG, so a URL can rot. A dead
 // image becomes the same printed blank a missing one gets, never an empty box.
 const ART_WRAPS = '.counter-art, .crt-art, .roster-art, .detail-counter, .linked-art';
@@ -193,5 +259,6 @@ document.addEventListener('DOMContentLoaded', function () {
     initTabs();
     initPin();
     initPinnedTray();
+    initSleeveFit();
     trimTrays();
 });

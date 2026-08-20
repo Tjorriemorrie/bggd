@@ -56,6 +56,8 @@
                    {% if nav == 'rpg' %}aria-current="page"{% endif %}>RPG</a>
                 <a href="{% url 'accessories-list' %}" class="rail-link rail-link-sub"
                    {% if nav == 'accessories' %}aria-current="page"{% endif %}>Accessories</a>
+                <a href="{% url 'sleeve-list' %}" class="rail-link rail-link-sub"
+                   {% if nav == 'sleeves' %}aria-current="page"{% endif %}>Sleeves</a>
                 <a href="{% url 'other-list' %}" class="rail-link rail-link-sub"
                    {% if nav == 'other' %}aria-current="page"{% endif %}>Other</a>
             </div>

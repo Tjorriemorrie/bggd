@@ -74,6 +74,11 @@ urlpatterns = [
         name='accessories-list',
     ),
     path(
+        'sleeves/',
+        cache_page(settings.VIEW_CACHE)(views.SleeveListView.as_view()),
+        name='sleeve-list',
+    ),
+    path(
         'other/',
         cache_page(settings.VIEW_CACHE)(views.OtherListView.as_view()),
         name='other-list',
