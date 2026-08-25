@@ -183,9 +183,27 @@ function initSleeveFit() {
     // The order the sheet was printed in, to fall back on when nothing is asked.
     const rows = Array.prototype.slice.call(body.rows);
 
+    // Dimensions in the URL make the ranked sheet a link a visitor can share,
+    // rather than a state they have to re-type.
+    const syncUrl = function (width, height) {
+        const params = new URLSearchParams(window.location.search);
+        if (width > 0 && height > 0) {
+            params.set('w', width);
+            params.set('h', height);
+        } else {
+            params.delete('w');
+            params.delete('h');
+        }
+        const query = params.toString();
+        const url = window.location.pathname + (query ? '?' + query : '');
+        window.history.replaceState(null, '', url);
+    };
+
     const rank = function () {
         const width = parseFloat(widthInput.value);
         const height = parseFloat(heightInput.value);
+
+        syncUrl(width, height);
 
         rows.forEach(function (row) {
             row.classList.remove('sleeve-fits', 'sleeve-nofit');
@@ -229,6 +247,15 @@ function initSleeveFit() {
         rank();
         widthInput.focus();
     });
+
+    const params = new URLSearchParams(window.location.search);
+    const paramWidth = parseFloat(params.get('w'));
+    const paramHeight = parseFloat(params.get('h'));
+    if (paramWidth > 0 && paramHeight > 0) {
+        widthInput.value = paramWidth;
+        heightInput.value = paramHeight;
+        rank();
+    }
 }
 
 // Cover art is served from the shops and from BGG, so a URL can rot. A dead
