@@ -98,6 +98,8 @@ class Game(Timestamped):
     shop_saving = models.FloatField(null=True, blank=True)
     shop_outdated = models.BooleanField(default=True)
     shop_updated_at = models.DateTimeField(null=True, blank=True)
+    restocked_at = models.DateField(null=True, blank=True)
+    restocked_after_days = models.PositiveIntegerField(null=True, blank=True)
 
     def __str__(self) -> str:
         return unidecode(f'{self.name} ({self.year})')

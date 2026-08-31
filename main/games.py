@@ -707,10 +707,31 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
         # Drop the in_stock column
         df.drop(f'{slug}_in_stock', axis=1, inplace=True)
 
-    # get best values for day over all listings
+    # get best values for day over all listings, before out-of-stock days are dropped
+    # below, so the restock check can see genuine game-wide out-of-stock gaps
+    df['best'] = df.min(axis=1)
+
+    # find the most recent restock (out-of-stock -> in-stock) and how long it was out
+    in_stock_series = df['best'].notna()
+    transitions = in_stock_series.astype(int).diff()
+    restock_days = df.index[transitions == 1]
+    if len(restock_days):
+        last_restock = restock_days[-1]
+        out_start = last_restock
+        i = df.index.get_loc(last_restock) - 1
+        while i >= 0 and not in_stock_series.iloc[i]:
+            out_start = df.index[i]
+            i -= 1
+        game.restocked_at = last_restock.date()
+        game.restocked_after_days = (last_restock - out_start).days
+    else:
+        game.restocked_at = None
+        game.restocked_after_days = None
+
+    # now drop the out-of-stock gaps before computing the rolling mean/saving,
+    # which should only be averaged over days a price was actually available
     df = df.dropna(axis=0, how='all')
     # df = df.dropna(axis=1, how='all')
-    df['best'] = df.min(axis=1)
     df['mean'] = df['best'].rolling(window=c.ROLLING_AVERAGE, min_periods=1).mean()
     df['saving'] = df['mean'] - df['best']
 

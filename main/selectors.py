@@ -187,6 +187,23 @@ def list_newest_games():
     return games
 
 
+def list_back_in_stock_games():
+    """List games most recently back in stock after a long absence."""
+    max_num = 6
+    min_out_of_stock_days = 90  # ~3 months
+    rank_cutoff = 3_000
+    games = (
+        Game.objects.filter(
+            shop_in_stock=True,
+            restocked_after_days__gte=min_out_of_stock_days,
+            rank__lte=rank_cutoff,
+        )
+        .order_by('-restocked_at')
+        .all()[:max_num]
+    )
+    return games
+
+
 def list_popular_games(excl_ids):
     """List popular games."""
     # Calculate the date 4 weeks ago

@@ -28,6 +28,7 @@ from main.models import Game, Listing, Shop
 from main.selectors import (
     get_best_savings_games,
     get_last_scrape,
+    list_back_in_stock_games,
     list_bundle_listings,
     list_expensive_unique_by_shop,
     list_newest_games,
@@ -51,10 +52,12 @@ def home_view(request: WSGIRequest):
     """Home view."""
     savings = get_best_savings_games()
     bundles = list_bundle_listings()
+    back_in_stock = list_back_in_stock_games()
     latest = list_newest_games()
     ctx = {
         'savings': savings,
         'bundles': bundles,
+        'back_in_stock': back_in_stock,
         'latest': latest,
     }
     return TemplateResponse(request, 'main/home.html', ctx)

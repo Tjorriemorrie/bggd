@@ -12,6 +12,7 @@ from django.utils.text import slugify
 from retry import retry
 from unidecode import unidecode
 
+from main.constants import CATEGORY_ACCESSORIES
 from main.errors import ListingImageError, ListingUrlError
 from main.games import get
 from main.models import Listing, Price, Shop
@@ -163,6 +164,13 @@ def upsert_listing(
     # A sleeve carries the card size it fits in the name the shop printed, so it
     # is read here rather than at each shop: every listing gets a size or nulls.
     sleeve_width, sleeve_height = parse_sleeve_size(name) or (None, None)
+    # A sized sleeve is never a boardgame: it goes straight to Accessories with
+    # no game, and is kept out of the bgg matching pipeline (never a real search).
+    sleeve_overrides = (
+        {'category': CATEGORY_ACCESSORIES, 'game': None, 'bgg_id': None, 'bgg_missing': True}
+        if sleeve_width is not None
+        else {}
+    )
 
     with transaction.atomic():
         try:
@@ -173,6 +181,8 @@ def upsert_listing(
             listing.scraped_at = timezone.now()
             listing.sleeve_width = sleeve_width
             listing.sleeve_height = sleeve_height
+            for key, value in sleeve_overrides.items():
+                setattr(listing, key, value)
             listing.save()
             return listing
         except Listing.DoesNotExist:
@@ -188,7 +198,7 @@ def upsert_listing(
                 scraped_at=timezone.now(),
                 sleeve_width=sleeve_width,
                 sleeve_height=sleeve_height,
-                **{**(create_defaults or {}), **params},
+                **{**(create_defaults or {}), **params, **sleeve_overrides},
             )
             logger.info(f'Created: {listing}')
             return listing

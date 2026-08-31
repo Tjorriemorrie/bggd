@@ -31,6 +31,8 @@
                             <span class="counter-shop">{{ game.shop_best.name }}</span>
                             {% if footer == "xdays" %}
                                 <span class="counter-meta">{{ game.created_at|days_ago }}</span>
+                            {% elif footer == "restocked" %}
+                                <span class="counter-meta">{{ game.restocked_at|days_ago }}</span>
                             {% endif %}
                         {% endif %}
                     </div>
