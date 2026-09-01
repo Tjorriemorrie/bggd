@@ -32,6 +32,7 @@ from main.selectors import (
     list_bundle_listings,
     list_expensive_unique_by_shop,
     list_newest_games,
+    list_same_size_sleeve_listings,
     list_sleeve_listings,
 )
 from main.shops import shop_enabled
@@ -154,6 +155,9 @@ class ListingDetailView(DetailView):
                 .select_related('shop')
                 .order_by('price')[:5]
             )
+        # other sleeve listings that fit the exact same card size
+        if listing.sleeve_width is not None and listing.sleeve_height is not None:
+            context['same_size_sleeves'] = list_same_size_sleeve_listings(listing)
         return context
 
 

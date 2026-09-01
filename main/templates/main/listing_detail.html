@@ -223,6 +223,47 @@
             </section>
         {% endif %}
 
+        {% if same_size_sleeves %}
+            <section class="section">
+                <div class="section-head">
+                    <h2 class="section-title">Same size sleeves</h2>
+                    <span class="section-scope">
+                        {{ listing.sleeve_width|floatformat:-1 }}&times;{{ listing.sleeve_height|floatformat:-1 }}mm
+                        &middot; {{ same_size_sleeves|length }} other listing{{ same_size_sleeves|length|pluralize }}
+                    </span>
+                </div>
+                <div class="crt">
+                    {% for sib in same_size_sleeves %}
+                        <div class="crt-row {% if forloop.first and sib.in_stock and sib.price < listing.price %}crt-row-best{% endif %}">
+                            <span class="crt-art">
+                                {% if sib.img %}
+                                    <img src="{{ sib.img }}" alt="" loading="lazy"
+                                         {% if not sib.in_stock %}class="out-of-stock-img"{% endif %}/>
+                                {% else %}
+                                    <span class="art-blank">No art</span>
+                                {% endif %}
+                            </span>
+                            <span class="crt-info">
+                                <span class="crt-shop">{{ sib.shop.name }}</span>
+                                <a href="{{ sib.get_absolute_url }}" class="crt-name">
+                                    {{ sib.name|truncatechars:60 }}
+                                </a>
+                            </span>
+                            {% if sib.in_stock %}
+                                <span class="crt-price">R{{ sib.price|floatformat:0 }}</span>
+                            {% else %}
+                                <span class="crt-price crt-price-out">{{ sib|last_price }}</span>
+                            {% endif %}
+                            <a href="{{ sib.url }}" target="_blank" rel="noopener"
+                               class="crt-go" aria-label="Open at {{ sib.shop.name }}">
+                                <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i>
+                            </a>
+                        </div>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endif %}
+
         <div class="colophon">
             <span>Added {{ listing.created_at|days_ago|default:listing.created_at }}</span>
             {% if listing.scraped_at %}

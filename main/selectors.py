@@ -220,6 +220,18 @@ def list_sleeve_listings() -> QuerySet[Listing]:
     )
 
 
+def list_same_size_sleeve_listings(listing: Listing) -> QuerySet[Listing]:
+    """List every other sleeve listing that fits the exact same card size, in stock first."""
+    return (
+        Listing.objects.filter(
+            sleeve_width=listing.sleeve_width, sleeve_height=listing.sleeve_height
+        )
+        .exclude(pk=listing.pk)
+        .select_related('shop')
+        .order_by('-in_stock', 'price')
+    )
+
+
 def list_expensive_unique_by_shop(shop: Shop) -> QuerySet[Game]:
     """Return list of most expensive unique games."""
     top_12_expensive_exclusive_games = (
