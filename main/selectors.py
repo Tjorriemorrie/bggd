@@ -188,7 +188,7 @@ def list_newest_games():
 
 def list_back_in_stock_games():
     """List games most recently back in stock after a long absence."""
-    max_num = 6
+    max_num = 12
     min_out_of_stock_days = 90  # ~3 months
     rank_cutoff = 3_000
     games = (

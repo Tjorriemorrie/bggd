@@ -112,7 +112,8 @@ def sheet_layout(fig: Figure, height: int | None = 420, legend: bool = False) ->
         hoverlabel=dict(
             bgcolor=SHEET_INK,
             bordercolor=SHEET_INK,
-            font=dict(family='Archivo, system-ui, sans-serif', size=12, color=SHEET_SAND),
+            font=dict(family='Archivo, system-ui, sans-serif', size=10, color=SHEET_SAND),
+            namelength=-1,
         ),
         hovermode='x unified',
         xaxis=dict(
@@ -258,19 +259,21 @@ def get_game_prices_graph(game: Game, period: str = 'recent'):
     # Create the graph
     fig = Figure()
 
-    # Add shop-specific price lines. A shop carrying the same game under more
-    # than one listing gets one legend entry, not one per listing.
-    _add_shop_traces(fig, df, dfs, shop_names)
-
-    # The market average: the reference every other line is read against.
+    # The market average: the reference every other line is read against. Added
+    # first so the unified tooltip prints it pinned at the top, bold and ruled
+    # off from the shop prices that follow.
     fig.add_scatter(
         x=df.index,
         y=df['average_lowest_price'],
         mode='lines',
         name='Market average',
         line=dict(color=SHEET_CRIMSON, dash='dash', width=2.5),
-        hovertemplate='Market average  R%{y:,.0f}<extra></extra>',
+        hovertemplate='<b>Market average  R%{y:,.0f}</b><br>' + '─' * 22 + '<extra></extra>',
     )
+
+    # Add shop-specific price lines. A shop carrying the same game under more
+    # than one listing gets one legend entry, not one per listing.
+    _add_shop_traces(fig, df, dfs, shop_names)
 
     if df[price_columns].notna().to_numpy().any():
         sheet_layout(fig, height=None, legend=True)

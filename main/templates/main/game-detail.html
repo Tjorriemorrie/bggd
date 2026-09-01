@@ -266,8 +266,8 @@
 
         <div class="colophon">
             <span>Added {{ game.created_at|days_ago|default:game.created_at }}</span>
-            {% if game.scraped_at %}
-                <span>Last scraped {{ game.scraped_at|days_ago|default:game.scraped_at }}</span>
+            {% if last_scraped_at %}
+                <span>Last scraped {{ last_scraped_at|days_ago|default:last_scraped_at }}</span>
             {% endif %}
         </div>
     </div>

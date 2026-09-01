@@ -37,19 +37,31 @@ if ($LASTEXITCODE -ne 0 -or -not (Test-Path $localGz)) { throw "Download failed.
 
 # 3) Decompress to a temp file, NOT over the local DB -- the local DB stays
 #    untouched until the snapshot has passed its integrity check.
-#    7z 'e' on db-snapshot.sqlite3.gz outputs db-snapshot.sqlite3 into the
-#    output dir. Quote the -o switch so PowerShell passes it through intact
-#    (bare '-o.' is parsed as too-short). gzip's CRC is verified here, so a
-#    truncated or corrupted transfer fails at this step.
+#    Extract into an isolated temp DIRECTORY, not the repo root: `gzip >
+#    $remoteGz` on the server compresses from a pipe, so the gzip header
+#    carries no stored filename, and `7z e` falls back to naming the output
+#    after the archive itself (db.sqlite3.gz -> db.sqlite3) -- if extracted
+#    into the repo root that IS $LocalPath, clobbering the live DB before
+#    it's ever verified. Extracting elsewhere and then moving whatever came
+#    out to $localTmp sidesteps 7z's naming guess entirely, regardless of
+#    what it picks. gzip's CRC is still verified here, so a truncated or
+#    corrupted transfer fails at this step.
 Write-Host "Decompressing..."
 $sevenZip = Get-Command 7z -ErrorAction SilentlyContinue
 if (-not $sevenZip) { throw "7-Zip not installed. Install it or switch to gzip -d." }
 
-Remove-Item $localTmp -Force -ErrorAction SilentlyContinue
-$outDir = (Resolve-Path ".").Path
-& 7z e $localGz "-o$outDir" -y | Out-Host
-if ($LASTEXITCODE -ne 0) { throw "Decompression failed via 7z" }
-if (-not (Test-Path $localTmp)) { throw "Expected $localTmp after decompression, not found." }
+$extractDir = Join-Path ([System.IO.Path]::GetTempPath()) "bggd-sync-$PID"
+New-Item -ItemType Directory -Path $extractDir -Force | Out-Null
+try {
+    & 7z e $localGz "-o$extractDir" -y | Out-Host
+    if ($LASTEXITCODE -ne 0) { throw "Decompression failed via 7z" }
+    $extracted = Get-ChildItem $extractDir -File
+    if ($extracted.Count -ne 1) { throw "Expected exactly one file after decompression, found $($extracted.Count)." }
+    Remove-Item $localTmp -Force -ErrorAction SilentlyContinue
+    Move-Item $extracted[0].FullName $localTmp -Force
+} finally {
+    Remove-Item $extractDir -Recurse -Force -ErrorAction SilentlyContinue
+}
 
 # 4) Verify the snapshot before it is allowed to replace the local DB.
 Write-Host "Verifying snapshot (PRAGMA integrity_check, takes a minute on a large DB)..."

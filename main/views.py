@@ -245,6 +245,12 @@ class GameDetailView(DetailView):
         ctx['listings'] = list(
             ctx['game'].listings.select_related('shop').order_by('-in_stock', 'price')
         )
+        # game.scraped_at is when its BGG details (description, rank, ...) were
+        # last fetched, not when any shop last priced it — so the "last scraped"
+        # date shown on the page is the most recent listing scrape instead.
+        ctx['last_scraped_at'] = max(
+            (listing.scraped_at for listing in ctx['listings']), default=None
+        )
         # Prices graph is loaded lazily via htmx — see game-prices-graph URL.
         ctx['nav'] = 'games'
         # Add current timestamp to context to ensure cache busting
