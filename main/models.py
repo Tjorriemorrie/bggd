@@ -182,27 +182,3 @@ class Scrapelog(Timestamped):
 
     def __str__(self):
         return unidecode(f'<Scrapelog-{self.id} {self.day} {self.target}>')
-
-
-class PageView(Timestamped):
-    day = models.ForeignKey(Day, on_delete=models.PROTECT, related_name='pageviews')
-    game = models.ForeignKey(Game, on_delete=models.CASCADE, related_name='pageviews')
-    ip = models.GenericIPAddressField()
-    viewed_at = models.DateTimeField()
-
-    class Meta:
-        unique_together = ['day', 'game', 'ip']
-
-    def __str__(self):
-        return unidecode(f'<PageView-{self.id} {self.ip} {self.day} {self.game}>')
-
-
-class VisitorLog(models.Model):
-    ip_address = models.GenericIPAddressField()
-    user_agent = models.TextField()
-    referrer = models.URLField(blank=True, null=True)
-    path = models.CharField(max_length=2048)
-    timestamp = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f'{self.ip_address} visited {self.path} at {self.timestamp}'

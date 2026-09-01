@@ -7,21 +7,8 @@ from django.utils.html import format_html
 
 from main.forms import LookupForm
 from main.games import fetch_bgg_thing, search_bgg, update_game_shop_prices
-from main.graphs import (
-    get_daily_unique_ips_chart,
-    get_ip_request_chart,
-    get_pageviews_per_day_chart,
-    get_top_paths_chart,
-)
-from main.models import Game, Label, Listing, PageView, Price, Scrapelog, Shop, VisitorLog
-from main.selectors import (
-    list_listings_rated_today,
-    list_listings_without_games,
-    top_bad_bot_by_admin_scanner_past_week,
-    top_bad_bot_by_burst_past_week,
-    top_bad_bot_by_homepage_past_week,
-    top_bad_bot_by_user_agent_past_week,
-)
+from main.models import Game, Label, Listing, Price, Scrapelog, Shop
+from main.selectors import list_listings_rated_today, list_listings_without_games
 
 logger = logging.getLogger(__name__)
 
@@ -225,102 +212,3 @@ class ScrapelogAdmin(admin.ModelAdmin):
     search_fields = ['outcome']
     readonly_fields = ['outcome', 'duration']
     ordering = ['outcome', '-scraped_at']
-
-
-@admin.register(PageView)
-class PageViewAdmin(admin.ModelAdmin):
-    list_display = ['id', 'day', 'ip', 'game']
-    search_fields = ['ip', 'game__name']
-    ordering = ['-day', 'game', 'ip']
-
-
-@admin.register(VisitorLog)
-class VisitorLogAdmin(admin.ModelAdmin):
-    list_display = ('ip_address', 'path', 'timestamp', 'referrer_short', 'user_agent_short')
-    list_filter = ('timestamp',)
-    search_fields = ('ip_address', 'path', 'referrer', 'user_agent')
-    readonly_fields = ('ip_address', 'path', 'timestamp', 'referrer', 'user_agent')
-    ordering = ('-timestamp',)
-    change_list_template = 'admin/visitorlog_change_list.html'
-
-    def referrer_short(self, obj):
-        """Get referrer short."""
-        cut_off = 50
-        return (
-            obj.referrer[:cut_off] + '...'
-            if obj.referrer and len(obj.referrer) > cut_off
-            else obj.referrer
-        )
-
-    referrer_short.short_description = 'Referrer'
-
-    def user_agent_short(self, obj):
-        """Get user agent short."""
-        cut_off = 50
-        return (
-            obj.user_agent[:cut_off] + '...'
-            if obj.user_agent and len(obj.user_agent) > cut_off
-            else obj.user_agent
-        )
-
-    user_agent_short.short_description = 'User Agent'
-
-    def get_urls(self):
-        """Get urls."""
-        urls = super().get_urls()
-        custom_urls = [
-            path(
-                'bots/',
-                self.admin_site.admin_view(self.visitorlog_bots_view),
-                name='visitorlog-bots',
-            ),
-            path(
-                'graph/',
-                self.admin_site.admin_view(self.visitorlog_graph_view),
-                name='visitorlog-graph',
-            ),
-        ]
-        return custom_urls + urls
-
-    def visitorlog_bots_view(self, request):
-        """Calculate bots from logs."""
-        ctx = dict(
-            self.admin_site.each_context(request),
-            ua_bots=top_bad_bot_by_user_agent_past_week(3),
-            admin_bots=top_bad_bot_by_admin_scanner_past_week(3),
-            burst_bots=top_bad_bot_by_burst_past_week(limit=3),
-            home_bots=top_bad_bot_by_homepage_past_week(3),
-        )
-        return render(request, 'admin/visitorlog_bots.html', ctx)
-
-    def visitorlog_graph_view(self, request):
-        """Graph of visitor log."""
-        pageviews_chart = get_pageviews_per_day_chart()
-        ip_chart = get_ip_request_chart()
-        unique_chart = get_daily_unique_ips_chart()
-        top_paths_chart = get_top_paths_chart()
-
-        ctx = dict(
-            self.admin_site.each_context(request),
-            pageviews_chart=pageviews_chart.to_html(
-                full_html=False, include_plotlyjs='cdn', config={'responsive': True}
-            )
-            if pageviews_chart
-            else '<p>No pageview data.</p>',
-            unique_chart=unique_chart.to_html(
-                full_html=False, include_plotlyjs=False, config={'responsive': True}
-            )
-            if unique_chart
-            else '<p>No unique IP data.</p>',
-            ip_chart=ip_chart.to_html(
-                full_html=False, include_plotlyjs=False, config={'responsive': True}
-            )
-            if ip_chart
-            else '<p>No IP data.</p>',
-            top_paths_chart=top_paths_chart.to_html(
-                full_html=False, include_plotlyjs=False, config={'responsive': True}
-            )
-            if top_paths_chart
-            else '<p>No path data.</p>',
-        )
-        return render(request, 'admin/visitorlog_graph.html', ctx)

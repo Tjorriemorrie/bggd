@@ -76,8 +76,6 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'main.middleware.OpenGraphMiddleware',
-    'main.middleware.PageViewMiddleware',
-    'main.middleware.VisitorLoggingMiddleware',
 ]
 
 ROOT_URLCONF = 'bgg.urls'

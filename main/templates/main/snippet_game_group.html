@@ -25,15 +25,11 @@
                 </div>
                 {% if footer != "none" %}
                     <div class="counter-foot">
-                        {% if footer == "pageview" %}
-                            <span class="counter-shop">{{ game.pageview_count }} views</span>
-                        {% else %}
-                            <span class="counter-shop">{{ game.shop_best.name }}</span>
-                            {% if footer == "xdays" %}
-                                <span class="counter-meta">{{ game.created_at|days_ago }}</span>
-                            {% elif footer == "restocked" %}
-                                <span class="counter-meta">{{ game.restocked_at|days_ago }}</span>
-                            {% endif %}
+                        <span class="counter-shop">{{ game.shop_best.name }}</span>
+                        {% if footer == "xdays" %}
+                            <span class="counter-meta">{{ game.created_at|days_ago }}</span>
+                        {% elif footer == "restocked" %}
+                            <span class="counter-meta">{{ game.restocked_at|days_ago }}</span>
                         {% endif %}
                     </div>
                 {% endif %}
