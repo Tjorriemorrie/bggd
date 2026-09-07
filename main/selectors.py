@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
 
-from main.constants import CATEGORY_BUNDLE, SHOP_IGNORED_FOR_RESTOCK
+from main.constants import CATEGORY_BUNDLE
 from main.models import Day, Game, Listing, Scrapelog, Shop
 
 logger = logging.getLogger(__name__)
@@ -196,11 +196,10 @@ def list_newest_games():
 
 
 def list_back_in_stock_games():
-    """List games most recently back in stock after a long absence, ignoring BGBSA stock."""
+    """List games most recently back in stock after a long absence, new stock only."""
     max_num = 12
     min_out_of_stock_days = 90  # ~3 months
     rank_cutoff = 3_000
-    ignored_shop_name = SHOP_IGNORED_FOR_RESTOCK
     games = list(
         Game.objects.filter(
             shop_in_stock=True,
@@ -208,13 +207,11 @@ def list_back_in_stock_games():
             rank__lte=rank_cutoff,
         )
         .annotate(
-            other_shops_in_stock=Count(
-                'listings',
-                filter=Q(listings__in_stock=True) & ~Q(listings__shop__name=ignored_shop_name),
+            new_in_stock=Count(
+                'listings', filter=Q(listings__in_stock=True) & Q(listings__is_new=True)
             )
         )
-        .filter(other_shops_in_stock__gt=0)
-        .exclude(shop_best__name=ignored_shop_name)
+        .filter(new_in_stock__gt=0)
         .order_by('-restocked_at')[:max_num]
     )
     logger.info(f'📦 Listed back in stock games: games_count={len(games)}')

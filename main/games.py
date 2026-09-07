@@ -712,12 +712,8 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
     df['best'] = df.min(axis=1)
 
     # find the most recent restock (out-of-stock -> in-stock) and how long it was out,
-    # ignoring the shop whose stock flapping would create false restocks
-    restock_cols = [
-        f'{slug}_price'
-        for slug, listing in listings_by_shop.items()
-        if listing.shop.name != c.SHOP_IGNORED_FOR_RESTOCK
-    ]
+    # over new listings only: pre-owned stock comes and goes and would fake a restock
+    restock_cols = [f'{slug}_price' for slug, listing in listings_by_shop.items() if listing.is_new]
     if restock_cols:
         in_stock_series = df[restock_cols].min(axis=1).notna()
         transitions = in_stock_series.astype(int).diff()
@@ -735,12 +731,12 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
         game.restocked_after_days = (last_restock - out_start).days
         logger.info(
             f'📦 Restock found for {game}: restocked_at={game.restocked_at} '
-            f'after_days={game.restocked_after_days} shops={len(restock_cols)}'
+            f'after_days={game.restocked_after_days} new_listings={len(restock_cols)}'
         )
     else:
         game.restocked_at = None
         game.restocked_after_days = None
-        logger.info(f'📦 No restock for {game}: shops={len(restock_cols)}')
+        logger.info(f'📦 No restock for {game}: new_listings={len(restock_cols)}')
 
     # now drop the out-of-stock gaps before computing the rolling mean/saving,
     # which should only be averaged over days a price was actually available
