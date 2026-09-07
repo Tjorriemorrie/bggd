@@ -1,5 +1,8 @@
 ROLLING_AVERAGE = 90
 
+# shop excluded from restock detection and the home page back-in-stock tray
+SHOP_IGNORED_FOR_RESTOCK = 'BGBSA'
+
 LABEL_CATEGORY = 'category'
 LABEL_MECHANIC = 'mechanic'
 LABEL_FAMILY = 'family'

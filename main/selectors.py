@@ -4,14 +4,23 @@ from datetime import datetime, time, timedelta
 from itertools import chain
 
 from django.db import transaction
-from django.db.models import Count, ExpressionWrapper, F, FloatField, Func, QuerySet, Value
+from django.db.models import (
+    Count,
+    ExpressionWrapper,
+    F,
+    FloatField,
+    Func,
+    Q,
+    QuerySet,
+    Value,
+)
 from django.db.models.functions import Coalesce, Now
 from django.http import HttpRequest
 from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
 
-from main.constants import CATEGORY_BUNDLE
+from main.constants import CATEGORY_BUNDLE, SHOP_IGNORED_FOR_RESTOCK
 from main.models import Day, Game, Listing, Scrapelog, Shop
 
 logger = logging.getLogger(__name__)
@@ -187,19 +196,28 @@ def list_newest_games():
 
 
 def list_back_in_stock_games():
-    """List games most recently back in stock after a long absence."""
+    """List games most recently back in stock after a long absence, ignoring BGBSA stock."""
     max_num = 12
     min_out_of_stock_days = 90  # ~3 months
     rank_cutoff = 3_000
-    games = (
+    ignored_shop_name = SHOP_IGNORED_FOR_RESTOCK
+    games = list(
         Game.objects.filter(
             shop_in_stock=True,
             restocked_after_days__gte=min_out_of_stock_days,
             rank__lte=rank_cutoff,
         )
-        .order_by('-restocked_at')
-        .all()[:max_num]
+        .annotate(
+            other_shops_in_stock=Count(
+                'listings',
+                filter=Q(listings__in_stock=True) & ~Q(listings__shop__name=ignored_shop_name),
+            )
+        )
+        .filter(other_shops_in_stock__gt=0)
+        .exclude(shop_best__name=ignored_shop_name)
+        .order_by('-restocked_at')[:max_num]
     )
+    logger.info(f'📦 Listed back in stock games: games_count={len(games)}')
     return games
 
 
