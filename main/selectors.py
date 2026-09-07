@@ -10,8 +10,9 @@ from django.db.models import (
     F,
     FloatField,
     Func,
-    Q,
+    OuterRef,
     QuerySet,
+    Subquery,
     Value,
 )
 from django.db.models.functions import Coalesce, Now
@@ -207,11 +208,13 @@ def list_back_in_stock_games():
             rank__lte=rank_cutoff,
         )
         .annotate(
-            new_in_stock=Count(
-                'listings', filter=Q(listings__in_stock=True) & Q(listings__is_new=True)
+            best_listing_is_new=Subquery(
+                Listing.objects.filter(game=OuterRef('pk'), in_stock=True, price__isnull=False)
+                .order_by('price')
+                .values('is_new')[:1]
             )
         )
-        .filter(new_in_stock__gt=0)
+        .filter(best_listing_is_new=True)
         .order_by('-restocked_at')[:max_num]
     )
     logger.info(f'📦 Listed back in stock games: games_count={len(games)}')
