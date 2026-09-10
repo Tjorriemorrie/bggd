@@ -30,6 +30,11 @@ CHOICES_WEIGHTS = (
 FORMAT_PRICE_HUNDREDS = 100
 FORMAT_PRICE_THOUSANDS = 1_000
 
+# rounded calendar spans, only ever used to coarsen an age into words
+DAYS_PER_MONTH = 30
+DAYS_PER_YEAR = 365
+MONTHS_PER_YEAR = 12
+
 CATEGORY_BOARD_GAME = 'Board Game'
 CATEGORY_CARD_GAME = 'Card Game'
 CATEGORY_TABLETOP = 'Tabletop'

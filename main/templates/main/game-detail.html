@@ -226,7 +226,7 @@
                     {% endwith %}
                     {% for listing in listings %}
                         {% if not listing.in_stock %}
-                            <div class="crt-row">
+                            <div class="crt-row crt-row-out">
                                 <span class="crt-art">
                                     {% if listing.img %}
                                         <img src="{{ listing.img }}" alt="" loading="lazy"
@@ -241,6 +241,15 @@
                                         {{ listing.name|truncatechars:60 }}
                                     </a>
                                 </span>
+                                {# How long this shop has been without it. #}
+                                {% if listing.out_of_stock_since %}
+                                    <span class="crt-since"
+                                          title="Out of stock since {{ listing.out_of_stock_since }}">
+                                        {{ listing.out_of_stock_since|since_ago }}
+                                    </span>
+                                {% else %}
+                                    <span class="crt-since">Unknown</span>
+                                {% endif %}
                                 <span class="crt-price crt-price-out">{{ listing|last_price }}</span>
                                 <a href="{{ listing.url }}" target="_blank" rel="noopener"
                                    class="crt-go" aria-label="Open at {{ listing.shop.name }}">

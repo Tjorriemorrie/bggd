@@ -1,6 +1,6 @@
 import logging
 import multiprocessing
-from datetime import datetime, time, timedelta
+from datetime import date, datetime, time, timedelta
 from itertools import chain
 
 from django.db import transaction
@@ -10,7 +10,10 @@ from django.db.models import (
     F,
     FloatField,
     Func,
+    Max,
+    Min,
     OuterRef,
+    Q,
     QuerySet,
     Subquery,
     Value,
@@ -22,7 +25,7 @@ from django.utils.text import slugify
 from unidecode import unidecode
 
 from main.constants import CATEGORY_BUNDLE
-from main.models import Day, Game, Listing, Scrapelog, Shop
+from main.models import Day, Game, Listing, Price, Scrapelog, Shop
 
 logger = logging.getLogger(__name__)
 
@@ -259,3 +262,48 @@ def list_expensive_unique_by_shop(shop: Shop) -> QuerySet[Game]:
         .order_by('-shop_price')[:24]
     )
     return top_12_expensive_exclusive_games
+
+
+def sort_out_of_stock_listings(listings: list[Listing]) -> list[Listing]:
+    """Date each out-of-stock listing went out and sort them most recently gone first."""
+    if not listings:
+        logger.info('📦 No out-of-stock listings to date')
+        return []
+
+    listing_ids = [listing.pk for listing in listings]
+    last_in_stock = dict(
+        Price.objects.filter(listing_id__in=listing_ids, in_stock=True)
+        .values_list('listing_id')
+        .annotate(last_day=Max('day__day'))
+    )
+    logger.info(
+        f'📦 Fetched last in-stock days: listings_count={len(listing_ids)}, '
+        f'with_stock_history={len(last_in_stock)}'
+    )
+
+    # The gap it is still sitting in started on the first out-of-stock day
+    # recorded after the last day the shop had it; a listing that was never in
+    # stock has been gone since its very first scrape.
+    gaps = Q()
+    for listing_id in listing_ids:
+        last_day = last_in_stock.get(listing_id)
+        gaps |= (
+            Q(listing_id=listing_id, day__day__gt=last_day)
+            if last_day
+            else Q(listing_id=listing_id)
+        )
+    gone_since = dict(
+        Price.objects.filter(gaps, in_stock=False)
+        .values_list('listing_id')
+        .annotate(first_day=Min('day__day'))
+    )
+
+    for listing in listings:
+        listing.out_of_stock_since = gone_since.get(listing.pk)
+    listings.sort(key=lambda listing: listing.out_of_stock_since or date.min, reverse=True)
+
+    logger.info(
+        f'📦 Sorted out-of-stock listings: listings_count={len(listings)}, '
+        f'dated={len(gone_since)}, newest={listings[0].out_of_stock_since}'
+    )
+    return listings

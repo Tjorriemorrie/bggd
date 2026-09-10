@@ -4,7 +4,13 @@ from django import template
 from django.utils import timezone
 from django.utils.safestring import mark_safe
 
-from main.constants import FORMAT_PRICE_HUNDREDS, FORMAT_PRICE_THOUSANDS
+from main.constants import (
+    DAYS_PER_MONTH,
+    DAYS_PER_YEAR,
+    FORMAT_PRICE_HUNDREDS,
+    FORMAT_PRICE_THOUSANDS,
+    MONTHS_PER_YEAR,
+)
 from main.models import Game, Listing
 
 register = template.Library()
@@ -112,6 +118,32 @@ def days_ago(value):
     if delta == 1:
         return 'Yesterday'
     return f'{delta} days ago'
+
+
+@register.filter
+def since_ago(value):
+    """Format how long ago a date was, coarsening from days to months to years."""
+    if isinstance(value, datetime):
+        value_date = timezone.localtime(value).date()
+    elif isinstance(value, date):
+        value_date = value
+    else:
+        return ''
+
+    today = timezone.localtime(timezone.now()).date()
+    delta = (today - value_date).days
+
+    if delta <= 0:
+        return 'Today'
+    if delta == 1:
+        return 'Yesterday'
+    if delta < DAYS_PER_MONTH:
+        return f'{delta} days ago'
+    months = delta // DAYS_PER_MONTH
+    if months < MONTHS_PER_YEAR:
+        return f'{months} month{"s" if months > 1 else ""} ago'
+    years = delta // DAYS_PER_YEAR
+    return f'{years} year{"s" if years > 1 else ""} ago'
 
 
 @register.filter

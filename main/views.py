@@ -34,6 +34,7 @@ from main.selectors import (
     list_newest_games,
     list_same_size_sleeve_listings,
     list_sleeve_listings,
+    sort_out_of_stock_listings,
 )
 from main.shops import shop_enabled
 from main.tables import GameTable, ListingTable, ShopTable, SleeveTable
@@ -246,9 +247,14 @@ class GameDetailView(DetailView):
         ctx = super().get_context_data(**kwargs)
         # Materialised: the sheet reads the ends of this list to decide whether
         # the in-stock and out-of-stock rosters are empty.
-        ctx['listings'] = list(
-            ctx['game'].listings.select_related('shop').order_by('-in_stock', 'price')
+        listings = list(ctx['game'].listings.select_related('shop').order_by('-in_stock', 'price'))
+        # In stock stays cheapest-first; the out-of-stock tail is re-ordered by
+        # when each shop lost it, so the freshest absence sits at the top.
+        in_stock = [listing for listing in listings if listing.in_stock]
+        out_of_stock = sort_out_of_stock_listings(
+            [listing for listing in listings if not listing.in_stock]
         )
+        ctx['listings'] = in_stock + out_of_stock
         # game.scraped_at is when its BGG details (description, rank, ...) were
         # last fetched, not when any shop last priced it — so the "last scraped"
         # date shown on the page is the most recent listing scrape instead.
