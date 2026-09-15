@@ -652,3 +652,95 @@ Add or update the following line:
     vm.swappiness=10
 
 This configuration will allow your system to focus on utilizing your available RAM efficiently while reserving swap for when it’s truly needed.
+### 12. Block traffic by country (GeoIP2)
+
+Blocks China and Singapore at nginx with a `444` (connection closed, no response).
+Applied automatically on every deploy by `scripts/deploy.sh`, which runs
+`deploy/geoip-setup.sh` as root. The countries themselves live in
+`deploy/nginx/geoip2.conf` -- edit that file and push a `v*` tag to change them.
+
+#### Add the MaxMind secrets to GitHub
+
+From your MaxMind account (My Account > Manage License Keys) you need **both**
+the Account ID and a licence key. Add them under
+Settings > Secrets and variables > Actions:
+
+    MAXMIND_ACCOUNT_ID:  your numeric MaxMind account ID
+    MAXMIND_LICENSE_KEY: the GeoLite2 licence key
+
+If either secret is missing the deploy still succeeds -- the GeoIP stage logs a
+warning and is skipped.
+
+#### Grant the deploy user permission to run the setup script
+
+`deploy/geoip-setup.sh` installs packages and writes to `/etc/nginx`, so it needs
+root. Run `sudo visudo` and add:
+
+    Cmnd_Alias GEOIP_SETUP = /bin/bash /home/bgg/bggd/deploy/geoip-setup.sh
+    Defaults!GEOIP_SETUP env_keep += "MAXMIND_ACCOUNT_ID MAXMIND_LICENSE_KEY"
+    bgg ALL=(ALL) NOPASSWD: GEOIP_SETUP
+
+The `env_keep` line is what lets the credentials reach the script; without it
+`sudo` strips them and the script aborts with `MAXMIND_ACCOUNT_ID is not set`.
+
+> **Security note.** `deploy/geoip-setup.sh` lives in the repo and is writable by
+> `bgg`, so this sudoers entry effectively grants root to anyone who can push a
+> `v*` tag. That is the accepted trade-off for enabling this without manual
+> server steps. If that is ever too broad, replace the single entry with narrow
+> per-command entries and move the `apt-get install` to a one-time manual step.
+
+#### What the deploy does each run
+
+Every step is idempotent, so a redeploy is a cheap no-op once set up:
+
+1. Installs `libnginx-mod-http-geoip2` and `geoipupdate` (skipped if present).
+   A newly installed dynamic module needs a full nginx *restart*, so the first
+   run restarts nginx; later runs only reload it.
+2. Writes `/etc/GeoIP.conf` (mode 600) from the two secrets.
+3. Downloads `GeoLite2-Country.mmdb` if missing or more than 7 days old.
+4. Enables `geoipupdate.timer` so the database refreshes between deploys.
+5. Installs `deploy/nginx/geoip2.conf` to `/etc/nginx/conf.d/` and
+   `deploy/nginx/geoip2-block.conf` to `/etc/nginx/snippets/`.
+6. Inserts `include /etc/nginx/snippets/geoip2-block.conf;` into every `server`
+   block of `/etc/nginx/sites-available/bggd`, if not already present. This is
+   re-checked every deploy because certbot rewrites that file on renewal.
+7. Runs `nginx -t`. **On failure both the site config and `conf.d/geoip2.conf`
+   are restored together and the deploy fails** -- they are rolled back as a
+   pair, because a site that still includes the snippet without `geoip2.conf`
+   would leave `$geo_blocked` undefined and stop nginx from starting at all.
+   The running site is never left on a broken config.
+
+#### Verify it works
+
+Check the module and database are in place:
+
+    nginx -V 2>&1 | grep -o geoip2
+    ls -l /usr/share/GeoIP/GeoLite2-Country.mmdb
+    systemctl status geoipupdate.timer
+
+Confirm the snippet is wired in:
+
+    grep -n geoip2-block /etc/nginx/sites-available/bggd
+
+A normal request should still return 200:
+
+    curl -s -o /dev/null -w '%{http_code}\n' https://bggdata.co.za/
+
+To prove the block works you need a request that actually originates in a
+blocked country -- `X-Forwarded-For` will not do it, because `geoip2` reads the
+real connection address. Use an online checker from a CN/SG exit node, or
+temporarily add your own country to the `map` in `deploy/nginx/geoip2.conf`,
+deploy, and confirm the connection is dropped:
+
+    curl -sv https://bggdata.co.za/    # expect: Empty reply from server
+
+Then remove it again and redeploy.
+
+#### Disabling it
+
+Remove the two GitHub secrets and the deploy skips the stage -- but note that
+this leaves the existing config in place on the server. To actually turn it off:
+
+    sudo rm /etc/nginx/conf.d/geoip2.conf
+    sudo sed -i '/geoip2-block.conf/d' /etc/nginx/sites-available/bggd
+    sudo nginx -t && sudo systemctl reload nginx

@@ -40,3 +40,16 @@ if echo "$SERVER_PWD" | sudo -S systemctl restart gunicorn >> "$logfile" 2>&1; t
 else
     echo "Failed to restart Gunicorn" | tee -a "$logfile"
 fi
+
+# Apply GeoIP2 country blocking (credentials injected by the deploy workflow)
+if [ -n "${MAXMIND_ACCOUNT_ID:-}" ] && [ -n "${MAXMIND_LICENSE_KEY:-}" ]; then
+    echo "🌍 Applying GeoIP2 country blocking..." | tee -a "$logfile"
+    if sudo /bin/bash /home/bgg/bggd/deploy/geoip-setup.sh >> "$logfile" 2>&1; then
+        echo "🌍 GeoIP2 country blocking applied." | tee -a "$logfile"
+    else
+        echo "❌ GeoIP2 setup failed, see $logfile" | tee -a "$logfile"
+        exit 1
+    fi
+else
+    echo "⚠️ MAXMIND_ACCOUNT_ID/MAXMIND_LICENSE_KEY not set, skipping GeoIP2 setup." | tee -a "$logfile"
+fi

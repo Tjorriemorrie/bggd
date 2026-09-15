@@ -54,5 +54,15 @@ jobs:
           ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'echo SSH connection successful!'
 
       - name: Deploy to DigitalOcean
+        env:
+          MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
         run: |
-          ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s' < ./scripts/deploy.sh
+          # Prepend the MaxMind credentials to the piped script rather than
+          # passing them in the ssh command, so they never reach the remote
+          # argv (visible in ps) or the remote filesystem.
+          {
+            printf 'export MAXMIND_ACCOUNT_ID=%q\n' "$MAXMIND_ACCOUNT_ID"
+            printf 'export MAXMIND_LICENSE_KEY=%q\n' "$MAXMIND_LICENSE_KEY"
+            cat ./scripts/deploy.sh
+          } | ssh -o "StrictHostKeyChecking=yes" ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_HOST }} 'bash -s'
