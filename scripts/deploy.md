@@ -694,10 +694,12 @@ The `env_keep` line is what lets the credentials reach the script; without it
 Every step is idempotent, so a redeploy is a cheap no-op once set up:
 
 1. Installs `libnginx-mod-http-geoip2` and `geoipupdate` (skipped if present).
-   A newly installed dynamic module needs a full nginx *restart*, so the first
-   run restarts nginx; later runs only reload it.
-2. Writes `/etc/GeoIP.conf` (mode 600) from the two secrets.
-3. Downloads `GeoLite2-Country.mmdb` if missing or more than 7 days old.
+   A dynamic module is only picked up by a full nginx *restart*, so the run that
+   first activates GeoIP2 restarts nginx; later runs only reload it.
+2. Writes `/etc/GeoIP.conf` (mode 600) from the two secrets, pinning
+   `DatabaseDirectory` to `/var/lib/GeoIP`. The directory is pinned rather than
+   left to the package default, which differs between geoipupdate versions.
+3. Downloads `/var/lib/GeoIP/GeoLite2-Country.mmdb` if missing or over 7 days old.
 4. Enables `geoipupdate.timer` so the database refreshes between deploys.
 5. Installs `deploy/nginx/geoip2.conf` to `/etc/nginx/conf.d/` and
    `deploy/nginx/geoip2-block.conf` to `/etc/nginx/snippets/`.
@@ -715,7 +717,7 @@ Every step is idempotent, so a redeploy is a cheap no-op once set up:
 Check the module and database are in place:
 
     nginx -V 2>&1 | grep -o geoip2
-    ls -l /usr/share/GeoIP/GeoLite2-Country.mmdb
+    ls -l /var/lib/GeoIP/GeoLite2-Country.mmdb
     systemctl status geoipupdate.timer
 
 Confirm the snippet is wired in:

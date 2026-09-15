@@ -7,12 +7,21 @@ REPO_DIR=/home/bgg/bggd
 NGINX_SITE=/etc/nginx/sites-available/bggd
 NGINX_CONF=/etc/nginx/conf.d/geoip2.conf
 SNIPPET=/etc/nginx/snippets/geoip2-block.conf
-MMDB=/usr/share/GeoIP/GeoLite2-Country.mmdb
+GEOIP_DIR=/var/lib/GeoIP
+MMDB=$GEOIP_DIR/GeoLite2-Country.mmdb
 
 : "${MAXMIND_ACCOUNT_ID:?MAXMIND_ACCOUNT_ID is not set}"
 : "${MAXMIND_LICENSE_KEY:?MAXMIND_LICENSE_KEY is not set}"
 
 echo "🌍 Starting GeoIP2 setup"
+
+# Whether GeoIP2 was already active before this run. Drives the restart
+# decision below, and survives a previous run that installed the packages
+# but failed before nginx ever loaded the module.
+had_conf=0
+if [ -f "$NGINX_CONF" ]; then
+    had_conf=1
+fi
 
 # 1. Packages. A newly installed dynamic module is only picked up by a full
 #    nginx restart, so remember whether we installed one.
@@ -29,10 +38,12 @@ fi
 
 # 2. MaxMind credentials
 echo "🌍 Writing /etc/GeoIP.conf"
+install -d -m 755 "$GEOIP_DIR"
 cat > /etc/GeoIP.conf <<EOF
 AccountID $MAXMIND_ACCOUNT_ID
 LicenseKey $MAXMIND_LICENSE_KEY
 EditionIDs GeoLite2-Country
+DatabaseDirectory $GEOIP_DIR
 EOF
 chmod 600 /etc/GeoIP.conf
 
@@ -51,6 +62,8 @@ fi
 
 if [ ! -f "$MMDB" ]; then
     echo "❌ Database missing after update, leaving nginx config untouched: $MMDB"
+    echo "❌ .mmdb files actually on disk:"
+    find /var/lib/GeoIP /usr/share/GeoIP -name '*.mmdb' 2>/dev/null || echo "   (none found)"
     exit 1
 fi
 
@@ -66,10 +79,8 @@ fi
 #    nginx -t can be rolled back to a consistent pair of files.
 conf_backup=$(mktemp)
 site_backup=$(mktemp)
-had_conf=0
-if [ -f "$NGINX_CONF" ]; then
+if [ "$had_conf" -eq 1 ]; then
     cp "$NGINX_CONF" "$conf_backup"
-    had_conf=1
 fi
 cp "$NGINX_SITE" "$site_backup"
 
@@ -107,7 +118,7 @@ if ! nginx -t; then
     exit 1
 fi
 
-if [ "$nginx_restart_needed" -eq 1 ]; then
+if [ "$nginx_restart_needed" -eq 1 ] || [ "$had_conf" -eq 0 ]; then
     systemctl restart nginx
     echo "🌍 nginx restarted to load the GeoIP2 module"
 else

@@ -23,6 +23,28 @@ jobs:
           python3 -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Check MaxMind secrets are available
+        env:
+          MAXMIND_ACCOUNT_ID: ${{ secrets.MAXMIND_ACCOUNT_ID }}
+          MAXMIND_LICENSE_KEY: ${{ secrets.MAXMIND_LICENSE_KEY }}
+        run: |
+          # Lengths only - never echo the values themselves. An unset GitHub
+          # secret expands to an empty string rather than failing, so without
+          # this check a misnamed or unscoped secret gives a green deploy that
+          # silently skipped the GeoIP2 stage.
+          echo "MAXMIND_ACCOUNT_ID length:  ${#MAXMIND_ACCOUNT_ID}"
+          echo "MAXMIND_LICENSE_KEY length: ${#MAXMIND_LICENSE_KEY}"
+          missing=0
+          if [ -z "$MAXMIND_ACCOUNT_ID" ]; then
+            echo "::error::MAXMIND_ACCOUNT_ID is empty or not set"
+            missing=1
+          fi
+          if [ -z "$MAXMIND_LICENSE_KEY" ]; then
+            echo "::error::MAXMIND_LICENSE_KEY is empty or not set"
+            missing=1
+          fi
+          exit "$missing"
+
       - name: Set up SSH
         uses: webfactory/ssh-agent@v0.5.3
         with:
@@ -61,6 +83,8 @@ jobs:
           # Prepend the MaxMind credentials to the piped script rather than
           # passing them in the ssh command, so they never reach the remote
           # argv (visible in ps) or the remote filesystem.
+          account_id=$(printf '%s' "$MAXMIND_ACCOUNT_ID" | tr -d '[:space:]')
+          license_key=$(printf '%s' "$MAXMIND_LICENSE_KEY" | tr -d '[:space:]')
           {
             printf 'export MAXMIND_ACCOUNT_ID=%q\n' "$MAXMIND_ACCOUNT_ID"
             printf 'export MAXMIND_LICENSE_KEY=%q\n' "$MAXMIND_LICENSE_KEY"
