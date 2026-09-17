@@ -185,17 +185,28 @@ def get_last_scrape(shop: Shop) -> Scrapelog | None:
     return scrapelog
 
 
+def _best_listing_is_new() -> Subquery:
+    """Annotate whether a game's cheapest in-stock listing, the one shown on its card, is new."""
+    return Subquery(
+        Listing.objects.filter(game=OuterRef('pk'), in_stock=True, price__isnull=False)
+        .order_by('price')
+        .values('is_new')[:1]
+    )
+
+
 def list_newest_games():
-    """List newest games."""
-    max_num = 24
+    """List newest games, new stock only."""
+    max_num = 12
     rank_cutoff = 3_000
     days_to_fix = 1
     days_ago = timezone.now() - timedelta(days=days_to_fix)
-    games = (
+    games = list(
         Game.objects.filter(created_at__lt=days_ago, shop_in_stock=True, rank__lte=rank_cutoff)
-        .order_by('-created_at')
-        .all()[:max_num]
+        .annotate(best_listing_is_new=_best_listing_is_new())
+        .filter(best_listing_is_new=True)
+        .order_by('-created_at')[:max_num]
     )
+    logger.info(f'🆕 Listed newest games: games_count={len(games)}')
     return games
 
 
@@ -210,13 +221,7 @@ def list_back_in_stock_games():
             restocked_after_days__gte=min_out_of_stock_days,
             rank__lte=rank_cutoff,
         )
-        .annotate(
-            best_listing_is_new=Subquery(
-                Listing.objects.filter(game=OuterRef('pk'), in_stock=True, price__isnull=False)
-                .order_by('price')
-                .values('is_new')[:1]
-            )
-        )
+        .annotate(best_listing_is_new=_best_listing_is_new())
         .filter(best_listing_is_new=True)
         .order_by('-restocked_at')[:max_num]
     )

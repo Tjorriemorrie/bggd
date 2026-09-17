@@ -50,13 +50,13 @@
             </section>
         {% endif %}
 
-        {% if bundles %}
+        {% if latest %}
             <section class="tray-section">
                 <div class="section-head">
-                    <h2 class="section-title">Bundles</h2>
-                    <span class="section-scope">Multi-game packs and collections</span>
+                    <h2 class="section-title">Just added</h2>
+                    <span class="section-scope">New only, newest games on the sheet</span>
                 </div>
-                {% include 'main/snippet_listing_group.html' with listings=bundles footer="none" max_rows=2 %}
+                {% include 'main/snippet_game_group.html' with games=latest footer="xdays" max_rows=1 %}
             </section>
         {% endif %}
 
@@ -70,13 +70,13 @@
             </section>
         {% endif %}
 
-        {% if latest %}
+        {% if bundles %}
             <section class="tray-section">
                 <div class="section-head">
-                    <h2 class="section-title">Just added</h2>
-                    <span class="section-scope">Newest games on the sheet</span>
+                    <h2 class="section-title">Bundles</h2>
+                    <span class="section-scope">Multi-game packs and collections</span>
                 </div>
-                {% include 'main/snippet_game_group.html' with games=latest footer="xdays" max_rows=2 %}
+                {% include 'main/snippet_listing_group.html' with listings=bundles footer="none" %}
             </section>
         {% endif %}
     </div>
