@@ -34,13 +34,17 @@ def worker(url_template: str, page: int, sleeves: bool = False) -> set[str]:
     logger.info(f'Scraped {res.request.url}...')
     last_page = 50
     if page >= last_page:
+        logger.info(f'📦 Reached page cap {last_page}, stopping')
         return set()
 
     html = BeautifulSoup(res.text, 'html.parser')
     rows = html.find_all('div', class_='product-item')
     if not rows:
+        logger.info(f'📦 No products on page {page}, stopping')
         return set()
     hrefs = set()
+    items_handled = 0
+    sold_out_count = 0
     for row in rows:
         anchor = row.find_all('a')[1]
         href = shop_host + anchor['href']
@@ -55,13 +59,30 @@ def worker(url_template: str, page: int, sleeves: bool = False) -> set[str]:
         if sleeves and not parse_sleeve_size(name):
             continue
         # price details
-        in_stock = True
-        price_tag = row.select_one('p.price')
-        price_txt = price_tag.get_text(strip=True)
-        price_value = parse_price(price_txt)
+        status_tag = row.select_one('p.status')
+        if status_tag is None:
+            logger.warning(f'⚠️ No status for {name}, assuming in stock: {href}')
+            status_txt = ''
+        else:
+            status_txt = status_tag.get_text(separator=' ', strip=True)
+        # 'Sold Out' is the only status that cannot be bought: both 'In Stock'
+        # and 'Available for Order' still ship, only the lead time differs.
+        in_stock = 'Sold Out' not in status_txt
+        if in_stock:
+            price_tag = row.select_one('p.price')
+            price_txt = price_tag.get_text(strip=True)
+            price_value = parse_price(price_txt)
+        else:
+            sold_out_count += 1
+            price_value = None
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value)
+        items_handled += 1
 
+    logger.info(
+        f'📦 Scraped page {page}: hrefs={len(hrefs)}, '
+        f'handled={items_handled}, sold_out={sold_out_count}'
+    )
     return hrefs
 
 
