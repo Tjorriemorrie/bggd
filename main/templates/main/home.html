@@ -79,5 +79,20 @@
                 {% include 'main/snippet_listing_group.html' with listings=bundles footer="none" %}
             </section>
         {% endif %}
+
+        {% comment %}
+            The charts carry plotly's whole bundle, so they are fetched only once
+            the visitor scrolls down to them.
+        {% endcomment %}
+        <section class="tray-section">
+            <div class="section-head">
+                <h2 class="section-title">Second-hand market</h2>
+                <span class="section-scope">Pre-owned board games, last 24 months</span>
+            </div>
+            <div class="market-pending"
+                 hx-get="{% url 'second-hand-market' %}"
+                 hx-trigger="revealed"
+                 hx-swap="outerHTML">Loading the market charts…</div>
+        </section>
     </div>
 {% endblock %}

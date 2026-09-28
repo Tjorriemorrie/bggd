@@ -24,6 +24,7 @@ from main.graphs import (
     series_track_heights,
     shop_price_index_graph,
 )
+from main.market import get_second_hand_market
 from main.models import Game, Listing, Shop
 from main.selectors import (
     get_best_savings_games,
@@ -63,6 +64,23 @@ def home_view(request: WSGIRequest):
         'latest': latest,
     }
     return TemplateResponse(request, 'main/home.html', ctx)
+
+
+def second_hand_market_view(request: WSGIRequest):
+    """Return the second-hand market charts fragment for the home page."""
+    charts = get_second_hand_market() or []
+    # Plotly's bundle is inlined once, by the first chart; the rest reuse it.
+    rendered = [
+        {
+            **chart,
+            'html': chart['figure'].to_html(
+                full_html=False, include_plotlyjs=i == 0, config=PLOTLY_CONFIG
+            ),
+        }
+        for i, chart in enumerate(charts)
+    ]
+    logger.info(f'📈 Rendered second-hand market fragment: charts={len(rendered)}')
+    return TemplateResponse(request, 'main/snippet_market.html', {'charts': rendered})
 
 
 def _parse_pins(raw: str) -> list[tuple[int, Decimal | None]]:

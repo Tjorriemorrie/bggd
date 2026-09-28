@@ -2426,6 +2426,74 @@ nav .pagination,
     margin-top: var(--s8);
 }
 
+/* Second-hand market: four tracks, two across a wide sheet, one down a phone.
+   Each head prints its latest reading on the right, like a sheet's scope. */
+.market-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--s7) var(--s6);
+}
+
+.market-chart {
+    margin: 0;
+    min-width: 0;
+}
+
+.market-head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: var(--s1) var(--s4);
+    padding-bottom: var(--s2);
+    border-bottom: var(--rule-ink);
+    margin-bottom: var(--s3);
+}
+
+.market-title {
+    font-size: 0.9375rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    margin: 0;
+}
+
+.market-reading {
+    font-family: var(--font-display);
+    font-size: 0.9375rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums lining-nums;
+    color: var(--teal);
+    white-space: nowrap;
+}
+
+.market-note {
+    flex-basis: 100%;
+    margin: 0;
+    max-width: var(--measure);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--ink-2);
+}
+
+.market-pending {
+    padding: var(--s6) 0;
+    font-size: 0.875rem;
+    color: var(--ink-2);
+}
+
+@media (max-width: 859.98px) {
+    .market-grid {
+        grid-template-columns: minmax(0, 1fr);
+        gap: var(--s7);
+    }
+}
+
+@media (max-width: 559.98px) {
+    .market-chart .track {
+        padding: var(--s2);
+    }
+}
+
 /* ------------------------------------------------------------- REDUCTION -- */
 
 /* Movement goes; state change stays. Killing every transition would take the

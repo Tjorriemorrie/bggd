@@ -1,0 +1,14 @@
+<div class="market-grid">
+    {% for chart in charts %}
+        <figure class="market-chart">
+            <figcaption class="market-head">
+                <h3 class="market-title">{{ chart.title }}</h3>
+                {% if chart.reading %}<span class="market-reading">{{ chart.reading }}</span>{% endif %}
+                <p class="market-note">{{ chart.note }}</p>
+            </figcaption>
+            <div class="track">{{ chart.html|safe }}</div>
+        </figure>
+    {% empty %}
+        <p class="market-note">No pre-owned board game has been priced yet.</p>
+    {% endfor %}
+</div>
