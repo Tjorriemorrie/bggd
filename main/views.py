@@ -66,8 +66,14 @@ def home_view(request: WSGIRequest):
     return TemplateResponse(request, 'main/home.html', ctx)
 
 
+def about_view(request: WSGIRequest):
+    """About view, holding the second-hand market charts."""
+    logger.info('📈 Rendering about page')
+    return TemplateResponse(request, 'main/about.html', {'nav': 'about'})
+
+
 def second_hand_market_view(request: WSGIRequest):
-    """Return the second-hand market charts fragment for the home page."""
+    """Return the second-hand market charts fragment for the about page."""
     charts = get_second_hand_market() or []
     # Plotly's bundle is inlined once, by the first chart; the rest reuse it.
     rendered = [

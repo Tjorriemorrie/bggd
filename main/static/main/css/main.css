@@ -489,6 +489,11 @@ html {
     color: var(--on-ink-2);
 }
 
+/* Pushed to the far end: about the site, not a sheet of it. */
+.rail-link-end {
+    margin-left: auto;
+}
+
 .rail-sep {
     width: 1px;
     background: var(--on-ink-fill);
@@ -550,6 +555,10 @@ html {
 
     .rail-link-sub {
         padding-left: var(--s6);
+    }
+
+    .rail-link-end {
+        margin-left: 0;
     }
 
     .rail-sep {

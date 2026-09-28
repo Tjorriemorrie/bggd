@@ -60,6 +60,9 @@
                    {% if nav == 'sleeves' %}aria-current="page"{% endif %}>Sleeves</a>
                 <a href="{% url 'other-list' %}" class="rail-link rail-link-sub"
                    {% if nav == 'other' %}aria-current="page"{% endif %}>Other</a>
+
+                <a href="{% url 'about' %}" class="rail-link rail-link-end"
+                   {% if nav == 'about' %}aria-current="page"{% endif %}>About</a>
             </div>
         </div>
     </nav>

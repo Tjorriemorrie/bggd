@@ -1,0 +1,26 @@
+{% extends 'main/base.html' %}
+
+{% block title %}About - BGG Data{% endblock %}
+
+{% block content %}
+    <div class="page">
+        <div class="sheet-head">
+            <h1 class="sheet-head-title">About</h1>
+        </div>
+
+        {% comment %}
+            The charts take a while to build and carry plotly's whole bundle, so
+            the page is served first and they are fetched straight after.
+        {% endcomment %}
+        <section class="tray-section">
+            <div class="section-head">
+                <h2 class="section-title">Second-hand market</h2>
+                <span class="section-scope">Pre-owned board games, last 24 months</span>
+            </div>
+            <div class="market-pending"
+                 hx-get="{% url 'second-hand-market' %}"
+                 hx-trigger="load"
+                 hx-swap="outerHTML">Loading the market charts…</div>
+        </section>
+    </div>
+{% endblock %}

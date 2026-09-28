@@ -8,6 +8,7 @@ from main import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', cache_page(settings.VIEW_CACHE)(views.home_view), name='home'),
+    path('about/', cache_page(settings.VIEW_CACHE)(views.about_view), name='about'),
     path(
         'second-hand-market/',
         cache_page(settings.VIEW_CACHE)(views.second_hand_market_view),
