@@ -175,8 +175,14 @@ def list_listings_rated_today() -> QuerySet[Listing]:
 
 
 def best_listing_by_game(game: Game) -> Listing | None:
-    """Returns best listing with available stock."""
-    return game.listings.filter(in_stock=True, price__isnull=False).order_by('price').first()
+    """Returns best reviewed listing with available stock."""
+    listing = (
+        game.listings.filter(in_stock=True, price__isnull=False, bgg_looked_at__isnull=False)
+        .order_by('price')
+        .first()
+    )
+    logger.info(f'💰 Best reviewed listing for {game}: listing={listing}')
+    return listing
 
 
 def get_last_scrape(shop: Shop) -> Scrapelog | None:

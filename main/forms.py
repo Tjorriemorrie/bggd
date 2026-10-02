@@ -4,6 +4,7 @@ from django import forms
 from django.utils import timezone
 
 from main.constants import CATEGORY_CHOICES
+from main.games import update_game_shop_prices
 from main.models import Listing
 
 logger = logging.getLogger(__name__)
@@ -50,6 +51,13 @@ class LookupForm(forms.Form):
         listing.bgg_looked_at = timezone.now()
         listing.save()
         logger.info(
-            f'Saved bgg info: id={listing.bgg_id} missing={listing.bgg_missing} to {listing}'
+            f'🔎 Saved bgg info: id={listing.bgg_id} missing={listing.bgg_missing} to {listing}'
         )
+
+        # The match is now reviewed, so the game's stats can count this listing straight away
+        if listing.game:
+            update_game_shop_prices(listing.game)
+            logger.info(f'🔎 Refreshed shop prices after review: game={listing.game}')
+        else:
+            logger.info(f'🔎 No game to refresh after review: listing={listing}')
         return listing

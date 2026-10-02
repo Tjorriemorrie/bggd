@@ -665,11 +665,14 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
 
     Then set the final current value on the game.
     """
-    logger.info(f'updating game shop prices for {game}')
-    # retrieve all shop prices
+    logger.info(f'💰 Updating game shop prices for {game}')
+    # retrieve all shop prices, only from listings whose match was reviewed, so a
+    # wrong auto-match cannot drag the price down and fake a saving
+    listings = list(game.listings.filter(bgg_looked_at__isnull=False))
+    logger.info(f'💰 Fetched reviewed listings for {game}: listings_count={len(listings)}')
     listings_by_shop = {}
     dfs = {}
-    for ix, listing in enumerate(game.listings.all()):
+    for ix, listing in enumerate(listings):
         slug = f'{slugify(listing.shop.name)}_{ix}'
         values = listing.prices.values_list('day__day', 'price', 'in_stock')
         if not values:
@@ -684,6 +687,7 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
 
     # remove game if it is not in a shop
     if not dfs:
+        logger.info(f'🗑️ Deleting {game}: no reviewed listings with prices')
         game.delete()
         return
 
@@ -755,7 +759,7 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
         game.shop_mean = last_row['mean']
         game.shop_saving = last_row['saving']
         logger.info(
-            f'Updated {game} with {game.shop_best.name}: ins={game.shop_in_stock} '
+            f'💰 Updated {game} with {game.shop_best.name}: ins={game.shop_in_stock} '
             f'best={game.shop_price} mean={game.shop_mean} saving={game.shop_saving}'
         )
     else:
@@ -765,7 +769,7 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
         game.shop_price = None
         game.shop_mean = None
         game.shop_saving = None
-        logger.info(f'Updated {game} but no shop with stock.')
+        logger.info(f'💰 Updated {game} but no shop with stock.')
     game.shop_outdated = False
     game.shop_updated_at = timezone.now()
     game.save()
