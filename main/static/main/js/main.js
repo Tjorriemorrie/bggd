@@ -262,18 +262,32 @@ function initSleeveFit() {
 // image becomes the same printed blank a missing one gets, never an empty box.
 const ART_WRAPS = '.counter-art, .crt-art, .roster-art, .detail-counter, .linked-art';
 
+function markArtMissing(img) {
+    const wrap = img.closest(ART_WRAPS);
+    if (!wrap) return;
+    img.hidden = true;
+    wrap.classList.add('art-missing');
+}
+
 document.addEventListener(
     'error',
     function (e) {
         const img = e.target;
         if (!img || img.tagName !== 'IMG') return;
-        const wrap = img.closest(ART_WRAPS);
-        if (!wrap) return;
-        img.hidden = true;
-        wrap.classList.add('art-missing');
+        markArtMissing(img);
     },
     true // 'error' does not bubble, so listen on the capture phase
 );
+
+// This script is deferred, so a shop that answers fast (with a bot check page
+// instead of the image) can fail its art before the listener above exists.
+function sweepDeadArt() {
+    document.querySelectorAll('img').forEach(function (img) {
+        if (img.complete && img.naturalWidth === 0 && img.getAttribute('src')) {
+            markArtMissing(img);
+        }
+    });
+}
 
 let trimTraysTimer;
 window.addEventListener('resize', function () {
@@ -282,6 +296,7 @@ window.addEventListener('resize', function () {
 });
 
 document.addEventListener('DOMContentLoaded', function () {
+    sweepDeadArt();
     initNavToggle();
     initTabs();
     initPin();
