@@ -1492,99 +1492,29 @@ a.crt-name:hover {
 }
 
 .masthead-inner {
-    padding: clamp(32px, 6vw, 64px) 0;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--s5) var(--s8);
-    align-items: end;
+    padding: clamp(24px, 4vw, 40px) 0;
 }
 
 .masthead-title {
-    font-size: clamp(1.75rem, 4.6vw, 3.25rem);
-    line-height: 1.02;
+    font-size: clamp(1.625rem, 3.6vw, 2.5rem);
+    line-height: 1.05;
     letter-spacing: -0.015em;
     text-transform: uppercase;
     color: var(--sand);
-    max-width: 18ch;
     margin: 0;
 }
 
 .masthead-title em {
     font-style: normal;
-    color: var(--on-ink-2);
+    color: var(--teal-lit);
 }
 
 .masthead-note {
-    margin: var(--s4) 0 0;
+    margin: var(--s3) 0 0;
     font-size: 1rem;
     line-height: 1.55;
     color: var(--on-ink-2);
     max-width: 52ch;
-}
-
-.masthead-key {
-    display: flex;
-    flex-direction: column;
-    gap: var(--s3);
-    border-left: 1px solid var(--on-ink-hair);
-    padding-left: var(--s5);
-}
-
-.masthead-key-row {
-    display: flex;
-    align-items: center;
-    gap: var(--s3);
-    font-family: var(--font-display);
-    font-size: 0.6875rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.12em;
-    color: var(--on-ink-2);
-    white-space: nowrap;
-}
-
-.masthead-key-swatch {
-    width: 22px;
-    height: 14px;
-    border-radius: var(--r-cut);
-    flex-shrink: 0;
-}
-
-.swatch-under {
-    background: var(--teal-lit);
-}
-
-.swatch-over {
-    background: var(--crimson-lit);
-}
-
-.swatch-out {
-    background: var(--on-ink-fill);
-    border: 1px solid var(--on-ink-2);
-}
-
-@media (max-width: 859.98px) {
-    .masthead-inner {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .masthead-key {
-        border-left: 0;
-        border-top: 1px solid var(--on-ink-hair);
-        padding-left: 0;
-        padding-top: var(--s4);
-        flex-direction: row;
-        flex-wrap: wrap;
-        gap: var(--s4);
-    }
-}
-
-/* Below this the key wraps two-then-one, which reads as a mistake. One track. */
-@media (max-width: 559.98px) {
-    .masthead-key {
-        flex-direction: column;
-        gap: var(--s3);
-    }
 }
 
 /* -------------------------------------------------------------- DETAIL -- */
@@ -2365,6 +2295,29 @@ nav .pagination,
     padding: var(--s3) var(--s4);
     margin: var(--s5) 0;
     font-size: 0.9375rem;
+}
+
+/* A standing note from the house, set on the sheet like an errata slip. */
+.notice-flag {
+    display: flex;
+    align-items: baseline;
+    gap: var(--s3);
+    margin-top: 0;
+    border-left: 4px solid var(--crimson);
+}
+
+.notice-flag .bi {
+    color: var(--crimson);
+    flex-shrink: 0;
+}
+
+.notice-flag p {
+    margin: 0;
+}
+
+.notice-flag a {
+    color: var(--ink);
+    font-weight: 700;
 }
 
 /* ---------------------------------------------------------------- FOOTER -- */
