@@ -12,6 +12,7 @@ from main.sleeves import SLEEVE_SIZE_RE, parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
+enabled = 0
 shop_name = 'Pwned Games'
 shop_host = 'https://www.pwnedgames.co.za'
 
