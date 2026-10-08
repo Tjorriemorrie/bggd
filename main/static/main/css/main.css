@@ -2297,29 +2297,6 @@ nav .pagination,
     font-size: 0.9375rem;
 }
 
-/* A standing note from the house, set on the sheet like an errata slip. */
-.notice-flag {
-    display: flex;
-    align-items: baseline;
-    gap: var(--s3);
-    margin-top: 0;
-    border-left: 4px solid var(--crimson);
-}
-
-.notice-flag .bi {
-    color: var(--crimson);
-    flex-shrink: 0;
-}
-
-.notice-flag p {
-    margin: 0;
-}
-
-.notice-flag a {
-    color: var(--ink);
-    font-weight: 700;
-}
-
 /* ---------------------------------------------------------------- FOOTER -- */
 
 .foot {
