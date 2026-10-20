@@ -1,0 +1,89 @@
+{% extends 'main/base.html' %}
+
+{% load static %}
+
+{% block title %}Plays - BGG Data{% endblock %}
+
+{% block content %}
+    <div class="page">
+        <div class="sheet-head">
+            <h1 class="sheet-head-title">Plays</h1>
+            <span class="sheet-head-scope">What to play next</span>
+        </div>
+
+        <p class="plays-lede">
+            Reads a player's logged plays from BoardGameGeek, newest first, up to
+            {{ max_pages }} pages of {{ per_page }}. Every play day, any of the {{ top_k }}
+            suggested games left on the shelf is counted as skipped. Plays against skips, and how long
+            since each game was last played, decide the next {{ top_k }} suggestions.
+        </p>
+
+        <div class="list-toolbar">
+            <form class="filter" id="plays-check"
+                  hx-get="{% url 'plays-check' %}" hx-target="#plays-confirm"
+                  hx-swap="innerHTML"
+                  {% if username %}hx-trigger="submit, load"{% endif %}>
+                <label class="filter-label" for="plays-username">BGG user</label>
+                <input class="filter-input" id="plays-username" type="search" name="username"
+                       value="{{ username }}" placeholder="Username on BoardGameGeek"
+                       autocomplete="off" autocapitalize="off" spellcheck="false" required>
+                <button type="submit" class="filter-btn" aria-label="Look up this user">
+                    <i class="bi bi-arrow-right" aria-hidden="true"></i>
+                </button>
+            </form>
+        </div>
+
+        <div id="plays-confirm" aria-live="polite"></div>
+
+        {% comment %}The sync panel is printed once and driven by plays.js: the
+        confirm card's button starts it, and the page asks the server for one BGG
+        page at a time, then saves it in small chunks so cancel never leaves a
+        request running for long.{% endcomment %}
+        <section class="plays-sync" id="plays-sync" hidden
+                 data-csrf="{{ csrf_token }}"
+                 data-max-pages="{{ max_pages }}"
+                 data-per-page="{{ per_page }}"
+                 data-collection-url="{% url 'plays-sync-collection' %}"
+                 data-page-url="{% url 'plays-sync-page' %}"
+                 data-chunk-url="{% url 'plays-sync-chunk' %}"
+                 data-result-url="{% url 'plays-result' username='__user__' %}">
+            <div class="section-head">
+                <h2 class="section-title">Syncing <span id="plays-sync-user"></span></h2>
+                <button type="button" class="ghost" id="plays-cancel">Cancel</button>
+            </div>
+
+            <div class="plays-meter">
+                <div class="plays-meter-head">
+                    <span class="plays-meter-lbl" id="plays-pages-lbl">Pages</span>
+                    <span class="plays-meter-val" id="plays-pages-val">0 / {{ max_pages }}</span>
+                </div>
+                <ol class="turns" id="plays-turns" role="progressbar"
+                    aria-labelledby="plays-pages-lbl" aria-valuemin="0"
+                    aria-valuemax="{{ max_pages }}" aria-valuenow="0">
+                    {% for _ in ''|center:max_pages %}
+                        <li class="turn">{{ forloop.counter }}</li>
+                    {% endfor %}
+                </ol>
+            </div>
+
+            <div class="plays-meter">
+                <div class="plays-meter-head">
+                    <span class="plays-meter-lbl" id="plays-saved-lbl">Plays saved</span>
+                    <span class="plays-meter-val" id="plays-saved-val">0</span>
+                </div>
+                <div class="gauge" id="plays-gauge" role="progressbar"
+                     aria-labelledby="plays-saved-lbl" aria-valuemin="0"
+                     aria-valuemax="1" aria-valuenow="0">
+                    <span class="gauge-fill" id="plays-gauge-fill"></span>
+                </div>
+            </div>
+
+            <p class="plays-status" id="plays-status" role="status">Reading the collection…</p>
+            <p class="plays-done" id="plays-done" hidden>
+                <a class="commit commit-sm" id="plays-result-link" href="#">See what to play next</a>
+            </p>
+        </section>
+    </div>
+
+    <script src="{% static 'main/js/plays.js' %}" defer></script>
+{% endblock %}

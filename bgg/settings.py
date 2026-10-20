@@ -14,6 +14,7 @@ import os
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import sys
+import tempfile
 import warnings
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -119,7 +120,16 @@ CACHES = {
         'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
         # 'LOCATION': 'DataFlair',
         'TIMEOUT': CACHE_DURATION,
-    }
+    },
+    # A plays sync holds one fetched BGG page here while the browser saves it a
+    # chunk at a time. On disk so both gunicorn workers see it and it costs no
+    # memory; every chunk sets it again, so it expires 5 minutes after last use.
+    'plays': {
+        'BACKEND': 'django.core.cache.backends.filebased.FileBasedCache',
+        'LOCATION': Path(tempfile.gettempdir()) / 'bggd-plays',
+        'TIMEOUT': 5 * 60,
+        'OPTIONS': {'MAX_ENTRIES': 200},
+    },
 }
 
 # Password validation

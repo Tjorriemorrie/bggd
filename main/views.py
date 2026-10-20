@@ -2,9 +2,11 @@ import logging
 from decimal import Decimal, InvalidOperation
 
 from django.core.handlers.wsgi import WSGIRequest
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils import timezone
+from django.views.decorators.http import require_POST
 from django.views.generic import DetailView
 from django_filters.views import FilterMixin
 from django_tables2 import SingleTableView
@@ -25,7 +27,19 @@ from main.graphs import (
     shop_price_index_graph,
 )
 from main.market import get_second_hand_market
-from main.models import Game, Listing, Shop
+from main.models import Game, Listing, Player, Shop
+from main.plays import (
+    PLAYS_MAX_PAGES,
+    PLAYS_PER_PAGE,
+    TOP_K,
+    BggPlaysError,
+    fetch_bgg_user,
+    get_or_create_player,
+    player_report,
+    save_staged_chunk,
+    stage_plays_page,
+    sync_owned,
+)
 from main.selectors import (
     get_best_savings_games,
     get_last_scrape,
@@ -124,6 +138,123 @@ def pinned_games_view(request: WSGIRequest):
         )
         pinned.append(game)
     return TemplateResponse(request, 'main/snippet_pinned_group.html', {'pinned': pinned})
+
+
+def plays_view(request: WSGIRequest):
+    """Plays page: pick a BGG username to sync and score."""
+    username = request.GET.get('username', '').strip()
+    logger.info(f'🎲 Rendering plays page: username={username or "-"}')
+    ctx = {
+        'nav': 'plays',
+        'username': username,
+        'max_pages': PLAYS_MAX_PAGES,
+        'top_k': TOP_K,
+        'per_page': PLAYS_PER_PAGE,
+    }
+    return TemplateResponse(request, 'main/plays.html', ctx)
+
+
+def plays_check_view(request: WSGIRequest):
+    """Return the confirm card for a BGG username before a sync starts."""
+    username = request.GET.get('username', '').strip()
+    ctx = {'username': username, 'profile': None, 'error': None, 'stored': 0}
+    if not username:
+        ctx['error'] = 'Enter a BGG username.'
+        logger.warning('⚠️ Plays check without a username')
+        return TemplateResponse(request, 'main/snippet_plays_confirm.html', ctx)
+    try:
+        ctx['profile'] = fetch_bgg_user(username)
+    except BggPlaysError as exc:
+        ctx['error'] = f'BGG could not be reached: {exc}'
+    if ctx['profile']:
+        player = Player.objects.filter(username=ctx['profile']['username'].lower()).first()
+        ctx['player'] = player
+        ctx['stored'] = player.plays.count() if player else 0
+    logger.info(
+        f'🎲 Checked plays username: username={username}, found={bool(ctx["profile"])}, '
+        f'stored={ctx["stored"]}, error={ctx["error"]}'
+    )
+    return TemplateResponse(request, 'main/snippet_plays_confirm.html', ctx)
+
+
+@require_POST
+def plays_sync_collection_view(request: WSGIRequest):
+    """Sync a player's owned games; answers `queued` while BGG builds the collection."""
+    username = request.POST.get('username', '').strip()
+    if not username:
+        logger.warning('⚠️ Collection sync without a username')
+        return JsonResponse({'status': 'error', 'error': 'No username given.'}, status=400)
+    player = get_or_create_player(username, request.POST.get('display_name', ''))
+    try:
+        owned = sync_owned(player)
+    except BggPlaysError as exc:
+        logger.error(f'❌ Collection sync failed: username={player.username}, error={exc}')
+        return JsonResponse({'status': 'error', 'error': str(exc)}, status=502)
+    status = 'queued' if owned is None else 'done'
+    logger.info(f'🎲 Collection sync answered: username={player.username}, status={status}')
+    return JsonResponse({'status': status, 'owned': owned})
+
+
+def _sync_target(request: WSGIRequest) -> tuple[Player | None, int | None]:
+    """The player and page a plays sync request names, or None for either when invalid."""
+    username = request.POST.get('username', '').strip().lower()
+    page = request.POST.get('page', '')
+    player = Player.objects.filter(username=username).first()
+    if not page.isdigit() or not 1 <= int(page) <= PLAYS_MAX_PAGES:
+        logger.warning(f'⚠️ Plays sync page out of range: username={username}, page={page}')
+        return player, None
+    if not player:
+        logger.warning(f'⚠️ Plays sync for unknown player: username={username}, page={page}')
+    return player, int(page)
+
+
+@require_POST
+def plays_sync_page_view(request: WSGIRequest):
+    """Fetch one BGG page of a player's plays and stage it for saving in chunks."""
+    player, page = _sync_target(request)
+    if not player or not page:
+        logger.warning('⚠️ Rejected plays page sync')
+        return JsonResponse({'error': 'Unknown player or page out of range.'}, status=400)
+    try:
+        result = stage_plays_page(player, page)
+    except BggPlaysError as exc:
+        logger.error(f'❌ Plays page fetch failed: username={player.username}, page={page}')
+        return JsonResponse({'error': str(exc)}, status=502)
+    logger.info(f'🎲 Plays page staged: username={player.username}, page={page}')
+    return JsonResponse(result)
+
+
+@require_POST
+def plays_sync_chunk_view(request: WSGIRequest):
+    """Save the next chunk of a staged page of plays."""
+    player, page = _sync_target(request)
+    if not player or not page:
+        logger.warning('⚠️ Rejected plays chunk sync')
+        return JsonResponse({'error': 'Unknown player or page out of range.'}, status=400)
+    result = save_staged_chunk(player, page)
+    if result is None:
+        logger.warning(f'⚠️ Plays chunk sync expired: username={player.username}, page={page}')
+        return JsonResponse(
+            {'error': f'Page {page} expired before it was saved. Sync again.'}, status=410
+        )
+    logger.info(
+        f'🎲 Plays chunk synced: username={player.username}, page={page}, '
+        f'done={result["done"]}, finished={result["finished"]}'
+    )
+    return JsonResponse(result)
+
+
+def plays_result_view(request: WSGIRequest, username: str):
+    """What a player should play next."""
+    player = get_object_or_404(Player, username=username.lower())
+    ctx = {
+        'nav': 'plays',
+        'player': player,
+        'top_k': TOP_K,
+        **player_report(player),
+    }
+    logger.info(f'🎲 Rendering plays result: username={player.username}')
+    return TemplateResponse(request, 'main/plays_result.html', ctx)
 
 
 class ListingListView(SingleTableView, FilterMixin):

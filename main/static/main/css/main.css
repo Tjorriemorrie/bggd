@@ -1808,6 +1808,38 @@ a.crt-name:hover {
     color: var(--sand);
 }
 
+/* A table sorted in the browser (table-sort.js) heads its columns with buttons
+   that read like the sorting links above, with an arrow for the direction. */
+.roster thead th button {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    gap: var(--s1);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    text-transform: inherit;
+    cursor: pointer;
+    transition: color var(--dur) var(--ease);
+}
+
+.roster thead th button:hover,
+.roster thead th.asc button,
+.roster thead th.desc button {
+    color: var(--sand);
+}
+
+.roster thead th.asc button::after {
+    content: '↑';
+}
+
+.roster thead th.desc button::after {
+    content: '↓';
+}
+
 .roster tbody td {
     padding: var(--s3);
     border-bottom: var(--rule);
@@ -2499,5 +2531,326 @@ nav .pagination,
     .factor {
         flex-basis: 50%;
         border-bottom: var(--rule-ink);
+    }
+}
+
+/* ----------------------------------------------------------------- PLAYS -- */
+
+.plays-lede {
+    max-width: var(--measure);
+    margin: 0 0 var(--s5);
+    color: var(--ink-2);
+}
+
+/* The confirm card: the player's counter, with the one question it asks. */
+.plays-who {
+    display: grid;
+    grid-template-columns: 72px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: var(--s4);
+    margin: var(--s5) 0;
+    padding: var(--s4);
+    border: var(--rule-ink);
+    border-radius: var(--r-cut);
+    background: var(--sheet);
+    box-shadow: var(--lift);
+}
+
+.plays-who-art {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    padding: 3px;
+    background: var(--sand);
+    border: var(--rule-ink);
+    border-radius: var(--r-cut);
+}
+
+.plays-who-art img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.plays-who-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.plays-who-q {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--crimson);
+}
+
+.plays-who-name {
+    margin: 0;
+    font-size: 1.5rem;
+    text-transform: uppercase;
+    overflow-wrap: anywhere;
+}
+
+.plays-who-meta {
+    font-size: 0.875rem;
+    color: var(--ink-2);
+}
+
+.plays-who-acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--s3);
+}
+
+.plays-who-acts[hidden] {
+    display: none;
+}
+
+.plays-factors {
+    margin-bottom: var(--s6);
+}
+
+.plays-sync {
+    margin-top: var(--s6);
+}
+
+.plays-meter {
+    margin-bottom: var(--s5);
+}
+
+.plays-meter-head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: var(--s3);
+    margin-bottom: var(--s2);
+}
+
+.plays-meter-lbl {
+    font-family: var(--font-display);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    color: var(--ink-2);
+}
+
+.plays-meter-val {
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+}
+
+/* Pages as a turn record track: one printed box per page the sync may read. */
+.turns {
+    display: grid;
+    grid-template-columns: repeat(10, minmax(0, 1fr));
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: var(--rule-ink);
+    border-radius: var(--r-cut);
+    background: var(--sheet);
+    overflow: hidden;
+}
+
+.turn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    border-right: var(--rule-ink);
+    font-family: var(--font-display);
+    font-size: 1.125rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink-2);
+    transition: background-color var(--dur) var(--ease), color var(--dur) var(--ease);
+}
+
+.turn:last-child {
+    border-right: 0;
+}
+
+.turn.is-done {
+    background: var(--ink);
+    color: var(--on-ink);
+}
+
+.turn.is-now {
+    background: var(--crimson);
+    color: var(--sheet);
+}
+
+/* A page the player does not have, or one the sync no longer needs. */
+.turn.is-off {
+    color: var(--ink-3);
+    background: linear-gradient(
+        to top right,
+        transparent calc(50% - 0.5px),
+        var(--sand-rule) calc(50% - 0.5px),
+        var(--sand-rule) calc(50% + 0.5px),
+        transparent calc(50% + 0.5px)
+    );
+}
+
+.turns.is-caught .turn.is-done,
+.gauge.is-caught .gauge-fill {
+    background: var(--teal);
+}
+
+/* Plays saved: a ruled gauge, ticked in tenths of what this sync can save. */
+.gauge {
+    position: relative;
+    height: 20px;
+    border: var(--rule-ink);
+    border-radius: var(--r-cut);
+    background-color: var(--sheet);
+    background-image: repeating-linear-gradient(
+        to right,
+        transparent 0 calc(10% - 1px),
+        var(--sand-rule) calc(10% - 1px) 10%
+    );
+    overflow: hidden;
+}
+
+.gauge-fill {
+    display: block;
+    width: 0;
+    height: 100%;
+    background: var(--ink);
+    transition: width var(--dur) var(--ease);
+}
+
+.plays-status {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 600;
+    color: var(--ink-2);
+}
+
+.plays-status.is-error {
+    color: var(--crimson);
+}
+
+.plays-done {
+    margin: var(--s4) 0 0;
+}
+
+/* Play next: the suggestions share the sheet's full width. */
+.plays-next {
+    grid-template-columns: repeat(auto-fit, minmax(186px, 1fr));
+}
+
+@media (min-width: 1000px) {
+    .plays-next {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+.plays-stars {
+    margin-top: auto;
+    padding-top: var(--s2);
+    font-size: 1.125rem;
+    line-height: 1;
+    letter-spacing: 0.08em;
+    white-space: nowrap;
+}
+
+/* An unearned star stays printed, faded out, so all five read as one scale. */
+.plays-star-off {
+    filter: grayscale(1);
+    opacity: 0.25;
+}
+
+/* A section's key sits under the rule and runs the full width of the sheet. */
+.plays-note {
+    max-width: none;
+    margin: 0 0 var(--s4);
+}
+
+.plays-note em {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* The full score table is long, so its covers are printed at chip size. */
+.plays-art-sm {
+    width: 32px;
+    height: 32px;
+    padding: 2px;
+}
+
+/* A score row is inked by how long until it is suggested again: green for the
+   five on the table now, red for the longest wait. Brighter than the sheet's
+   deep inks so the scale reads at a glance; both still clear 4:1 on the sheet. */
+.plays-heat {
+    --heat-now: #1a7f37;
+    --heat-far: #c8102e;
+}
+
+.plays-heat td,
+.plays-heat a {
+    color: color-mix(in oklch, var(--heat-far) calc(var(--heat) * 1%), var(--heat-now));
+}
+
+.plays-shelf {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: var(--s3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.plays-shelf-item {
+    display: flex;
+    align-items: center;
+    gap: var(--s3);
+    height: 100%;
+    padding: var(--s2);
+    border: var(--rule-ink);
+    border-radius: var(--r-cut);
+    background: var(--sheet);
+    color: var(--ink);
+    text-decoration: none;
+    transition: border-color var(--dur) var(--ease);
+}
+
+.plays-shelf-item:hover {
+    border-color: var(--crimson);
+}
+
+.plays-shelf-name {
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 559.98px) {
+    .plays-who {
+        grid-template-columns: 56px minmax(0, 1fr);
+    }
+
+    .plays-who-art {
+        width: 56px;
+        height: 56px;
+    }
+
+    .plays-who-acts {
+        grid-column: 1 / -1;
+    }
+
+    .turn {
+        min-height: 36px;
+        font-size: 0.875rem;
     }
 }

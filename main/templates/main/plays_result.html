@@ -1,0 +1,155 @@
+{% extends 'main/base.html' %}
+
+{% load fmt static %}
+
+{% block title %}{{ player.display_name|default:player.username }} plays - BGG Data{% endblock %}
+
+{% block content %}
+    <div class="page">
+        <div class="sheet-head">
+            <h1 class="sheet-head-title">{{ player.display_name|default:player.username }}</h1>
+            <div class="sheet-head-side">
+                <span class="sheet-head-scope">
+                    {{ player.username }}{% if player.synced_at %} &middot; synced {{ player.synced_at|days_ago|lower }}{% endif %}
+                </span>
+                <a class="ghost" href="{% url 'plays' %}?username={{ player.username|urlencode }}">Sync again</a>
+            </div>
+        </div>
+
+        <div class="factors plays-factors">
+            <div class="factor">
+                <span class="factor-val">{{ plays_stored }}</span>
+                <span class="factor-lbl">Plays stored</span>
+            </div>
+            <div class="factor">
+                <span class="factor-val">{{ rounds }}</span>
+                <span class="factor-lbl">Plays scored</span>
+            </div>
+            <div class="factor">
+                <span class="factor-val">{{ owned_count }}</span>
+                <span class="factor-lbl">Games owned</span>
+            </div>
+            <div class="factor">
+                <span class="factor-val">{{ never|length }}</span>
+                <span class="factor-lbl">Never played</span>
+            </div>
+        </div>
+
+        <section class="tray-section">
+            <div class="section-head">
+                <h2 class="section-title">Play next</h2>
+                <span class="section-scope">The ones you leave on the shelf are counted as skipped</span>
+            </div>
+            {% if suggestions %}
+                <p class="section-note plays-note">
+                    <em>Stars</em> show how strongly each game is recommended, from 5 for the
+                    strongest of these {{ top_k }} down to 1.
+                </p>
+                <div class="tray plays-next">
+                    {% for game in suggestions %}
+                        <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}"
+                           target="_blank" rel="noopener" class="counter">
+                            <div class="counter-art">
+                                {% if game.thumbnail %}
+                                    <img src="{{ game.thumbnail }}" alt="{{ game.name }}" loading="lazy"/>
+                                {% else %}
+                                    <span class="art-blank">No cover</span>
+                                {% endif %}
+                            </div>
+                            <div class="counter-body">
+                                <h3 class="counter-name">{{ game.name }}</h3>
+                                <span class="plays-stars" role="img"
+                                      aria-label="{{ game.stars }} of 5 priority stars">{% for _ in "12345" %}<span{% if forloop.counter > game.stars %} class="plays-star-off"{% endif %}>&#11088;</span>{% endfor %}</span>
+                            </div>
+                            <div class="counter-foot">
+                                <span class="counter-shop">Played</span>
+                                <span class="counter-meta">{{ game.last_played|days_ago }}</span>
+                            </div>
+                        </a>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="sheet-empty">
+                    <p class="sheet-empty-title">No plays of owned games yet</p>
+                    <p class="sheet-empty-note">
+                        Suggestions start once the player has logged a play of a game they
+                        still own.
+                    </p>
+                </div>
+            {% endif %}
+        </section>
+
+        {% if never %}
+            <section class="tray-section">
+                <div class="section-head">
+                    <h2 class="section-title">Never played</h2>
+                    <span class="section-scope">Owned, with no logged play to score them by</span>
+                </div>
+                <ul class="plays-shelf">
+                    {% for game in never %}
+                        <li>
+                            <a class="plays-shelf-item" href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}"
+                               target="_blank" rel="noopener">
+                                <span class="roster-art">
+                                    {% if game.thumbnail %}<img src="{{ game.thumbnail }}" alt="" loading="lazy"/>{% endif %}
+                                </span>
+                                <span class="plays-shelf-name">{{ game.name }}</span>
+                            </a>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        {% endif %}
+
+        {% if ranked %}
+            <section class="tray-section">
+                <div class="section-head">
+                    <h2 class="section-title">Every scored game</h2>
+                    <span class="section-scope">Ranked by score</span>
+                </div>
+                <div class="roster-wrap">
+                    <table class="roster" data-sortable>
+                        <thead>
+                        <tr>
+                            <th scope="col">Rank</th>
+                            <th scope="col"><span class="sr-only">Cover</span></th>
+                            <th scope="col"><button type="button">Game</button></th>
+                            <th scope="col" data-sort-type="num"><button type="button">Plays</button></th>
+                            <th scope="col" data-sort-type="num"><button type="button">Skipped</button></th>
+                            <th scope="col" data-sort-type="num"><button type="button">Play rate</button></th>
+                            <th scope="col" class="desc" aria-sort="descending" data-sort-type="num"><button type="button">Score</button></th>
+                            <th scope="col"><button type="button">First played</button></th>
+                            <th scope="col"><button type="button">Last played</button></th>
+                            <th scope="col"><button type="button">Last skipped</button></th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for game in ranked %}
+                            <tr{% if game.heat is not None %} class="plays-heat" style="--heat: {{ game.heat }}"{% endif %}>
+                                <td class="roster-num">{{ game.rank }}</td>
+                                <td class="roster-cell-art">
+                                    <span class="roster-art plays-art-sm">
+                                        {% if game.thumbnail %}<img src="{{ game.thumbnail }}" alt="" loading="lazy"/>{% endif %}
+                                    </span>
+                                </td>
+                                <td data-sort="{{ game.name|lower }}">
+                                    <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}"
+                                       target="_blank" rel="noopener">{{ game.name }}</a>
+                                </td>
+                                <td class="roster-num" data-sort="{{ game.plays }}">{{ game.plays }}</td>
+                                <td class="roster-num" data-sort="{{ game.losses }}">{{ game.losses }}</td>
+                                <td class="roster-num" data-sort="{% if game.n %}{{ game.mu|stringformat:'.6f' }}{% endif %}">{% if game.n %}{% widthratio game.mu 1 100 %}%{% else %}&ndash;{% endif %}</td>
+                                <td class="roster-num" data-sort="{% if game.n %}{{ game.score|stringformat:'.6f' }}{% else %}Infinity{% endif %}">{% if game.n %}{% widthratio game.score 1 1000 %}{% else %}New{% endif %}</td>
+                                <td data-sort="{{ game.first_played|date:'Y-m-d' }}">{{ game.first_played|date:"Y-m-d" }}</td>
+                                <td data-sort="{{ game.last_played|date:'Y-m-d' }}">{{ game.last_played|days_ago }}</td>
+                                {% if game.last_skipped and game.last_skipped > game.last_played %}<td data-sort="{{ game.last_skipped|date:'Y-m-d' }}">{{ game.last_skipped|days_ago }}</td>{% else %}<td data-sort="">&ndash;</td>{% endif %}
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+    <script src="{% static 'main/js/table-sort.js' %}" defer></script>
+{% endblock %}

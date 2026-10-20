@@ -182,3 +182,43 @@ class Scrapelog(Timestamped):
 
     def __str__(self):
         return unidecode(f'<Scrapelog-{self.id} {self.day} {self.target}>')
+
+
+class Player(Timestamped):
+    # BGG usernames are case-insensitive, so the lowercase form is the key.
+    username = models.CharField(max_length=100, unique=True)
+    display_name = models.CharField(max_length=200, blank=True)
+    synced_at = models.DateTimeField(null=True, blank=True)
+
+    def __str__(self) -> str:
+        return unidecode(f'<Player-{self.id} {self.username}>')
+
+
+class Play(Timestamped):
+    # The BGG play id, so a stored play is recognised on the next sync.
+    id = models.BigIntegerField(primary_key=True)
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='plays')
+    bgg_id = models.IntegerField()
+    name = models.CharField(max_length=250)
+    played_on = models.DateField()
+    quantity = models.PositiveSmallIntegerField(default=1)
+    incomplete = models.BooleanField(default=False)
+
+    class Meta:
+        indexes = [models.Index(fields=['player', 'played_on'])]
+
+    def __str__(self) -> str:
+        return unidecode(f'<Play-{self.id} {self.played_on} {self.name}>')
+
+
+class OwnedGame(Timestamped):
+    player = models.ForeignKey(Player, on_delete=models.CASCADE, related_name='owned_games')
+    bgg_id = models.IntegerField()
+    name = models.CharField(max_length=250)
+    thumbnail = models.CharField(max_length=250, null=True, blank=True)
+
+    class Meta:
+        unique_together = ('player', 'bgg_id')
+
+    def __str__(self) -> str:
+        return unidecode(f'<OwnedGame-{self.id} {self.player.username} {self.name}>')

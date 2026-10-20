@@ -17,6 +17,17 @@ urlpatterns = [
     # Never cached: the pin list is per browser, so every visitor would get
     # their own entry and evict the sheets everyone shares.
     path('pinned/', views.pinned_games_view, name='pinned-games'),
+    # Never cached: a sync writes, and the results change with every sync.
+    path('plays/', views.plays_view, name='plays'),
+    path('plays/check/', views.plays_check_view, name='plays-check'),
+    path(
+        'plays/sync/collection/',
+        views.plays_sync_collection_view,
+        name='plays-sync-collection',
+    ),
+    path('plays/sync/page/', views.plays_sync_page_view, name='plays-sync-page'),
+    path('plays/sync/chunk/', views.plays_sync_chunk_view, name='plays-sync-chunk'),
+    path('plays/player/<str:username>/', views.plays_result_view, name='plays-result'),
     path(
         'listings/',
         cache_page(settings.VIEW_CACHE)(views.ListingListView.as_view()),

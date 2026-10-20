@@ -1,0 +1,36 @@
+{% if error %}
+    <div class="notice">{{ error }}</div>
+{% elif not profile %}
+    <div class="notice">
+        BoardGameGeek has no user called <strong>{{ username }}</strong>. Check the spelling
+        on their BGG profile page and try again.
+    </div>
+{% else %}
+    <div class="plays-who">
+        <span class="plays-who-art">
+            {% if profile.avatar %}
+                <img src="{{ profile.avatar }}" alt="" loading="lazy"/>
+            {% else %}
+                <span class="art-blank">No avatar</span>
+            {% endif %}
+        </span>
+        <div class="plays-who-body">
+            <span class="plays-who-q">Is this the player?</span>
+            <h2 class="plays-who-name">{{ profile.display_name }}</h2>
+            <span class="plays-who-meta">
+                {{ profile.username }}
+                {% if profile.year_registered %}&middot; on BGG since {{ profile.year_registered }}{% endif %}
+                &middot;
+                {% if stored %}{{ stored }} plays already stored{% else %}nothing stored yet{% endif %}
+            </span>
+        </div>
+        <div class="plays-who-acts">
+            <button type="button" class="commit commit-sm" id="plays-start"
+                    data-username="{{ profile.username }}"
+                    data-display-name="{{ profile.display_name }}">Sync plays</button>
+            {% if player and stored %}
+                <a class="ghost" href="{% url 'plays-result' username=player.username %}">See results</a>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}
