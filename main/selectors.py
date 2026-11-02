@@ -219,7 +219,7 @@ def list_newest_games():
 def list_back_in_stock_games():
     """List games most recently back in stock after a long absence, new stock only."""
     max_num = 12
-    min_out_of_stock_days = 90  # ~3 months
+    min_out_of_stock_days = 360  # ~12 months
     rank_cutoff = 3_000
     games = list(
         Game.objects.filter(
