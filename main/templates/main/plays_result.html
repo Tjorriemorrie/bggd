@@ -109,8 +109,9 @@
                 </div>
                 {% if sell_count %}
                     <p class="section-note plays-note">
-                        <em>Sell</em> marks a game not played in {{ sell_years }} years and
-                        skipped since: it is unlikely to be played again.
+                        <em>Sell</em> marks a game left out of the last {{ sell_plays }} plays
+                        you logged, {{ sell_rounds }} for each of the {{ ranked|length }} games
+                        you have played: it is unlikely to be played again.
                     </p>
                 {% endif %}
                 <div class="roster-wrap">
@@ -142,7 +143,7 @@
                                     <span class="plays-game">
                                         <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}"
                                            target="_blank" rel="noopener">{{ game.name }}</a>
-                                        {% if game.sell %}<span class="plays-sell" title="Not played in {{ sell_years }} years and skipped since"><span aria-hidden="true">&larr;</span> Sell</span>{% endif %}
+                                        {% if game.sell %}<span class="plays-sell" title="{{ game.plays_since }} plays logged since its last play"><span aria-hidden="true">&larr;</span> Sell</span>{% endif %}
                                     </span>
                                 </td>
                                 <td class="roster-num" data-sort="{{ game.plays }}">{{ game.plays }}</td>

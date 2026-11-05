@@ -25,8 +25,10 @@ is shown against the market and against its own past, not on its own.
   every play day, counts the top 3 suggested games that weren't played as skipped. A
   game's first play day counts as one play and skips nothing, since a new game gets
   played for being new. The score combines plays vs skips with how long since each
-  game was last played or skipped (see `main/plays.py`). A game not played in 2 years
-  and skipped since is marked **Sell** in the table.
+  game was last played or skipped (see `main/plays.py`). A game is marked **Sell** once
+  3 plays per played game have been logged since its last play (54 games played → 162
+  plays). Waiting is counted in plays, not days, so the bar grows with the collection,
+  arrives sooner for frequent players, and never trips for a player who stopped logging.
 - **No accounts, no ads, no affiliate links.** It is anonymous and free, and every
   outbound shop link is a plain link.
 

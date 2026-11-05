@@ -204,23 +204,23 @@ class SyncPlaysPageTest(TestCase):
 
 
 class IsSellTest(SimpleTestCase):
-    def game(self, idle_days: int, skipped_days_ago: int | None) -> GameScore:
-        today = DAY + timedelta(days=3000)
-        skipped = None if skipped_days_ago is None else today - timedelta(days=skipped_days_ago)
-        return GameScore(
-            1, 'Game', last_played=today - timedelta(days=idle_days), last_skipped=skipped
-        )
+    def test_counts_plays_of_other_games_on_later_days(self):
+        plays = [play(1, 0), play(2, 0), play(2, 1, quantity=2), play(3, 2), play(1, 3)]
+        board = score_games(plays, owned(1, 2, 3))
+        assert [board.games[i].plays_since for i in (1, 2, 3)] == [0, 2, 1]
 
-    def test_two_years_unplayed_and_skipped_since_is_sold(self):
-        assert is_sell(self.game(730, 10), DAY + timedelta(days=3000))
+    def test_sold_once_three_plays_per_played_game_left_it_out(self):
+        assert is_sell(GameScore(1, 'Game', plays_since=30), pool_size=10)
+        assert not is_sell(GameScore(1, 'Game', plays_since=29), pool_size=10)
 
-    def test_a_game_played_within_two_years_is_kept(self):
-        assert not is_sell(self.game(729, 10), DAY + timedelta(days=3000))
+    def test_the_bar_grows_with_the_collection(self):
+        assert not is_sell(GameScore(1, 'Game', plays_since=30), pool_size=11)
 
-    def test_a_game_not_skipped_since_its_last_play_is_kept(self):
-        # Without a skip since, the player may simply have stopped logging plays.
-        assert not is_sell(self.game(1000, None), DAY + timedelta(days=3000))
-        assert not is_sell(self.game(1000, 1200), DAY + timedelta(days=3000))
+    def test_a_player_who_stopped_logging_sells_nothing(self):
+        plays = [play(1, 0), play(2, 1), play(2, 2)]
+        board = score_games(plays, owned(1, 2), today=DAY + timedelta(days=5000))
+        assert board.games[2].plays_since == 0
+        assert not is_sell(board.games[2], pool_size=2)
 
 
 class PriorityStarsTest(SimpleTestCase):

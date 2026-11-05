@@ -43,8 +43,10 @@ TOP_K = 3
 # The share of a game's play rate it scores however recently it was played or
 # skipped; the rest it earns back by waiting, in full for the longest wait.
 RATE_WEIGHT = 1 / 2
-# A game not played in this many years, and skipped since, is marked to sell.
-SELL_IDLE_YEARS = 2
+# A game is marked to sell once this many plays per played game were logged
+# since its last play: as many rounds of the collection as it sat out. Were every
+# game played equally often, one would sit out 3 rounds only about 5% of the time.
+SELL_ROUNDS = 3
 
 # One request per call: the caller is a web request inside gunicorn's timeout,
 # so there is no retry loop here.
@@ -290,6 +292,7 @@ class GameScore:
     thumbnail: str | None = None
     stars: int | None = None
     heat: int | None = None
+    plays_since: int = 0
     sell: bool = False
 
     @property
@@ -365,7 +368,8 @@ def score_games(
 ) -> Scoreboard:
     """Replay plays of owned games oldest first, then score each game as of `today`.
 
-    `today` defaults to the last play day.
+    `today` defaults to the last play day. Each game's `plays_since` counts the
+    plays of every game logged on later days than its last play.
     """
     # Plays per game per day; a game played twice that day is rated twice.
     days: dict[date, dict[int, int]] = {}
@@ -379,7 +383,9 @@ def score_games(
     logger.info(f'🎲 Scoring plays: kept={kept}, play_days={len(days)}, owned={len(owned)}')
 
     pool: dict[int, GameScore] = {}
-    rounds = new_plays = 0
+    rounds = new_plays = logged = 0
+    # Plays logged up to and including each game's last play day.
+    logged_at_last_play: dict[int, int] = {}
     for day in sorted(days):
         played = days[day]
         # A game on its first play day was played because it is new, not chosen
@@ -397,12 +403,15 @@ def score_games(
             loser.last_skipped = day
         rounds += rated + len(new)
         new_plays += sum(played[bgg_id] for bgg_id in new)
+        logged += sum(played.values())
+        logged_at_last_play.update(dict.fromkeys(played, logged))
 
     today = today or max(days, default=None)
     scores = _scores(pool, today)
     for rank, game in enumerate(_top(pool, today, len(pool)), start=1):
         game.score = scores[game.bgg_id]
         game.rank = rank
+        game.plays_since = logged - logged_at_last_play[game.bgg_id]
     logger.info(
         f'🎲 Scored games: pool={len(pool)}, rounds={rounds}, '
         f'new_game_plays={new_plays}, today={today}'
@@ -424,15 +433,14 @@ def priority_stars(games: list[GameScore], most: int = 5) -> list[int]:
     return stars
 
 
-def is_sell(game: GameScore, today: date) -> bool:
-    """Whether a game went unplayed for `SELL_IDLE_YEARS` and was skipped since.
+def is_sell(game: GameScore, pool_size: int) -> bool:
+    """Whether `SELL_ROUNDS` plays per played game were logged since the game's last play.
 
-    The skip since its last play means play days went on without it, so a player
-    who simply stopped logging plays has nothing marked to sell.
+    Waiting is counted in plays, not days, so the bar grows with the collection
+    and comes sooner the more often the player plays. A player who simply
+    stopped logging plays has nothing marked to sell.
     """
-    idle = today - game.last_played
-    skipped_since = game.last_skipped is not None and game.last_skipped > game.last_played
-    return skipped_since and idle.days >= 365 * SELL_IDLE_YEARS
+    return game.plays_since >= SELL_ROUNDS * pool_size
 
 
 def player_report(player: Player) -> dict:
@@ -444,7 +452,7 @@ def player_report(player: Player) -> dict:
     ranked = board.ranked()
     for game in ranked:
         game.thumbnail = thumbs.get(game.bgg_id)
-        game.sell = is_sell(game, today)
+        game.sell = is_sell(game, len(ranked))
     # Rows are inked by play rate, green for the highest to red for the lowest,
     # by its place among the rates: by value, one game at 100% left the rest red.
     rates = sorted(game.mu for game in ranked)
@@ -463,13 +471,14 @@ def player_report(player: Player) -> dict:
         'never': never,
         'ranked': ranked,
         'sell_count': sum(game.sell for game in ranked),
-        'sell_years': SELL_IDLE_YEARS,
+        'sell_rounds': SELL_ROUNDS,
+        'sell_plays': SELL_ROUNDS * len(ranked),
         'rounds': board.rounds,
         'plays_stored': player.plays.count(),
         'owned_count': len(owned),
     }
     logger.info(
         f'🎲 Built player report: username={player.username}, ranked={len(ranked)}, '
-        f'never={len(never)}, sell={report["sell_count"]}'
+        f'never={len(never)}, sell={report["sell_count"]}, sell_plays={report["sell_plays"]}'
     )
     return report
