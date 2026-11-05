@@ -2,7 +2,7 @@
 // column ascending, and a second click descending. Each cell carries its key in
 // data-sort, compared as numbers when the header has data-sort-type="num". A cell
 // with an empty key sinks to the bottom either way, and equal keys keep their
-// order, so ties stay in rank order.
+// order, so ties stay in the order the table was served in.
 (() => {
     document.querySelectorAll('table[data-sortable]').forEach((table) => {
         const body = table.tBodies[0];

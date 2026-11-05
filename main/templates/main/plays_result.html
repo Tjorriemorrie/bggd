@@ -101,16 +101,16 @@
             </section>
         {% endif %}
 
-        {% if ranked %}
+        {% if scored %}
             <section class="tray-section">
                 <div class="section-head">
                     <h2 class="section-title">Every scored game</h2>
-                    <span class="section-scope">Ranked by score</span>
+                    <span class="section-scope">Last played first</span>
                 </div>
                 {% if sell_count %}
                     <p class="section-note plays-note">
                         <em>Sell</em> marks a game left out of the last {{ sell_plays }} plays
-                        you logged, {{ sell_rounds }} for each of the {{ ranked|length }} games
+                        you logged, {{ sell_rounds }} for each of the {{ scored|length }} games
                         you have played: it is unlikely to be played again.
                     </p>
                 {% endif %}
@@ -118,22 +118,20 @@
                     <table class="roster" data-sortable>
                         <thead>
                         <tr>
-                            <th scope="col">Rank</th>
                             <th scope="col"><span class="sr-only">Cover</span></th>
                             <th scope="col"><button type="button">Game</button></th>
                             <th scope="col" data-sort-type="num"><button type="button">Plays</button></th>
                             <th scope="col" data-sort-type="num"><button type="button">Skipped</button></th>
                             <th scope="col" data-sort-type="num"><button type="button">Play rate</button></th>
-                            <th scope="col" class="desc" aria-sort="descending" data-sort-type="num"><button type="button">Score</button></th>
+                            <th scope="col" data-sort-type="num"><button type="button">Score</button></th>
                             <th scope="col"><button type="button">First played</button></th>
-                            <th scope="col"><button type="button">Last played</button></th>
+                            <th scope="col" class="desc" aria-sort="descending"><button type="button">Last played</button></th>
                             <th scope="col"><button type="button">Last skipped</button></th>
                         </tr>
                         </thead>
                         <tbody>
-                        {% for game in ranked %}
+                        {% for game in scored %}
                             <tr{% if game.heat is not None %} class="plays-heat" style="--heat: {{ game.heat }}"{% endif %}>
-                                <td class="roster-num">{{ game.rank }}</td>
                                 <td class="roster-cell-art">
                                     <span class="roster-art plays-art-sm">
                                         {% if game.thumbnail %}<img src="{{ game.thumbnail }}" alt="" loading="lazy"/>{% endif %}

@@ -288,7 +288,6 @@ class GameScore:
     last_played: date | None = None
     last_skipped: date | None = None
     score: float = math.inf
-    rank: int | None = None
     thumbnail: str | None = None
     stars: int | None = None
     heat: int | None = None
@@ -408,9 +407,8 @@ def score_games(
 
     today = today or max(days, default=None)
     scores = _scores(pool, today)
-    for rank, game in enumerate(_top(pool, today, len(pool)), start=1):
+    for game in pool.values():
         game.score = scores[game.bgg_id]
-        game.rank = rank
         game.plays_since = logged - logged_at_last_play[game.bgg_id]
     logger.info(
         f'🎲 Scored games: pool={len(pool)}, rounds={rounds}, '
@@ -466,10 +464,12 @@ def player_report(player: Player) -> dict:
     suggestions = ranked[:TOP_K]
     for game, stars in zip(suggestions, priority_stars(suggestions), strict=True):
         game.stars = stars
+    # The table leads with the games played most recently; a tie keeps score order.
+    scored = sorted(ranked, key=lambda game: game.last_played, reverse=True)
     report = {
         'suggestions': suggestions,
         'never': never,
-        'ranked': ranked,
+        'scored': scored,
         'sell_count': sum(game.sell for game in ranked),
         'sell_rounds': SELL_ROUNDS,
         'sell_plays': SELL_ROUNDS * len(ranked),
@@ -478,7 +478,7 @@ def player_report(player: Player) -> dict:
         'owned_count': len(owned),
     }
     logger.info(
-        f'🎲 Built player report: username={player.username}, ranked={len(ranked)}, '
+        f'🎲 Built player report: username={player.username}, scored={len(scored)}, '
         f'never={len(never)}, sell={report["sell_count"]}, sell_plays={report["sell_plays"]}'
     )
     return report
