@@ -3,10 +3,12 @@
 Plays are replayed oldest first. On each play day the top `TOP_K` by score is
 drawn from the games already played before that day. Every play counts for the
 game played, and every top-k game that was not played is skipped once for each
-play that day. A game's score is its play rate, plays against skips, raised by
-up to double for the days since it was last played and since it was last skipped:
-liked games lead, a game left on the shelf comes round again, one just passed
-over steps aside, and one always skipped fades however long it waits.
+play that day. A game on its first play day is played because it is new, not
+chosen over the suggestions, so it counts as one play and skips none. A game's
+score is its play rate, plays against skips, raised by up to double for the days
+since it was last played and since it was last skipped: liked games lead, a game
+left on the shelf comes round again, one just passed over steps aside, and one
+always skipped fades however long it waits.
 """
 
 import logging
@@ -41,6 +43,8 @@ TOP_K = 3
 # The share of a game's play rate it scores however recently it was played or
 # skipped; the rest it earns back by waiting, in full for the longest wait.
 RATE_WEIGHT = 1 / 2
+# A game not played in this many years, and skipped since, is marked to sell.
+SELL_IDLE_YEARS = 2
 
 # One request per call: the caller is a web request inside gunicorn's timeout,
 # so there is no retry loop here.
@@ -286,6 +290,7 @@ class GameScore:
     thumbnail: str | None = None
     stars: int | None = None
     heat: int | None = None
+    sell: bool = False
 
     @property
     def n(self) -> int:
@@ -374,27 +379,34 @@ def score_games(
     logger.info(f'🎲 Scoring plays: kept={kept}, play_days={len(days)}, owned={len(owned)}')
 
     pool: dict[int, GameScore] = {}
-    rounds = 0
+    rounds = new_plays = 0
     for day in sorted(days):
         played = days[day]
-        losers = [g for g in _top(pool, day, k) if g.bgg_id not in played]
+        # A game on its first play day was played because it is new, not chosen
+        # over the suggestions: it counts as one play and skips none of them.
+        new = {bgg_id for bgg_id in played if bgg_id not in pool}
+        rated = sum(count for bgg_id, count in played.items() if bgg_id not in new)
+        losers = [g for g in _top(pool, day, k) if g.bgg_id not in played] if rated else []
         for bgg_id in sorted(played):
             game = pool.get(bgg_id) or GameScore(bgg_id, owned[bgg_id], first_played=day)
-            game.plays += played[bgg_id]
+            game.plays += 1 if bgg_id in new else played[bgg_id]
             game.last_played = day
             pool[bgg_id] = game
-        day_plays = sum(played.values())
         for loser in losers:
-            loser.losses += day_plays
+            loser.losses += rated
             loser.last_skipped = day
-        rounds += day_plays
+        rounds += rated + len(new)
+        new_plays += sum(played[bgg_id] for bgg_id in new)
 
     today = today or max(days, default=None)
     scores = _scores(pool, today)
     for rank, game in enumerate(_top(pool, today, len(pool)), start=1):
         game.score = scores[game.bgg_id]
         game.rank = rank
-    logger.info(f'🎲 Scored games: pool={len(pool)}, rounds={rounds}, today={today}')
+    logger.info(
+        f'🎲 Scored games: pool={len(pool)}, rounds={rounds}, '
+        f'new_game_plays={new_plays}, today={today}'
+    )
     return Scoreboard(games=pool, rounds=rounds)
 
 
@@ -412,14 +424,27 @@ def priority_stars(games: list[GameScore], most: int = 5) -> list[int]:
     return stars
 
 
+def is_sell(game: GameScore, today: date) -> bool:
+    """Whether a game went unplayed for `SELL_IDLE_YEARS` and was skipped since.
+
+    The skip since its last play means play days went on without it, so a player
+    who simply stopped logging plays has nothing marked to sell.
+    """
+    idle = today - game.last_played
+    skipped_since = game.last_skipped is not None and game.last_skipped > game.last_played
+    return skipped_since and idle.days >= 365 * SELL_IDLE_YEARS
+
+
 def player_report(player: Player) -> dict:
     """Score a stored player's plays into suggestions and the full table."""
     owned = dict(player.owned_games.values_list('bgg_id', 'name'))
     thumbs = dict(player.owned_games.values_list('bgg_id', 'thumbnail'))
-    board = score_games(player.plays.all().order_by('played_on'), owned, today=timezone.localdate())
+    today = timezone.localdate()
+    board = score_games(player.plays.all().order_by('played_on'), owned, today=today)
     ranked = board.ranked()
     for game in ranked:
         game.thumbnail = thumbs.get(game.bgg_id)
+        game.sell = is_sell(game, today)
     # Rows are inked by play rate, green for the highest to red for the lowest,
     # by its place among the rates: by value, one game at 100% left the rest red.
     rates = sorted(game.mu for game in ranked)
@@ -437,12 +462,14 @@ def player_report(player: Player) -> dict:
         'suggestions': suggestions,
         'never': never,
         'ranked': ranked,
+        'sell_count': sum(game.sell for game in ranked),
+        'sell_years': SELL_IDLE_YEARS,
         'rounds': board.rounds,
         'plays_stored': player.plays.count(),
         'owned_count': len(owned),
     }
     logger.info(
         f'🎲 Built player report: username={player.username}, ranked={len(ranked)}, '
-        f'never={len(never)}'
+        f'never={len(never)}, sell={report["sell_count"]}'
     )
     return report

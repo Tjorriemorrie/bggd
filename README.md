@@ -21,6 +21,12 @@ is shown against the market and against its own past, not on its own.
   the same game across different shops is genuinely the same game.
 - **Browsable by category.** Board games, card games, tabletop, RPG, accessories, bundles
   and other.
+- **Suggests what to play next** (`/plays`). It reads a BGG user's logged plays and, on
+  every play day, counts the top 3 suggested games that weren't played as skipped. A
+  game's first play day counts as one play and skips nothing, since a new game gets
+  played for being new. The score combines plays vs skips with how long since each
+  game was last played or skipped (see `main/plays.py`). A game not played in 2 years
+  and skipped since is marked **Sell** in the table.
 - **No accounts, no ads, no affiliate links.** It is anonymous and free, and every
   outbound shop link is a plain link.
 

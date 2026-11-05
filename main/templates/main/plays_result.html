@@ -107,6 +107,12 @@
                     <h2 class="section-title">Every scored game</h2>
                     <span class="section-scope">Ranked by score</span>
                 </div>
+                {% if sell_count %}
+                    <p class="section-note plays-note">
+                        <em>Sell</em> marks a game not played in {{ sell_years }} years and
+                        skipped since: it is unlikely to be played again.
+                    </p>
+                {% endif %}
                 <div class="roster-wrap">
                     <table class="roster" data-sortable>
                         <thead>
@@ -133,8 +139,11 @@
                                     </span>
                                 </td>
                                 <td data-sort="{{ game.name|lower }}">
-                                    <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}"
-                                       target="_blank" rel="noopener">{{ game.name }}</a>
+                                    <span class="plays-game">
+                                        <a href="https://boardgamegeek.com/boardgame/{{ game.bgg_id }}"
+                                           target="_blank" rel="noopener">{{ game.name }}</a>
+                                        {% if game.sell %}<span class="plays-sell" title="Not played in {{ sell_years }} years and skipped since"><span aria-hidden="true">&larr;</span> Sell</span>{% endif %}
+                                    </span>
                                 </td>
                                 <td class="roster-num" data-sort="{{ game.plays }}">{{ game.plays }}</td>
                                 <td class="roster-num" data-sort="{{ game.losses }}">{{ game.losses }}</td>

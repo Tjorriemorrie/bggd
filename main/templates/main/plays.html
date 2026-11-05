@@ -14,7 +14,8 @@
         <p class="plays-lede">
             Reads a player's logged plays from BoardGameGeek, newest first, up to
             {{ max_pages }} pages of {{ per_page }}. Every play day, any of the {{ top_k }}
-            suggested games left on the shelf is counted as skipped. Plays against skips, and how long
+            suggested games left on the shelf is counted as skipped, except for a game's first play:
+            a new game is played for being new, so it counts once and skips nothing. Plays against skips, and how long
             since each game was last played, decide the next {{ top_k }} suggestions.
         </p>
 

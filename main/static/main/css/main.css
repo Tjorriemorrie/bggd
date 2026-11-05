@@ -2803,6 +2803,28 @@ nav .pagination,
     color: color-mix(in oklch, var(--heat-far) calc(var(--heat) * 1%), var(--heat-now));
 }
 
+/* The game cell carries its name on the left and the sell mark on the right. */
+.plays-game {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--s2);
+}
+
+/* Ruled in the row's own ink, not filled: crimson fill is kept for the commit key. */
+.plays-sell {
+    flex: none;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+    line-height: 1;
+    white-space: nowrap;
+    padding: 4px 6px;
+    border: 1px solid currentColor;
+    border-radius: var(--r-cut);
+}
+
 .plays-shelf {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));

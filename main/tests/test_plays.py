@@ -10,6 +10,7 @@ from main.plays import (
     GameScore,
     _scores,
     _top,
+    is_sell,
     priority_stars,
     save_staged_chunk,
     score,
@@ -39,21 +40,35 @@ def owned(*ids: int) -> dict[int, str]:
 class ScoreGamesTest(SimpleTestCase):
     def test_only_the_top_three_are_skipped(self):
         plays = [play(bgg_id, day) for day, bgg_id in enumerate(range(1, 8))]
+        plays += [play(7, day) for day in range(7, 13)]
         board = score_games(plays, owned(*range(1, 8)))
-        assert (board.games[7].plays, board.games[7].losses) == (1, 0)
-        # Each of the six later plays skips at most the three suggested games.
-        assert sum(g.losses for g in board.games.values()) <= 3 * 6
+        assert (board.games[7].plays, board.games[7].losses) == (7, 0)
+        # Each of the six replays of game 7 skips at most the three suggested games.
+        assert 0 < sum(g.losses for g in board.games.values()) <= 3 * 6
 
     def test_games_played_the_same_day_do_not_lose_to_each_other(self):
-        plays = [play(1, 0), play(2, 1), play(1, 2), play(2, 2)]
+        plays = [play(1, 0), play(2, 1), play(2, 2), play(1, 3), play(2, 3)]
         board = score_games(plays, owned(1, 2))
-        # Day 1: game 1 was suggested and skipped for game 2. Day 2: both played.
+        # Day 2: game 1 was suggested and skipped for game 2. Day 3: both played.
         assert (board.games[1].plays, board.games[1].losses) == (2, 1)
-        assert (board.games[2].plays, board.games[2].losses) == (2, 0)
+        assert (board.games[2].plays, board.games[2].losses) == (3, 0)
+        assert board.rounds == 5
+
+    def test_a_new_game_counts_once_and_skips_no_one(self):
+        board = score_games([play(1, 0), play(2, 1, quantity=3)], owned(1, 2))
+        assert (board.games[2].plays, board.games[2].losses) == (1, 0)
+        assert (board.games[1].losses, board.games[1].last_skipped) == (0, None)
+        assert board.rounds == 2
+
+    def test_only_plays_of_known_games_skip_the_suggestions(self):
+        board = score_games([play(1, 0), play(2, 1), play(2, 2), play(3, 2)], owned(1, 2, 3))
+        # Day 2: game 3 is new, so game 1 is skipped once, for the play of game 2.
+        assert board.games[1].losses == 1
+        assert (board.games[3].plays, board.games[3].losses) == (1, 0)
         assert board.rounds == 4
 
     def test_a_skip_restarts_the_clock_like_a_play(self):
-        board = score_games([play(1, 0), play(2, 3)], owned(1, 2))
+        board = score_games([play(1, 0), play(2, 1), play(2, 3)], owned(1, 2))
         # Game 1 was suggested and skipped on day 3, so it was last seen then.
         assert board.games[1].last_played == DAY
         assert board.games[1].last_skipped == DAY + timedelta(days=3)
@@ -113,11 +128,12 @@ class ScoreGamesTest(SimpleTestCase):
 
     def test_every_play_in_a_day_is_rated(self):
         board = score_games(
-            [play(1, 0), play(2, 1), play(2, 1), play(2, 1, quantity=2)], owned(1, 2)
+            [play(1, 0), play(2, 1), play(2, 2), play(2, 2), play(2, 2, quantity=2)],
+            owned(1, 2),
         )
-        assert board.games[2].plays == 4
+        assert board.games[2].plays == 5
         assert board.games[1].losses == 4
-        assert board.rounds == 5
+        assert board.rounds == 6
 
     def test_unowned_and_incomplete_plays_are_ignored(self):
         plays = [play(1, 0), play(9, 1), play(2, 2, incomplete=True)]
@@ -185,6 +201,26 @@ class SyncPlaysPageTest(TestCase):
     def test_upsert_counts_created_and_updated(self):
         player = Player.objects.create(username='someone')
         assert upsert_plays(player, self.page(3)) == {'created': 3, 'updated': 0}
+
+
+class IsSellTest(SimpleTestCase):
+    def game(self, idle_days: int, skipped_days_ago: int | None) -> GameScore:
+        today = DAY + timedelta(days=3000)
+        skipped = None if skipped_days_ago is None else today - timedelta(days=skipped_days_ago)
+        return GameScore(
+            1, 'Game', last_played=today - timedelta(days=idle_days), last_skipped=skipped
+        )
+
+    def test_two_years_unplayed_and_skipped_since_is_sold(self):
+        assert is_sell(self.game(730, 10), DAY + timedelta(days=3000))
+
+    def test_a_game_played_within_two_years_is_kept(self):
+        assert not is_sell(self.game(729, 10), DAY + timedelta(days=3000))
+
+    def test_a_game_not_skipped_since_its_last_play_is_kept(self):
+        # Without a skip since, the player may simply have stopped logging plays.
+        assert not is_sell(self.game(1000, None), DAY + timedelta(days=3000))
+        assert not is_sell(self.game(1000, 1200), DAY + timedelta(days=3000))
 
 
 class PriorityStarsTest(SimpleTestCase):
