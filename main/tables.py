@@ -18,7 +18,7 @@ from django_tables2 import Column, tables
 
 from main.models import Game, Listing, Scrapelog, Shop
 from main.selectors import get_last_scrape
-from main.templatetags.fmt import discount, price
+from main.templatetags.fmt import discount, price, round_price
 
 logger = logging.getLogger(__name__)
 
@@ -174,10 +174,23 @@ class ListingTable(tables.Table):
 
 
 class SleeveTable(ListingTable):
-    """The sleeve roster: the listing columns, plus the card size the sleeve fits."""
+    """The sleeve roster: the listing columns, plus the card size the sleeve fits.
+
+    Sold-out sleeves are printed below the ones a visitor can buy, struck out, and
+    priced at what the shop last asked before they ran out.
+    """
 
     sleeve_width = Column(verbose_name='Width (mm)', attrs={'td': {'class': 'roster-num'}})
     sleeve_height = Column(verbose_name='Height (mm)', attrs={'td': {'class': 'roster-num'}})
+    # Sorted on the price the cell shows, so the sold-out block sorts on its last price.
+    # A sold-out listing's own price is null, which must still reach render_price.
+    price = Column(
+        verbose_name='Price (R)',
+        order_by=('last_price',),
+        empty_values=(),
+        initial_sort_descending=True,
+        attrs={'td': {'class': 'roster-price'}},
+    )
 
     class Meta(ListingTable.Meta):
         fields = (
@@ -187,18 +200,42 @@ class SleeveTable(ListingTable):
             'sleeve_width',
             'sleeve_height',
             'price',
-            'in_stock',
         )
-        # Both are printed against a game's market average, and a sleeve has no
-        # game, so they would rule an empty column down the whole sheet.
-        exclude = ('discount', 'is_new')
+        # Discount and condition are printed against a game's market average, and
+        # a sleeve has no game, so they would rule an empty column down the sheet.
+        # Stock needs no column: a sold-out row is struck out and sits at the bottom.
+        exclude = ('discount', 'is_new', 'in_stock')
+        # Declared here rather than read off the queryset, whose leading sold-out
+        # term matches no column, so the sorted columns still carry their arrows.
+        order_by = ('sleeve_width', 'sleeve_height', 'price')
         attrs = {'class': 'roster roster-sleeves'}
         # The card size rides on the row itself so the fit instrument can rank
         # the sheet in the browser without asking the server again.
         row_attrs = {
+            'class': lambda record: None if record.in_stock else 'sleeve-out',
             'data-width': lambda record: record.sleeve_width,
             'data-height': lambda record: record.sleeve_height,
         }
+
+    @property
+    def order_by(self):
+        """Return the ordering the sheet is printed in."""
+        return tables.Table.order_by.fget(self)
+
+    @order_by.setter
+    def order_by(self, value):
+        """Sort on the columns asked for, but always keep sold-out sleeves at the bottom.
+
+        There is no stock column to sort on, so the sold-out term is put in front
+        of the ordering the columns produced, straight on the queryset.
+        """
+        tables.Table.order_by.fset(self, value)
+        if not self.order_by:
+            logger.info(f'🧦 Kept sleeve sheet order: requested={value}')
+            return
+        queryset = self.data.data
+        self.data.data = queryset.order_by('-in_stock', *queryset.query.order_by)
+        logger.info(f'🧦 Sorted sleeve sheet, sold out last: applied={self.order_by}')
 
     def __getattr__(self, item):
         """Order on the columns themselves.
@@ -217,6 +254,12 @@ class SleeveTable(ListingTable):
     def render_sleeve_height(self, value: float):
         """Render a millimetre figure without a trailing zero."""
         return floatformat(value, -1)
+
+    def render_price(self, record: Listing):
+        """Render today's price, or for a sold-out sleeve the last price it was in stock at."""
+        if record.in_stock or record.last_price is None:
+            return price(record, show_currency=False)
+        return format_html('<span class="price">{}</span>', f'{round_price(record.last_price):.0f}')
 
 
 class ShopTable(tables.Table):

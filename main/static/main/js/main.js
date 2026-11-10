@@ -166,22 +166,30 @@ function initPinnedTray() {
 }
 
 // The fit instrument on the sleeve sheet. A visitor arrives holding a card, so
-// the sheet ranks itself around that card rather than around a name: the sleeves
-// that can actually hold it rise to the top, the closest fitting one first. A
-// sleeve shorter than the card on either side cannot hold it however close the
+// the sheet ranks itself around that card rather than around a name. Sleeves
+// within half a millimetre of the card on both sides come first, the closest
+// first: shops print the same size as 63 and as 63.5, so they count as a match.
+// Sold-out matches are kept there, struck out; every other sold-out sleeve is
+// dropped. Below a cut come the bigger sleeves in stock, the snuggest first.
+// A sleeve shorter than the card on either side cannot hold it however close the
 // two areas happen to be, so it is ruled out of the ranking and marked as such.
 function initSleeveFit() {
     const form = document.getElementById('sleeve-fit');
     const table = document.querySelector('.roster-sleeves');
     if (!form || !table || !table.tBodies.length) return;
 
+    const MATCH_TOLERANCE_MM = 0.5;
     const body = table.tBodies[0];
     const widthInput = document.getElementById('fit-width');
     const heightInput = document.getElementById('fit-height');
-    const report = document.getElementById('fit-report');
     const clear = document.getElementById('fit-clear');
     // The order the sheet was printed in, to fall back on when nothing is asked.
     const rows = Array.prototype.slice.call(body.rows);
+    // The cut between the matching sleeves and the bigger ones.
+    const gap = document.createElement('tr');
+    gap.className = 'sleeve-gap';
+    gap.setAttribute('aria-hidden', 'true');
+    gap.insertCell().colSpan = table.tHead.rows[0].cells.length;
 
     // Dimensions in the URL make the ranked sheet a link a visitor can share,
     // rather than a state they have to re-type.
@@ -205,37 +213,58 @@ function initSleeveFit() {
 
         syncUrl(width, height);
 
+        gap.remove();
         rows.forEach(function (row) {
             row.classList.remove('sleeve-fits', 'sleeve-nofit');
         });
 
         if (!(width > 0) || !(height > 0)) {
             rows.forEach(function (row) { body.appendChild(row); });
-            report.hidden = true;
             clear.hidden = true;
             return;
         }
 
         const area = width * height;
-        const fits = [];
+        const matches = [];
+        const bigger = [];
         const rest = [];
         rows.forEach(function (row) {
-            const sleeveWidth = parseFloat(row.dataset.width);
-            const sleeveHeight = parseFloat(row.dataset.height);
-            if (sleeveWidth >= width && sleeveHeight >= height) {
+            const offWidth = parseFloat(row.dataset.width) - width;
+            const offHeight = parseFloat(row.dataset.height) - height;
+            if (Math.abs(offWidth) <= MATCH_TOLERANCE_MM
+                && Math.abs(offHeight) <= MATCH_TOLERANCE_MM) {
                 row.classList.add('sleeve-fits');
-                fits.push([sleeveWidth * sleeveHeight - area, row]);
+                matches.push([Math.abs(offWidth) + Math.abs(offHeight), row]);
+            } else if (offWidth >= 0 && offHeight >= 0) {
+                row.classList.add('sleeve-fits');
+                bigger.push([(width + offWidth) * (height + offHeight) - area, row]);
             } else {
                 row.classList.add('sleeve-nofit');
                 rest.push(row);
             }
         });
-        fits.sort(function (a, b) { return a[0] - b[0]; });
-        fits.forEach(function (fit) { body.appendChild(fit[1]); });
-        rest.forEach(function (row) { body.appendChild(row); });
+        const closestFirst = function (a, b) { return a[0] - b[0]; };
+        const unwrap = function (pair) { return pair[1]; };
+        const tiers = [
+            matches.sort(closestFirst).map(unwrap),
+            bigger.sort(closestFirst).map(unwrap),
+            rest,
+        ];
 
-        report.textContent = fits.length + ' fit ' + width + ' × ' + height + ' mm';
-        report.hidden = false;
+        // A sold-out match stays with the matches, struck out below the ones in
+        // stock, so a visitor sees that their size exists but has run out. Any
+        // other sold-out sleeve is no help to them and leaves the ranked sheet;
+        // clearing the card puts it back.
+        const isOut = function (row) { return row.classList.contains('sleeve-out'); };
+        const isIn = function (row) { return !isOut(row); };
+        const append = function (row) { body.appendChild(row); };
+        const matching = tiers[0].filter(isIn).concat(tiers[0].filter(isOut));
+        const holding = tiers[1].filter(isIn);
+        matching.forEach(append);
+        if (matching.length && holding.length) body.appendChild(gap);
+        holding.concat(tiers[2].filter(isIn)).forEach(append);
+        tiers[1].concat(tiers[2]).filter(isOut).forEach(function (row) { row.remove(); });
+
         clear.hidden = false;
     };
 

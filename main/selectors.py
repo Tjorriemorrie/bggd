@@ -244,12 +244,24 @@ def list_bundle_listings():
 
 
 def list_sleeve_listings() -> QuerySet[Listing]:
-    """List every sleeve whose card size the shop printed in its name."""
-    return (
+    """List every sleeve whose card size the shop printed in its name, sold out last.
+
+    A sold-out listing carries no price, so each row also gets `last_price`: today's
+    price when in stock, otherwise the last price recorded while it still was.
+    """
+    last_in_stock_price = (
+        Price.objects.filter(listing=OuterRef('pk'), in_stock=True, price__isnull=False)
+        .order_by('-day')
+        .values('price')[:1]
+    )
+    sleeves = (
         Listing.objects.filter(sleeve_width__isnull=False, sleeve_height__isnull=False)
         .select_related('shop', 'game')
-        .order_by('sleeve_width', 'sleeve_height', 'price')
+        .annotate(last_price=Coalesce('price', Subquery(last_in_stock_price)))
+        .order_by('-in_stock', 'sleeve_width', 'sleeve_height', 'last_price')
     )
+    logger.info('🧦 Built sleeve listings query: sold out last, with last in-stock price')
+    return sleeves
 
 
 def list_same_size_sleeve_listings(listing: Listing) -> QuerySet[Listing]:

@@ -16,6 +16,15 @@ from main.models import Game, Listing
 register = template.Library()
 
 
+def round_price(value):
+    """Round a rand figure the way the site prints one: to R100 from R1000, to R50 from R100."""
+    if value >= FORMAT_PRICE_THOUSANDS:
+        return round(value / 100) * 100
+    if value >= FORMAT_PRICE_HUNDREDS:
+        return round(value / 50) * 50
+    return value
+
+
 @register.filter
 def price(obj, show_currency: bool = True):
     """Format price."""

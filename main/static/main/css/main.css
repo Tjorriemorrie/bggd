@@ -2006,9 +2006,7 @@ a.crt-name:hover {
     .roster-listings th:nth-child(6),
     .roster-listings td:nth-child(6),
     .roster-listings th:nth-child(7),
-    .roster-listings td:nth-child(7),
-    .roster-sleeves th:nth-child(7),
-    .roster-sleeves td:nth-child(7) {
+    .roster-listings td:nth-child(7) {
         display: none;
     }
 }
@@ -2192,9 +2190,8 @@ a.crt-name:hover {
     color: var(--ink);
 }
 
-/* The tally and the reset only exist once a card has been entered, and both
-   carry a display of their own that would otherwise outrank `hidden`. */
-#fit-report[hidden],
+/* The reset only exists once a card has been entered, and it carries a display
+   of its own that would otherwise outrank `hidden`. */
 #fit-clear[hidden] {
     display: none;
 }
@@ -2207,6 +2204,37 @@ a.crt-name:hover {
 
 .roster-sleeves .sleeve-nofit {
     opacity: 0.45;
+}
+
+/* The cut between the sleeves that match the card and the bigger ones that only
+   hold it: a blank band of darker stock that no hover lights. */
+.roster-sleeves tbody tr.sleeve-gap td,
+.roster-sleeves tbody tr.sleeve-gap:hover td {
+    height: var(--s4);
+    padding: 0;
+    background: var(--sheet-2);
+}
+
+/* A sold-out sleeve is struck through on every column but its art, and faded
+   further. The opacity sits on the cells so it compounds with a no-fit row's. */
+.roster-sleeves .sleeve-out td {
+    opacity: 0.7;
+}
+
+/* The price cell is struck on its figure rather than the cell, which would
+   draw a second line at the cell's own text size. */
+.roster-sleeves .sleeve-out td:not(.roster-cell-art):not(.roster-price),
+.roster-sleeves .sleeve-out td:not(.roster-cell-art) a,
+.roster-sleeves .sleeve-out .price,
+.roster-sleeves .sleeve-out .out-of-stock {
+    color: var(--ink-2);
+    text-decoration: line-through;
+    text-decoration-thickness: 1px;
+}
+
+/* A hairline disappears into the bold price figure. */
+.roster-sleeves .sleeve-out .price {
+    text-decoration-thickness: 2px;
 }
 
 /* --------------------------------------------------------------- EMPTY -- */

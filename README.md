@@ -21,6 +21,12 @@ is shown against the market and against its own past, not on its own.
   the same game across different shops is genuinely the same game.
 - **Browsable by category.** Board games, card games, tabletop, RPG, accessories, bundles
   and other.
+- **Sleeves by card size** (`/sleeves`). Every sleeve whose size the shop printed in its
+  name. Sold-out sleeves sit at the bottom under any sort, struck through and priced at
+  their last in-stock price. Entering a card's width × height ranks the sheet in the
+  browser: sizes within 0.5mm on both sides first (shops print 63 and 63.5 for the same
+  card), in stock then sold out; a gap; bigger sleeves in stock; then ones too small.
+  Every other sold-out sleeve is hidden until the size is cleared.
 - **Suggests what to play next** (`/plays`). It reads a BGG user's logged plays and, on
   every play day, counts the top 3 suggested games that weren't played as skipped. A
   game's first play day counts as one play and skips nothing, since a new game gets
