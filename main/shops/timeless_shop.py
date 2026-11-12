@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 from main.games import get
 from main.selectors import upsert_shop
-from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.shops.helpers import check_first_page, handle_item_data, missed_listings, parse_price
 from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
@@ -92,12 +92,15 @@ def worker_wrapper(*args, **kwargs):
 def scrape_site():
     """Scrape pages."""
     for category, sleeves in categories:
+        shelf = f'{shop_host}/online-shop/?category={category}'
         page = 0
         while True:
             page += 1
             outcome = worker(page, category=category, sleeves=sleeves)
+            check_first_page(shop_name, shelf, page, outcome)
             if not outcome:
                 break
+        logger.info(f'🛒 Scraped shelf: url={shelf}, stopped_at_page={page}')
 
 
 def scrape():

@@ -13,7 +13,7 @@ from retry import retry
 from unidecode import unidecode
 
 from main.constants import CATEGORY_ACCESSORIES
-from main.errors import ListingImageError, ListingUrlError
+from main.errors import ListingImageError, ListingUrlError, NoRowsFoundError
 from main.games import get
 from main.models import Listing, Price, Shop
 from main.selectors import get_today
@@ -104,6 +104,18 @@ def base_scrape(worker):  # noqa: PLR0912, PLR0915
                 raise
         finally:
             executor = None
+
+
+def check_first_page(shop_name: str, url: str, page: int, found) -> None:
+    """Fail the scrape when the first page of a shelf holds no products.
+
+    An empty page is how a shelf ends, but an empty first page means the shop blocked
+    us or changed its layout: ending quietly there would log the scrape as OK and then
+    mark every listing on that shelf missing.
+    """
+    if page == 1 and not found:
+        logger.error(f'❌ No products on first page: shop={shop_name}, url={url}, page={page}')
+        raise NoRowsFoundError(f'No products on the first page of {url}')
 
 
 def strip_query_params(url: str) -> str:

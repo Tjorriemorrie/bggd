@@ -7,6 +7,7 @@ from bs4 import BeautifulSoup
 from main.games import get
 from main.selectors import upsert_shop
 from main.shops.helpers import (
+    check_first_page,
     handle_item_data,
     missed_listings,
     parse_price,
@@ -85,8 +86,10 @@ def scrape_site():
     while True:
         page += 1
         outcome = worker(page)
+        check_first_page(shop_name, f'{shop_host}/collections/best-selling', page, outcome)
         if not outcome:
             break
+    logger.info(f'🛒 Scraped shelf: shop={shop_name}, stopped_at_page={page}')
 
 
 def scrape():

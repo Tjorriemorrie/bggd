@@ -7,7 +7,7 @@ from main.constants import CATEGORY_CARD_GAME, CATEGORY_RPG
 from main.games import get
 from main.models import Listing, Shop
 from main.selectors import upsert_shop
-from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.shops.helpers import check_first_page, handle_item_data, missed_listings, parse_price
 from main.sleeves import SLEEVE_SIZE_RE, parse_sleeve_size
 
 logger = logging.getLogger(__name__)
@@ -180,6 +180,7 @@ def scrape_site():
         while True:
             page += 1
             hrefs = worker(url, page, category=category, sleeves=sleeves)
+            check_first_page(shop_name, url, page, hrefs)
             seen_before = hrefs <= seen
             seen |= hrefs
             # An offset past the end is served some earlier page again, so a page

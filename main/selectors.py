@@ -24,7 +24,7 @@ from django.utils import timezone
 from django.utils.text import slugify
 from unidecode import unidecode
 
-from main.constants import CATEGORY_BUNDLE
+from main.constants import CATEGORY_BUNDLE, SCRAPE_OK
 from main.models import Day, Game, Listing, Price, Scrapelog, Shop
 
 logger = logging.getLogger(__name__)
@@ -186,8 +186,13 @@ def best_listing_by_game(game: Game) -> Listing | None:
 
 
 def get_last_scrape(shop: Shop) -> Scrapelog | None:
-    """Last scrape of shop."""
-    scrapelog = Scrapelog.objects.filter(target=f'shop {shop.name}').order_by('scraped_at').last()
+    """Last successful scrape of shop: a failed one is logged too, but is no scrape."""
+    scrapelog = (
+        Scrapelog.objects.filter(target=f'shop {shop.name}', outcome=SCRAPE_OK)
+        .order_by('scraped_at')
+        .last()
+    )
+    logger.info(f'🕷️ Last successful scrape of {shop}: scrapelog={scrapelog}')
     return scrapelog
 
 

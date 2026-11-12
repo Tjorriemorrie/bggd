@@ -4,7 +4,7 @@ from django.conf import settings
 
 from main.games import get
 from main.selectors import upsert_shop
-from main.shops.helpers import handle_item_data, missed_listings
+from main.shops.helpers import check_first_page, handle_item_data, missed_listings
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +16,11 @@ def scrape():
     """Scrape this site."""
     shop = upsert_shop(shop_name)
     headers = {'Authorization': f'Bearer {settings.BGBSA_BEARER}'}
-    res = get(f'{shop_host}/api/all.json', headers=headers)
+    url = f'{shop_host}/api/all.json'
+    res = get(url, headers=headers)
     data = res.json()['listings']
+    check_first_page(shop_name, url, 1, data)
+    logger.info(f'🛒 Fetched feed: listings={len(data)}')
 
     for item in data:
         href = item['url']
@@ -35,6 +38,7 @@ def scrape():
             in_stock = True
             price_value = float(item['price'])
         else:
+            logger.error(f'❌ Unknown listing state: state={item["state"]}, url={href}')
             raise NotImplementedError(f'Unknown state: {item["state"]}')
 
         params = {
@@ -45,3 +49,4 @@ def scrape():
 
     shop = upsert_shop(shop_name)
     missed_listings(shop)
+    logger.info(f'🛒 Scraped shop: shop={shop_name}, listings={len(data)}')

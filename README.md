@@ -50,6 +50,18 @@ Every listing gets a price recorded against a day, giving each game a price seri
 90-day rolling average. Views are cached for ten minutes and the graphs are rendered
 server-side.
 
+**Failed scrapes.** `manage.py shop <name|all>` scrapes each shop and writes a
+`Scrapelog` for it: `OK`, or the error that stopped it. A request that still fails after
+its retries raises, and so does a shelf whose first page holds no products (that means
+the shop blocked us or changed its layout). An empty *later* page is just the end of the
+shelf. `/shops` and the shop page show the last `OK` scrape date only. If any shop failed,
+the command exits non-zero once every shop has had its turn. `manage.py cron` still runs
+the BGG steps after a failed shop, then exits non-zero.
+
+`main.games.get` retries 429/430/401/403/5xx responses up to 7 times (3s doubling to 60s).
+So an `ERROR Too many requests …` line followed by `retrying in 3 seconds` is a retry, not
+a failure: the scrape only fails if every try fails.
+
 ## Tech stack
 
 | | |

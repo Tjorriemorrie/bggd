@@ -5,7 +5,7 @@ from bs4 import BeautifulSoup
 
 from main.games import get
 from main.selectors import upsert_shop
-from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.shops.helpers import check_first_page, handle_item_data, missed_listings, parse_price
 from main.sleeves import parse_sleeve_size
 
 logger = logging.getLogger(__name__)
@@ -103,11 +103,13 @@ def scrape_site():
         while True:
             page += 1
             hrefs = worker(url_template, page, sleeves=sleeves)
+            check_first_page(shop_name, url_template, page, hrefs)
             # An out-of-range search page is served as the last one again, so a
             # page that carries nothing new is the end of the results.
             if not hrefs or hrefs <= seen:
                 break
             seen |= hrefs
+        logger.info(f'📦 Scraped shelf: url={url_template}, stopped_at_page={page}')
 
 
 def scrape():

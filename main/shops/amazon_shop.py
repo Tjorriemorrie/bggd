@@ -4,8 +4,9 @@ import time
 
 from bs4 import BeautifulSoup
 
+from main.errors import ScrapeError
 from main.selectors import upsert_shop
-from main.shops.helpers import handle_item_data, missed_listings, parse_price
+from main.shops.helpers import check_first_page, handle_item_data, missed_listings, parse_price
 
 logger = logging.getLogger(__name__)
 
@@ -66,8 +67,8 @@ def worker(page: int) -> bool:
     res = _request_with_backoff(full_url)
     ok = 200
     if res.status_code != ok:
-        logger.warning(f'Got status {res.status_code}')
-        return False
+        logger.error(f'❌ Bad status: status={res.status_code}, page={page}, url={full_url}')
+        raise ScrapeError(f'Amazon returned {res.status_code} for page {page}')
     if 'Try checking your spelling or use more general terms' in res.text:
         return False
 
@@ -135,8 +136,10 @@ def scrape_site():
             logger.info('Timeout reached, stopping.')
             break
         outcome = worker(page)
+        check_first_page(shop_name, f'{shop_host}/s', page, outcome)
         if not outcome:
             break
+    logger.info(f'🛒 Scraped shelf: shop={shop_name}, stopped_at_page={page}')
 
 
 def scrape():

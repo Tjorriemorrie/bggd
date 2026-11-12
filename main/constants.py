@@ -1,5 +1,8 @@
 ROLLING_AVERAGE = 90
 
+# Scrapelog.outcome of a shop scrape that finished; anything else is the error it died on.
+SCRAPE_OK = 'OK'
+
 LABEL_CATEGORY = 'category'
 LABEL_MECHANIC = 'mechanic'
 LABEL_FAMILY = 'family'

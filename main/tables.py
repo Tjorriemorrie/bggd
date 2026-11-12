@@ -16,6 +16,7 @@ from django.template.defaultfilters import floatformat
 from django.utils.html import format_html
 from django_tables2 import Column, tables
 
+from main.constants import SCRAPE_OK
 from main.models import Game, Listing, Scrapelog, Shop
 from main.selectors import get_last_scrape
 from main.templatetags.fmt import discount, price, round_price
@@ -319,9 +320,11 @@ class ShopTable(tables.Table):
 
     def order_scraped(self, queryset, is_descending):
         """Order based on last scrape."""
-        # Subquery to find the latest scraped_at for each shop
+        # Subquery to find the latest successful scraped_at for each shop
         latest_scrape = (
-            Scrapelog.objects.filter(target=Concat(Value('shop '), OuterRef('name')))
+            Scrapelog.objects.filter(
+                target=Concat(Value('shop '), OuterRef('name')), outcome=SCRAPE_OK
+            )
             .order_by('-scraped_at')
             .values('scraped_at')[:1]
         )
@@ -330,6 +333,7 @@ class ShopTable(tables.Table):
         queryset = queryset.annotate(last_scraped_at=Subquery(latest_scrape))
 
         ordering = 'last_scraped_at' if not is_descending else '-last_scraped_at'
+        logger.info(f'🏪 Ordered shops by last successful scrape: descending={is_descending}')
         return queryset.order_by(ordering), True
 
     def render_scraped(self, record: Shop):

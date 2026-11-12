@@ -5,8 +5,9 @@ import requests
 from django.conf import settings
 
 from main.constants import CATEGORY_OTHER
+from main.errors import ScrapeError
 from main.selectors import upsert_shop
-from main.shops.helpers import handle_item_data, missed_listings
+from main.shops.helpers import check_first_page, handle_item_data, missed_listings
 
 logger = logging.getLogger(__name__)
 
@@ -53,8 +54,9 @@ def fetch_page(session, after=None):
     res = session.get(url, timeout=timeout)
     ok = 200
     if res.status_code != ok:
-        logger.warning(f'Got status {res.status_code}')
-        return None
+        logger.error(f'❌ Bad status: status={res.status_code}, after={after}, url={url}')
+        raise ScrapeError(f'Takealot returned {res.status_code} for {url}')
+    logger.info(f'🛒 Fetched page: status={res.status_code}, after={after}')
     return res.json()
 
 
@@ -124,6 +126,7 @@ def scrape_site():
 
         products = data.get('sections', {}).get('products', {})
         results = products.get('results', [])
+        check_first_page(shop_name, api_base, page, results)
         if not results:
             logger.info('No results found, stopping.')
             break
