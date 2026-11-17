@@ -10,6 +10,8 @@ from main.sleeves import parse_sleeve_size
 logger = logging.getLogger(__name__)
 
 enabled = True
+# Turns away non-SA IPs: scraped by `shop home` through the laptop's tunnel (see README).
+via_home = True
 shop_name = 'The Hidden Den'
 shop_host = 'https://thehiddenden.co.za'
 

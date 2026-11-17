@@ -7,7 +7,7 @@ from django.utils import timezone
 from main.constants import SCRAPE_OK
 from main.models import Scrapelog
 from main.selectors import get_today, upsert_shop
-from main.shops import shop_enabled, shop_names, shop_scrapers
+from main.shops import shop_enabled, shop_names, shop_scrapers, shop_via_home
 from main.shops.helpers import missed_listings  # Ensure `shop_enabled` is imported
 
 logger = logging.getLogger(__name__)
@@ -18,7 +18,11 @@ class Command(BaseCommand):
 
     def add_arguments(self, parser):
         """Add shop name and optional force flag."""
-        parser.add_argument('shop_name', type=str, help='Name of shop to scrape')
+        parser.add_argument(
+            'shop_name',
+            type=str,
+            help="Name of shop to scrape, 'all' (except via-home shops) or 'home'",
+        )
         parser.add_argument(
             '--force', action='store_true', help='Force run even if shop is disabled'
         )
@@ -30,7 +34,15 @@ class Command(BaseCommand):
 
         name_param = options['shop_name']
         force = options['force']
-        names = shop_names if name_param == 'all' else [name_param]
+        # Via-home shops turn the droplet away; the laptop's tunnel runs them as 'home'.
+        if name_param == 'all':
+            names = [name for name in shop_names if name not in shop_via_home]
+            logger.info(f'🛒 Leaving via-home shops to `shop home`: shops={sorted(shop_via_home)}')
+        elif name_param == 'home':
+            names = [name for name in shop_names if name in shop_via_home]
+            logger.info(f'🛒 Scraping via-home shops: shops={names}')
+        else:
+            names = [name_param]
 
         failed = []
         for name in names:

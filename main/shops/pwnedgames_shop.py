@@ -12,7 +12,9 @@ from main.sleeves import SLEEVE_SIZE_RE, parse_sleeve_size
 
 logger = logging.getLogger(__name__)
 
-enabled = 0
+enabled = True
+# Turns away non-SA and datacenter IPs: scraped by `shop home` through the laptop's tunnel.
+via_home = True
 shop_name = 'Pwned Games'
 shop_host = 'https://www.pwnedgames.co.za'
 

@@ -11,6 +11,9 @@ logger = logging.getLogger(__name__)
 
 shop_name = 'The Geek Home'
 shop_host = 'https://www.geekhome.co.za'
+# It turns the droplet away at 03:00 UTC but not at midday, so it goes first: then it is
+# scraped at the cron's start time rather than wherever it falls in the run.
+scrape_first = True
 
 # The board game shelf, then whatever the site search turns up for sleeves. That
 # search hits everything with the word in it, so only sized sleeves are kept.
