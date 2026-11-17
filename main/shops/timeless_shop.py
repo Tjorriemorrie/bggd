@@ -38,6 +38,7 @@ def worker(page: int, category: int = CATEGORY_BOARD_GAMES, sleeves: bool = Fals
     res = get(url, params=params, headers=headers)
     logger.info(f'Scraped {res.request.url}...')
     if 'No games met your criteria' in res.text:
+        logger.info(f'🛒 Shelf ended: category={category}, page={page}')
         return False
 
     html = BeautifulSoup(res.text, 'html.parser')
@@ -47,7 +48,9 @@ def worker(page: int, category: int = CATEGORY_BOARD_GAMES, sleeves: bool = Fals
         row for row in html.find_all('div', class_='w3-card') if row.find('p', class_='w3-medium')
     ]
     if not rows:
+        logger.info(f'🛒 No products on page: category={category}, page={page}')
         return False
+    saved = 0
     for row in rows:
         img_src = row.find_all('img', class_='w3-image')[0]['src']
         name = row.find_all('p', class_='w3-medium')[0].get_text(separator=' ', strip=True)
@@ -76,7 +79,11 @@ def worker(page: int, category: int = CATEGORY_BOARD_GAMES, sleeves: bool = Fals
         params = {'is_new': is_new}
 
         handle_item_data(shop, name, href, img_src, in_stock, price_value, **params)
+        saved += 1
 
+    logger.info(
+        f'🛒 Scraped page: category={category}, page={page}, products={len(rows)}, saved={saved}'
+    )
     return True
 
 

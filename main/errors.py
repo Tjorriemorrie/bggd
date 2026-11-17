@@ -6,6 +6,10 @@ class NoRowsFoundError(ScrapeError):
     """No rows found."""
 
 
+class OffsiteRedirectError(ScrapeError):
+    """The site redirected us to another host: it turned us away, so retrying won't help."""
+
+
 class ShopGameNotFoundError(Exception):
     """Product page not found for game."""
 

@@ -4,6 +4,7 @@ import re
 from contextlib import suppress
 from datetime import datetime
 from time import sleep
+from urllib.parse import urljoin, urlparse
 
 import numpy as np
 import pandas as pd
@@ -20,6 +21,7 @@ from django.conf import settings as django_settings
 import main.constants as c
 from main.errors import (
     BggGameNotFoundError,
+    OffsiteRedirectError,
     RedirectError,
     RequestsError,
     ScrapeError,
@@ -63,6 +65,21 @@ USER_AGENTS = [
 sleep_time = 0
 
 
+def _refuse_offsite_redirect(res: requests.Response, **kwargs) -> None:
+    """Response hook: stop before following a redirect to another host.
+
+    A shop that sends us to another host (The Geek Home sends the droplet to 127.0.0.1)
+    has turned us away, so the scrape fails at once with where it was sent.
+    """
+    target = urljoin(res.url, res.headers['Location']) if res.is_redirect else res.url
+    if urlparse(target).hostname != urlparse(res.url).hostname:
+        logger.error(
+            f'❌ Refused off-site redirect: url={res.url}, status={res.status_code}, '
+            f'location={target}'
+        )
+        raise OffsiteRedirectError(f'Redirected off-site: {res.url} -> {target}')
+
+
 # 42 flat 3s tries meant a rate limit waited ~2min, but a connection error waited ~27min
 # (each try burns the 30s timeout plus a 5s sleep) -- indistinguishable from a hang.
 # 7 tries with exponential backoff caps the worst case at ~7min while actually waiting
@@ -82,15 +99,22 @@ def get(
     if headers:
         headers_default.update(headers)
 
+    # Errors carry a message because the shop command stores it as the Scrapelog outcome.
+    # An off-site redirect raises from the hook and is not retried.
     try:
         res = requests.get(
-            url, params=params, headers=headers_default, timeout=30, allow_redirects=redirect
+            url,
+            params=params,
+            headers=headers_default,
+            timeout=30,
+            allow_redirects=redirect,
+            hooks={'response': _refuse_offsite_redirect} if redirect else None,
         )
     except requests.RequestException as exc:
         logger.error(f'Connection error! url={url}')
         logger.error(f'Connection error! exc={exc}')
         sleep(5)
-        raise RequestsError() from exc
+        raise RequestsError(f'Connection failed ({exc.__class__.__name__}): {url}') from exc
 
     if res.status_code in [requests.codes.too_many, 430]:
         prev = sleep_time
@@ -98,24 +122,24 @@ def get(
         logger.error(
             f'Too many requests for {url} {params}; sleep {prev}s -> {sleep_time}s (+0.05)'
         )
-        raise TooManyRequestsError()
+        raise TooManyRequestsError(f'Too many requests (HTTP {res.status_code}): {url}')
     elif res.status_code in [401, 403]:
         prev = sleep_time
         sleep_time = round(sleep_time + 0.05, 4)
         logger.error(
             f'{res.status_code} blocked for {url} {params}; sleep {prev}s -> {sleep_time}s (+0.05)'
         )
-        raise TooManyRequestsError()
+        raise TooManyRequestsError(f'Blocked (HTTP {res.status_code}): {url}')
     elif res.status_code >= requests.codes.server_error:
         prev = sleep_time
         sleep_time = round(sleep_time + 0.05, 4)
         logger.error(
             f'Server error ({res.status_code}) for {url}; sleep {prev}s -> {sleep_time}s (+0.05)'
         )
-        raise TooManyRequestsError()
+        raise TooManyRequestsError(f'Server error (HTTP {res.status_code}): {url}')
     elif requests.codes.moved <= res.status_code < requests.codes.bad_request:
         logger.error(f'Redirect required: {url}')
-        raise RedirectError()
+        raise RedirectError(f'Redirect required (HTTP {res.status_code}): {url}')
 
     # success: very slowly decay the throttle (100x slower than bump) so a
     # built-up buffer survives bursts of successes between rate-limits
@@ -127,6 +151,9 @@ def get(
     except requests.RequestException as exc:
         logger.error(f'request bad status: {exc}')
 
+    logger.info(
+        f'🌐 Fetched: url={res.url}, status={res.status_code}, redirects={len(res.history)}'
+    )
     return res
 
 

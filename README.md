@@ -58,9 +58,26 @@ shelf. `/shops` and the shop page show the last `OK` scrape date only. If any sh
 the command exits non-zero once every shop has had its turn. `manage.py cron` still runs
 the BGG steps after a failed shop, then exits non-zero.
 
-`main.games.get` retries 429/430/401/403/5xx responses up to 7 times (3s doubling to 60s).
-So an `ERROR Too many requests …` line followed by `retrying in 3 seconds` is a retry, not
-a failure: the scrape only fails if every try fails.
+`main.games.get` retries 429/430/401/403/5xx responses and connection errors up to 7 times
+(3s doubling to 60s). So an `ERROR Too many requests …` line followed by `retrying in 3
+seconds` is a retry, not a failure: the scrape only fails if every try fails. With
+`redirect=True` it refuses a redirect to another host: it raises `OffsiteRedirectError` at
+once, without retrying. Every error carries a message (e.g. `Blocked (HTTP 403): <url>`),
+and that message is the `Scrapelog` outcome.
+
+**Timeless** is read from its shop sheet alone (`/online-shop/?category=…&page=…`, 27 cards
+a page, ~50 pages of board games). On a sale card a `<strike>` holds the old price ahead of
+the current one. Sold-out products are left off the sheet (since 2026-11-17), so
+`missed_listings` marks them out of stock. On 2026-11-17 the sheet briefly carried no
+prices, and each product page had to be fetched for one. The prices were back the same day.
+
+**Blocked shops** (checked 2026-11-17). Since 2026-07-28 **The Geek Home** has answered the
+03:00 UTC cron by redirecting the droplet to `https://127.0.0.1/`, a common way for
+WordPress security plugins to turn a visitor away. Before the off-site check, `requests`
+followed it into the droplet's own nginx, failed on `CERTIFICATE_VERIFY_FAILED … '127.0.0.1'`
+and retried for ~3 minutes, recorded only as `RequestsError`. The same request from the
+droplet at 12:28 UTC succeeds. **The Hidden Den** returns 403 to the droplet at any hour (200
+from a home IP).
 
 ## Tech stack
 
