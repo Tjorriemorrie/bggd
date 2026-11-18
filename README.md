@@ -68,19 +68,20 @@ out of stock. On 2026-11-17 the sheet briefly had no prices (product pages did);
 **Blocked shops** (checked 2026-11-17). The droplet (DigitalOcean, NL, UTC) runs `manage.py
 cron` at 12:00 UTC from its crontab, not this repo; shops take ~20 min, the BGG steps hours.
 **The Geek Home** redirected the old 03:00 UTC run to `https://127.0.0.1/` (a WordPress
-security plugin turning a visitor away) but answers at 12:28; `scrape_first = True` puts it
-first in `shop all`. **The Hidden Den** and **Pwned Games** answer the droplet 403 and a
-home Vodacom IP 200. Via PIA's `south-africa` region (AS212238 Datacamp, JNB) Hidden Den
-gives 200, Pwned Cloudflare's hard "Sorry, you have been blocked" (WAF rule, no JS challenge).
+security plugin) but answers at 12:28; `scrape_first = True` puts it first in `shop all`.
+**The Hidden Den** and **Pwned Games** 403 the droplet, 200 a home Vodacom IP. Via PIA's
+`south-africa` region (AS212238 Datacamp, JNB) Hidden Den 200s, Pwned gives Cloudflare's hard
+"Sorry, you have been blocked" (WAF rule, no JS challenge). Pwned also 403s curl's User-Agent.
 
-**Scraped from home.** `shop all` skips shops with `via_home = True` (those two). The home
-laptop's task "bggd home scrape" (13:00 SAST = 11:00 UTC, or on wake if missed; logged-on
-only, as S4U needs admin) runs `%LOCALAPPDATA%\bggd\home-scrape.cmd` under `conhost
---headless`: `ssh -R 1080 bgg@<droplet> "… ALL_PROXY=socks5h://127.0.0.1:1080 … shop home"`,
-last output in `home-scrape.log` beside it. `-R 1080` alone opens a SOCKS proxy on the
-droplet's localhost exiting from the laptop; `requests` honours `ALL_PROXY`. PIA stays on: its
-split tunnel lets `C:\Windows\System32\OpenSSH\ssh.exe` bypass it. Both shops took ~17 min
-on 2026-11-17. Pwned's Cloudflare also 403s curl's default User-Agent.
+**Scraped from home.** `shop all` skips `via_home = True` shops (those two). The laptop task
+"bggd home scrape" (13:00 SAST = 11:00 UTC, or on wake if missed; logged-on only, as S4U
+needs admin) runs `%LOCALAPPDATA%\bggd\home-scrape.cmd` under `conhost --headless`: `ssh -R
+1080 bgg@<droplet> "… ALL_PROXY=socks5h://127.0.0.1:1080 … shop home"` (a SOCKS proxy on the
+droplet's localhost, exiting from the laptop; `requests` honours `ALL_PROXY`), output in
+`home-scrape.log` beside it. PIA's split tunnel lets `C:\Windows\System32\OpenSSH\ssh.exe`
+bypass the VPN. Both shops took ~17 min on 2026-11-17. **Bare-IP requests** (scanners probing
+`/.env`, `/.git/config`, ~100 a day, logged as `Invalid HTTP_HOST header`) get nginx's 444 via
+`deploy/nginx/geoip2-block.conf`: only `(www.)bggdata.co.za` is served. Commands skip ALLOWED_HOSTS.
 
 ## Tech stack
 
@@ -89,8 +90,7 @@ on 2026-11-17. Pwned's Cloudflare also 403s curl's default User-Agent.
 | Backend | Django 5.1 on Python 3.11+ |
 | Data | SQLite (>1 GB of price history) |
 | Frontend | Server-rendered Django templates, Bootstrap 5.3, htmx — no SPA |
-| Tables & filters | django-tables2, django-filter |
-| Graphs | Plotly, rendered server-side |
+| Tables, filters, graphs | django-tables2, django-filter; Plotly, rendered server-side |
 | Scraping | requests, BeautifulSoup, Botasaurus |
 | Hosting | DigitalOcean, deployed by GitHub Actions on a `v*` tag |
 

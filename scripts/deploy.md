@@ -658,6 +658,9 @@ Blocks China and Singapore at nginx with a `444` (connection closed, no response
 Applied automatically on every deploy by `scripts/deploy.sh`, which runs
 `deploy/geoip-setup.sh` as root. The countries themselves live in
 `deploy/nginx/geoip2.conf` -- edit that file and push a `v*` tag to change them.
+The same snippet (`deploy/nginx/geoip2-block.conf`) also 444s any request whose
+Host is not `bggdata.co.za` or `www.bggdata.co.za`, so scanners hitting the bare
+droplet IP never reach Django (and the IP stays out of `ALLOWED_HOSTS`).
 
 #### Add the MaxMind secrets to GitHub
 
