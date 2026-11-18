@@ -40,6 +40,7 @@ DEVELOPER = env.bool('DEVELOPER', False)
 ALLOWED_HOSTS = [
     '127.0.0.1',
     '139.59.146.204',
+    '159.223.233.160',  # digital ocean droplet
     'bggdata.co.za',
     'www.bggdata.co.za',
 ]

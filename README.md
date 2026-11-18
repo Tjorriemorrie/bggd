@@ -41,17 +41,18 @@ Price history for Wingspan across fourteen shops, with the market average dashed
 
 ## How it works
 
-Per-shop scrapers pull listings and prices, each scrape logged. Listings are matched to BGG
-games (bringing ratings, rank, weight, player counts, play time). Every listing gets a price
-per day, giving each game a price series and a 90-day rolling average. Views are cached for
-ten minutes; graphs are rendered server-side.
+Per-shop scrapers pull listings and prices, each scrape logged. `game auto` matches new
+listings to BGG games (bringing ratings, rank, weight, player counts, play time): an exact
+name search, else a loose one scored on shared words; ties go to the most rated game, and a
+score under 0.7 leaves the listing for the admin lookup ([details](docs/bgg-matching.md)).
+Every listing gets a price per day, giving each game a price series and a 90-day rolling
+average. Views are cached for ten minutes; graphs are rendered server-side.
 
-**Failed scrapes.** `manage.py shop <name|all|home>` scrapes each shop and writes a
-`Scrapelog` for it: `OK`, or the error that stopped it. A request still failing after its
-retries raises, as does a shelf whose first page holds no products (blocked, or the layout
-changed); an empty *later* page just ends the shelf. `/shops` and the shop page show the
-last `OK` scrape date only. If any shop failed, the command (and `manage.py cron`, after
-its BGG steps) exits non-zero once every shop has had its turn.
+**Failed scrapes.** `manage.py shop <name|all|home>` writes a `Scrapelog` per shop: `OK`, or
+the error that stopped it. A request still failing after its retries raises, as does a shelf
+whose first page holds no products (blocked, or the layout changed); an empty *later* page
+ends the shelf. `/shops` and the shop page show the last `OK` date only. If any shop failed,
+the command (and `manage.py cron`, after its BGG steps) exits non-zero once all have run.
 
 `main.games.get` retries 429/430/401/403/5xx responses and connection errors up to 7 times
 (3s doubling to 60s). So an `ERROR Too many requests …` line followed by `retrying in 3
@@ -60,10 +61,9 @@ seconds` is a retry, not a failure. With `redirect=True` a redirect to another h
 (HTTP 403): <url>`), and that message is the `Scrapelog` outcome.
 
 **Timeless** is read from its shop sheet alone (`/online-shop/?category=…&page=…`, 27 cards
-a page, ~50 pages of board games). On a sale card a `<strike>` holds the old price ahead of
-the current one. Sold-out products are left off the sheet (since 2026-11-17), so
-`missed_listings` marks them out of stock. On 2026-11-17 the sheet briefly carried no
-prices (each product page had one); they were back the same day.
+a page, ~50 pages of board games); on a sale card a `<strike>` holds the old price first.
+Sold-out products are left off the sheet (since 2026-11-17), so `missed_listings` marks them
+out of stock. On 2026-11-17 the sheet briefly had no prices (product pages did); back that day.
 
 **Blocked shops** (checked 2026-11-17). The droplet (DigitalOcean, NL, UTC) runs `manage.py
 cron` at 12:00 UTC from its crontab, not this repo; shops take ~20 min, the BGG steps hours.

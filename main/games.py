@@ -1,4 +1,5 @@
 import logging
+import math
 import random
 import re
 from contextlib import suppress
@@ -373,49 +374,153 @@ def fetch_bgg_thing(bgg_id: int) -> dict | None:
     }
 
 
-def _search_bgg_api(name: str) -> dict | None:
-    """Search BGG using the XML API2 (requires BGG_AUTH)."""
-    host = 'https://boardgamegeek.com/xmlapi2/search'
+URL_SEARCH = 'https://boardgamegeek.com/xmlapi2/search'
+
+# Shop notes in a listing name that are never part of a BGG name: "(Pre-loved)",
+# "SLEEVED", "(In Stock with supplier - 5 to 10 days delivery)", "BUNDLE", ...
+LISTING_NOISE_RE = re.compile(
+    r'[(\[][^)\]]*\b(?:pre-?\s?loved|pre-?\s?owned|ready to ship|in stock|sleeved|sealed)\b'
+    r'[^)\]]*[)\]]'
+    r'|\b(?:pre-?\s?loved|pre-?\s?owned|sleeved|sealed|bundle)\b',
+    flags=re.IGNORECASE,
+)
+# A spaced hyphen or a bar is where a shop splits game from expansion. BGG uses a colon
+# there, or an en dash, which is left alone: it is how BGG writes "Game: Sub – Expansion".
+LISTING_SEPARATOR_RE = re.compile(r'\s+-\s+|\s*\|\s*')
+# Words too common in names to tell two games apart
+NAME_STOPWORDS = frozenset(
+    {'a', 'an', 'and', 'of', 'the', 'to', 'game', 'board', 'edition', 'expansion', 'exp'}
+)
+# Words BGG spells another way: they are scored as the word BGG uses but never searched
+NAME_SYNONYMS = {
+    'lcg': 'card',
+    '1st': 'first',
+    '2nd': 'second',
+    '3rd': 'third',
+    '4th': 'fourth',
+    '5th': 'fifth',
+    '6th': 'sixth',
+    '7th': 'seventh',
+}
+# Qualifiers choose between editions of a game but never rule one out: "(Bilingual)",
+# "(2016 Edition)", "Afrikaans Edition". The digit ordinals of NAME_SYNONYMS are too.
+QUALIFIER_RE = re.compile(r'\([^)]*\)|\[[^\]]*\]|\S+(?=\s+edition\b)', flags=re.IGNORECASE)
+# Share of words a name and a BGG name must have in common to be the same game
+MATCH_MIN_SCORE = 0.7
+
+
+def clean_listing_name(name: str) -> str:
+    """Strip a listing name down to the part a BGG name would carry."""
+    with suppress(UnicodeError):
+        name = name.encode('cp1252').decode('utf-8')  # mojibake: 'â€“' back to '–'
+    clean = LISTING_SEPARATOR_RE.sub(': ', LISTING_NOISE_RE.sub(' ', name))
+    clean = re.sub(r'\s+', ' ', clean).strip(' :-–')
+    clean = re.sub(r'\s+(?:expansion|exp)\.?$', '', clean, flags=re.IGNORECASE)
+    logger.info(f'🔎 Cleaned listing name: name={name!r}, clean={clean!r}')
+    return clean
+
+
+def _name_words(name: str) -> list[str]:
+    """Lowercase ascii words of a name, without stopwords; apostrophes and dots join words."""
+    name = re.sub(r"['.]", '', unidecode(name).lower()).replace('&', ' and ')
+    return [word for word in re.findall(r'[a-z0-9]+', name) if word not in NAME_STOPWORDS]
+
+
+def _name_score(core: set[str], qualifiers: set[str], name: str) -> tuple[float, int]:
+    """Score a BGG name: Dice overlap of the words, then the qualifiers it shares."""
+    other = {NAME_SYNONYMS.get(word, word) for word in _name_words(name)}
+    words = core | (qualifiers & other)
+    dice = 2 * len(words & other) / (len(words) + len(other)) if words and other else 0.0
+    return round(dice, 3), len(qualifiers & other)
+
+
+def _search_items(query: str, exact: bool) -> list:
+    """Search BGG's XML API2 for boardgames and expansions by name (requires BGG_AUTH)."""
+    params = {'type': 'boardgame', 'query': query}
+    if exact:
+        params['exact'] = 1
     headers = {'Authorization': f'Bearer {django_settings.BGG_AUTH}'}
-    params = {'type': 'boardgame', 'query': name, 'exact': 1}
+    res = get(URL_SEARCH, params, headers=headers)
+    items = BeautifulSoup(res.content, 'xml').find_all('item')
+    logger.info(f'🔎 Searched BGG: query={query!r}, exact={exact}, results={len(items)}')
+    return items
 
-    res = get(host, params, headers=headers)
-    soup = BeautifulSoup(res.content, 'xml')
-    items = soup.find_all('item')
 
-    if not items:
-        params.pop('exact')
-        res = get(host, params, headers=headers)
-        soup = BeautifulSoup(res.content, 'xml')
-        items = soup.find_all('item')
-
-    if not items:
-        return None
-
-    item = items[0]
-    return {
-        'name': item.find('name')['value'],
-        'bgg_id': item['id'],
-        'image': None,
-        'search': res.request.url,
+def _most_rated(items: list) -> object:
+    """Pick the item most rated on BGG: games that score the same are told apart by it."""
+    ids = [item['id'] for item in items[:20]]  # the thing API takes at most 20 ids
+    headers = {'Authorization': f'Bearer {django_settings.BGG_AUTH}'}
+    res = get(URL_THING, {'id': ','.join(ids), 'stats': 1}, headers=headers)
+    rated = {
+        thing['id']: int((thing.find('usersrated') or {}).get('value', 0))
+        for thing in BeautifulSoup(res.content, 'xml').find_all('item')
     }
+    best = max(items[:20], key=lambda item: rated.get(item['id'], -1))
+    logger.info(
+        f'🔎 Picked the most rated of tied games: tied={len(items)}, bgg_id={best["id"]}, '
+        f'ratings={rated.get(best["id"])}'
+    )
+    return best
 
 
 def search_bgg(name: str) -> dict:
-    """Search BGG for game by name."""
-    name = re.sub(r'board game', '', str(name), flags=re.IGNORECASE).strip()
-    if not name:
+    """Find the BGG game a listing name stands for, or not_found rather than a poor match.
+
+    An exact name search wins outright. Otherwise a loose search (BGG ANDs the words, and
+    lists results alphabetically, so the first is no match at all) drops trailing words
+    until it gets results, down to half the name, and the best scoring result wins if it
+    reaches MATCH_MIN_SCORE. Ties go to the game most rated on BGG.
+    """
+    query = clean_listing_name(str(name))
+    all_words = _name_words(query)
+    qualifier_words = set(_name_words(' '.join(QUALIFIER_RE.findall(query))))
+    qualifier_words |= {word for word in all_words if word in NAME_SYNONYMS} - {'lcg'}
+    core_words = [word for word in all_words if word not in qualifier_words]
+    if not core_words:
+        logger.warning(f'🔎 Nothing to search for once cleaned: name={name!r}, query={query!r}')
         return _not_found(name)
 
-    result = _search_bgg_api(name)
-    if result:
-        return result
+    n = 0
+    tied = items = _search_items(query, exact=True)
+    score = (1.0, 0)
+    if not items:
+        search_words = [word for word in core_words if word not in NAME_SYNONYMS]
+        for n in range(len(search_words), max(1, math.ceil(len(search_words) / 2)) - 1, -1):
+            items = _search_items(' '.join(search_words[:n]), exact=False)
+            if items:
+                break
+        logger.info(f'🔎 Loose search done: name={name!r}, words={n}, results={len(items)}')
+        if not items:
+            logger.warning(f'🔎 No BGG results: name={name!r}, query={query!r}')
+            return _not_found(name)
 
-    # Retry with fewer words (trim first and last word)
-    name_cut = ' '.join(name.split()[1:-1]).strip()
-    if name_cut:
-        return search_bgg(name_cut)
-    return _not_found(name)
+        core = {NAME_SYNONYMS.get(word, word) for word in core_words}
+        qualifiers = {NAME_SYNONYMS.get(word, word) for word in qualifier_words}
+        scores = [
+            (_name_score(core, qualifiers, item.find('name')['value']), item) for item in items
+        ]
+        score = max(item_score for item_score, _ in scores)
+        tied = [item for item_score, item in scores if item_score == score]
+        if score[0] < MATCH_MIN_SCORE:
+            logger.warning(
+                f'🔎 No BGG result close enough: name={name!r}, query={query!r}, '
+                f'best={tied[0].find("name")["value"]!r}, score={score[0]}, '
+                f'min_score={MATCH_MIN_SCORE}'
+            )
+            return _not_found(name)
+
+    item = tied[0] if len(tied) == 1 else _most_rated(tied)
+    result = {
+        'name': item.find('name')['value'],
+        'bgg_id': item['id'],
+        'image': None,
+        'search': f'https://boardgamegeek.com/boardgame/{item["id"]}',
+    }
+    logger.info(
+        f'🔎 Matched BGG game: name={name!r}, bgg_id={result["bgg_id"]}, '
+        f'bgg_name={result["name"]!r}, score={score[0]}, tied={len(tied)}'
+    )
+    return result
 
 
 # def scrape_game_reviews(game: Game):
@@ -804,26 +909,23 @@ def update_game_shop_prices(game: Game):  # noqa: PLR0915
 
 def auto_assign_games():
     """Auto assign games from search."""
-    logger.info('Auto assign games from search...')
+    logger.info('🔎 Auto assign games from search...')
 
     listings = list(Listing.objects.filter(bgg_id__isnull=True, bgg_missing=False))
 
     total = len(listings)
-    logger.info(f'Found {total} listings to assign.')
+    logger.info(f'🔎 Found {total} listings to assign.')
 
     if total == 0:
-        logger.info('No new games to assign.')
+        logger.info('🔎 No new games to assign.')
         return
 
     random.shuffle(listings)
+    assigned = 0
     for ix, listing in enumerate(listings):
-        name = listing.name
-        name = name.replace('(Pre-loved)', '')
-        name = name.replace('(Pre-Loved)', '')
-        name = name.replace('Bundle', '')
-        bgg = search_bgg(name.strip())
+        bgg = search_bgg(listing.name)  # search_bgg strips "(Pre-loved)", "BUNDLE", ...
         if not bgg['bgg_id']:
-            logger.warning(f'{ix}/{total} No bgg game found for {listing}')
+            logger.warning(f'🔎 {ix}/{total} No bgg game found for {listing}')
             listing.bgg_missing = True
             listing.save()
             continue
@@ -831,7 +933,13 @@ def auto_assign_games():
         listing.bgg_id = bgg['bgg_id']
         listing.bgg_missing = False
         listing.save()
-        logger.info(f'{ix}/{total} Successfully assigned {bgg["name"]} to {listing}')
+        assigned += 1
+        logger.info(f'🔎 {ix}/{total} Successfully assigned {bgg["name"]} to {listing}')
+
+    logger.info(
+        f'🔎 Auto assign finished: listings={total}, assigned={assigned}, '
+        f'missing={total - assigned}'
+    )
 
 
 def clean_games():
