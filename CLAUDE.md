@@ -33,3 +33,4 @@
 5. Always delete `bash.exe.stackdump` from the repo root when finishing a task. Never commit it.
 6. **Never commit unless explicitly told to.** Finishing a task is not an instruction to commit — leave the changes in the working tree and say what is uncommitted. Never push unless asked.
 7. **Always run ruff when finishing a task** and fix every error it reports: `pre-commit run --files <changed files>` (runs `ruff` and `ruff-format`; `pre-commit run` takes at most one hook id, so don't pass both). Fix the code rather than adding `noqa`.
+8. **Read the global logging rules every time you work.** At the start of every task, before writing or changing code, read `~/.claude/logging-rules.md` in full and follow it in every function you add or change. Read it again each task; don't work from memory of an earlier read.

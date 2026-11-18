@@ -69,6 +69,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'main.middleware.RequestLogMiddleware',  # first, so it logs every request
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',

@@ -1,11 +1,46 @@
 import logging
 import zoneinfo
+from http import HTTPStatus
 
 from django.templatetags.static import static
 from django.utils import timezone
 from django.utils.deprecation import MiddlewareMixin
 
+from main.selectors import get_client_ip
+
 logger = logging.getLogger(__name__)
+
+
+class RequestLogMiddleware:
+    """Log one line per request: method, path, status, client IP, user agent and referrer.
+
+    First in MIDDLEWARE, so it also sees requests that inner middleware answers itself
+    (CSRF 403s, slash redirects, bad Host 400s). Django turns a view's exception into a
+    500 response before it gets here, so every request is logged.
+    """
+
+    def __init__(self, get_response):
+        """Keep the next handler in the chain."""
+        self.get_response = get_response
+
+    def __call__(self, request):
+        """Pass the request on, then log it with the response's status."""
+        response = self.get_response(request)
+        status = response.status_code
+        if status >= HTTPStatus.INTERNAL_SERVER_ERROR:
+            level = logging.ERROR
+        elif status >= HTTPStatus.BAD_REQUEST:
+            level = logging.WARNING
+        else:
+            level = logging.INFO
+        user_agent = request.META.get('HTTP_USER_AGENT', '')
+        referrer = request.META.get('HTTP_REFERER', '')
+        logger.log(
+            level,
+            f'📥 {request.method} {request.get_full_path()} {status}'
+            f' ip={get_client_ip(request)} ua="{user_agent}" ref="{referrer}"',
+        )
+        return response
 
 
 class TimezoneMiddleware:

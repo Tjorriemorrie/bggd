@@ -7,6 +7,8 @@ Live at **[bggdata.co.za](https://bggdata.co.za)**
 BGG Data tracks board game prices across South African online shops, matches each listing
 to its [BoardGameGeek](https://boardgamegeek.com) record and records the price daily, so
 "cheap" is a claim, not a coincidence: a price is shown against the market and its past.
+Not affiliated with BoardGameGeek: it consumes BGG data and links back. Prices are scraped,
+so imperfect: a shop's own site, where every link here ends up, is the final word.
 
 ![The BGG Data homepage](docs/screenshot-home.png)
 
@@ -46,7 +48,10 @@ listings to BGG games (bringing ratings, rank, weight, player counts, play time)
 name search, else a loose one scored on shared words; ties go to the most rated game, and a
 score under 0.7 leaves the listing for the admin lookup ([details](docs/bgg-matching.md)).
 Every listing gets a price per day, giving each game a price series and a 90-day rolling
-average. Views are cached for ten minutes; graphs are rendered server-side.
+average. Views are cached for ten minutes; graphs are rendered server-side. Every request
+reaching Django is logged by `main.middleware.RequestLogMiddleware` (first in `MIDDLEWARE`)
+to the console and `logs/app.log` as `📥 GET /path 200 ip=… ua="…" ref="…"`: WARNING for
+4xx, ERROR for 5xx; `ip` is `X-Forwarded-For`'s first entry, else `REMOTE_ADDR`.
 
 **Failed scrapes.** `manage.py shop <name|all|home>` writes a `Scrapelog` per shop: `OK`, or
 the error that stopped it. A request still failing after its retries raises, as does a shelf
@@ -93,8 +98,3 @@ bypass the VPN. Both shops took ~17 min on 2026-11-17. **Bare-IP requests** (sca
 | Tables, filters, graphs | django-tables2, django-filter; Plotly, rendered server-side |
 | Scraping | requests, BeautifulSoup, Botasaurus |
 | Hosting | DigitalOcean, deployed by GitHub Actions on a `v*` tag |
-
-## Notes
-
-Not affiliated with BoardGameGeek: it consumes BGG data and links back. Prices are scraped,
-so imperfect: a shop's own site, where every link here ends up, is the final word.
